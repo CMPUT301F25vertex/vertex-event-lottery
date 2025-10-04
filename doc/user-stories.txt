@@ -1,3 +1,0 @@
-Story | Risk Level
-
-US 01.01.01 | High
