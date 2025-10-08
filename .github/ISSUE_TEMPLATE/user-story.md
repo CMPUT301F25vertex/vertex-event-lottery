@@ -11,12 +11,10 @@ assignees: ''
 name: "User Story"
 about: "Create a new user story for the product backlog"
 title: "US [XX.XX.XX] – <Short descriptive title>"
-labels: ["user-story"]
-assignees: ""
 ---
 
 ### 🧠 User Story
-As a **[role]**, I want to **[action/goal]** so that **[benefit/reason]**.
+As a **[role]**, I want to **[action/goal]**
 
 ---
 
