@@ -1,1 +1,15 @@
+class: User
+collaborators: Admin, Event, WaitingList, Organizer
+responsibility: represent a user on the app
 
+class: Event
+collaborators: WaitingList, User, Organizer
+responsibility: represent an event 
+
+class: Profile
+collaborators: User
+responsibility: contain user information and profile data
+
+class: Admin
+collaborators: User, Organizer, Event, Profile, WaitingList
+responsibility: represent administrator on the app
