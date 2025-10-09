@@ -13,3 +13,11 @@ responsibility: contain user information and profile data
 class: Admin
 collaborators: User, Organizer, Event, Profile, WaitingList
 responsibility: represent administrator on the app
+
+class: WaitingList
+collaborators: User, Organizer, Event
+responsibility: hold entrants attempting to join an event
+
+class: Organizer
+collaborators: User, Event
+responsibility: create events
