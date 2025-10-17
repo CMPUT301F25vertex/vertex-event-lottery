@@ -170,3 +170,53 @@ Collaborators:
     Lotttery
     Entrant
     Organizer
+
+
+Class:
+    Database
+Responsibility:
+    Maintains relationship between events and users
+Collaborators:
+    Event
+    User
+    Images
+
+Class:
+    NotificationLog
+Responsibility:
+    Display notifications 
+    Export to CSV
+    Filter with presets
+Collaborators:
+    Notifications
+    Filters
+
+Class:
+    Filter
+Responsibility:
+    Represent a filter 
+    Apply to events, profiles, etc.
+Collaborators:
+    Events
+    Profiles
+    Notifications
+
+Class:
+    Profile
+Responsibility:
+    Display information about user
+Collaborators:
+    User
+
+Class:
+    Export
+Responsibility:
+    Convert class objects to human-readable files 
+Collaborators:
+    Users
+    Notifications
+    NotificationLog
+    Events
+    Profiles
+
+
