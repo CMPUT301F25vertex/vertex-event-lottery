@@ -219,4 +219,15 @@ Collaborators:
     Events
     Profiles
 
-
+Class:
+    AdminConsole
+Responsibility:
+    Provide control to administrators
+Collaborators:
+    Database
+    Events
+    Images
+    NotificationLogs
+    Organizers
+    Export
+    Profiles
