@@ -219,4 +219,83 @@ Collaborators:
     Events
     Profiles
 
+Class:
+    ItemBar
+Responsibility:
+    Represents list of clickable items in bottom bar
+    Accessible throughout entire app
+Collaborators:
+    User
+    Events
+    Profile
+    Notifications
+
+
+Class:
+    Search
+Responsibility:
+    Represents a search
+    Apply to events, profiles, notifications, etc.
+Collaborators:
+    Events
+    Profiles
+    Notifications
+
+
+Class:
+    PopUp
+Responsibility:
+    Represents a pop-up in the app
+    Can contain filter, notification
+Collaborators:
+    Filters
+    Notifications
+
+
+Class:
+    SearchBar
+Responisibility:
+    Represents a search bar
+    Can search for profiles, events, notifications
+Collaborators:
+    Search
+    Profiles
+    Events
+    Notifications
+
+
+Class:
+    MenuItem
+Responsibility:
+    Represents a menu item on the screen
+    Can contain several different controls
+    Can contain a number of buttons
+Collaborators:
+    Images
+    Profiles
+    Events
+    Notifications
+
+
+Class:
+    MenuList
+Responsibility:
+    Represent a list of items in a menu
+    Can contain several MenuItems
+Collaborators:
+    MenuItems
+
+
+Class:
+    TextField
+Responsibility:
+    Represent a text field on the screen
+    Contains immutable text
+    Can change depending on what text to show
+Collaborators:
+    Profiles
+    Events
+    Notifications
+
+
 
