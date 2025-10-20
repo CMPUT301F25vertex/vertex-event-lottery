@@ -175,105 +175,111 @@ Collaborators:
 Class:
     Database
 Responsibility:
-    Maintains relationship between events and users
+    Store and Maintain all App data
+    Interface with Firebase
+    Sore Notifications history
 Collaborators:
     Event
     User
     Images
+    NotificationLog
+
 
 Class:
     NotificationLog
 Responsibility:
-    Display notifications 
-    Export to CSV
-    Filter with presets
+    Store all Notifications sent out
+    Store Notification Data ( Time, Content )
+    Allow Filter & Search
 Collaborators:
-    Notifications
+    Notification
     Filters
+
 
 Class:
     Filter
 Responsibility:
-    Represent a filter 
-    Apply to events, profiles, etc.
+    Manage Filter parameters (preferences)
+    Filter Events based on User's preferances
 Collaborators:
     Events
-    Profiles
-    Notifications
+    Entrant
+    Search
 
-Class:
-    Profile
-Responsibility:
-    Display information about user
-Collaborators:
-    User
 
 Class:
     Export
 Responsibility:
-    Convert class objects to human-readable files 
+    export data by converting and generating CSV file
 Collaborators:
-    Users
-    Notifications
-    NotificationLog
-    Events
-    Profiles
+    Event
+    Entrant
+    Organizer
+    WaitList
+    Invitation
+
 
 Class:
     ItemBar
 Responsibility:
-    Represents list of clickable items in bottom bar
-    Accessible throughout entire app
+    Represents preview of specific types of items
+    Expand for Full Details
 Collaborators:
-    User
-    Events
-    Profile
-    Notifications
+    Entrant
+    Event
+    MenuItem
 
 
 Class:
     Search
 Responsibility:
-    Represents a search
-    Apply to events, profiles, notifications, etc.
+    Search on Events based on user's preferances
+    Must work with Filter
+    Queries data from Firebase and outputs results
 Collaborators:
-    Events
-    Profiles
-    Notifications
+    Event
+    Entrant
+    Filter
+    SearchBar
+    Database
 
 
 Class:
     PopUp
 Responsibility:
     Represents a pop-up in the app
-    Can contain filter, notification
+    Displays Action Messages
+    Prompts Confirmations for important selections
 Collaborators:
-    Filters
-    Notifications
+    User - Entrant, Organizer, Admin
+    Event
+    Notification
+    Database
 
 
 Class:
     SearchBar
 Responisibility:
-    Represents a search bar
-    Can search for profiles, events, notifications
+    Triggers Search Operation
+    Displays Search Sectin on the App
 Collaborators:
     Search
     Profiles
-    Events
-    Notifications
+    Event
+    TextField
 
 
 Class:
     MenuItem
 Responsibility:
     Represents a menu item on the screen
-    Can contain several different controls
-    Can contain a number of buttons
+    Handles menu item selection
+    Can contain buttons / controls
+    Execute selection operation
 Collaborators:
-    Images
-    Profiles
-    Events
+    User - Entrant, Organizer, Admin
+    MenuList
+    Event
     Notifications
 
 
@@ -293,7 +299,6 @@ Responsibility:
     Contains immutable text
     Can change depending on what text to show
 Collaborators:
-    Profiles
     Events
     Notifications
 
@@ -307,6 +312,8 @@ Collaborators:
     Events
     Images
     NotificationLogs
+    Entrant
     Organizers
+    Admin
     Export
-    Profiles
+    
