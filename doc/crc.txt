@@ -289,6 +289,7 @@ Responsibility:
     Represent a list of items in a menu
     Can contain several MenuItems
 Collaborators:
+    Users - Entrant, Organizer, Admin
     MenuItems
 
 
@@ -299,7 +300,9 @@ Responsibility:
     Contains immutable text
     Can change depending on what text to show
 Collaborators:
-    Events
+    User - Entrant, Organizer, Admin
+    Popup
+    SearchBar
     Notifications
 
 
@@ -314,6 +317,3 @@ Collaborators:
     NotificationLogs
     Entrant
     Organizers
-    Admin
-    Export
-    
