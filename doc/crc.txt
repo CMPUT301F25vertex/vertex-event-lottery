@@ -264,8 +264,7 @@ Responisibility:
     Displays Search Sectin on the App
 Collaborators:
     Search
-    Profiles
-    Event
+    Database
     TextField
 
 
@@ -280,7 +279,7 @@ Collaborators:
     User - Entrant, Organizer, Admin
     MenuList
     Event
-    Notifications
+    Notification
 
 
 Class:
@@ -289,8 +288,8 @@ Responsibility:
     Represent a list of items in a menu
     Can contain several MenuItems
 Collaborators:
-    Users - Entrant, Organizer, Admin
-    MenuItems
+    User - Entrant, Organizer, Admin
+    MenuItem
 
 
 Class:
@@ -303,7 +302,7 @@ Collaborators:
     User - Entrant, Organizer, Admin
     Popup
     SearchBar
-    Notifications
+    Notification
 
 
 Class:
@@ -312,8 +311,8 @@ Responsibility:
     Provide control to administrators
 Collaborators:
     Database
-    Events
+    Event
     Images
-    NotificationLogs
+    NotificationLog
     Entrant
-    Organizers
+    Organizer
