@@ -1,0 +1,318 @@
+Class:
+    User
+Responsibility:
+    Represents a user account
+    Stores user's information
+    Handles Notifications preferences
+    Unique device identity
+Collaborators:
+    Event
+    WaitList
+    Notifications
+
+
+Class:
+    Entrant (extends User)
+Responsibility:
+    Views available Events and history
+    Scans QRcodes to explore Events
+    Joins/Leaves WaitList
+    Recieves Event Notifications
+    Accepts/Declines invitations
+Collaborators:
+    Event
+    WaitList
+    Notifications
+    QRcodes
+
+
+Class:
+    Organizer (extends User)
+Responsibility:
+    Creates Events (incl QRcodes and Poster)
+    Manages WaitList
+    Condycts Lucky draw
+    Sends out Notifications
+Collaborators:
+    Event
+    WaitList
+    Notifications
+    QRcodes
+    Geolocation
+    Lottery
+    Images
+    Invitation
+
+
+Class:
+    Admin (extends User)
+Responsibility:
+    Browse Events / Users (E & O) / Images
+    Remove Events / Users (E & O) / Images
+    Remove Organizers that violate app policy 
+    Review Notification logs
+Collaborators:
+    Event
+    Entrant
+    Organizer
+    Notifications
+    Images
+
+
+Class: 
+    Event
+Responsibility:
+    Store Event Details
+    Maintain WaitList registrations
+    Follow Geolocation settings
+    Contain QRcode and poster
+    Notify Final Draw Entrants
+Collaborators:
+    Entrant
+    Organizer
+    Admin
+    WaitList
+    Lottery
+    Notifications
+    Invitation
+    Geolocation
+    QRcode
+    Images
+
+
+Class: 
+    WaitList
+Responsibility:
+    Follow registration period
+    Maintain Entrant's registration for Events
+    Track Entrant's location
+    Provide Dataset to Lottery Draw
+    Enforcing Limits
+Collaborators:
+    Event
+    Entrant
+    Organizer
+    Lottery
+    Geolocation
+
+
+Class:
+    Lottery
+Responsibility:
+    Randomly select Attendees from WaitList
+    Draw a replacement for each rejection
+    Track selected & non-selected Entrants
+Collaborators:
+    Event
+    WaitList
+    Organizer
+    Entrant
+    
+
+Class: 
+    Images
+Responsibility:
+    Allow Organizers to upload/update event information
+    Browsed/Removed by Admin
+    Browsed by Entrants
+Collaborators: 
+    Organizer
+    Admin
+    Event
+
+
+Class:
+    QRcode
+Responsibility:
+    Link each Event to a unique QRcode
+    Validate scanned codes
+    Encoed Event information
+Collaborators:
+    Event
+    Organizer
+    Entrant
+
+Class:
+    Notification
+Responsibility:
+    Represent notification message data
+    Notify Entrants about Selection (Won/Lost)
+    Allow Entrants to Accept/Decline Invitation
+Collaborators:
+    Event
+    Entrant
+    Organizer
+    Lottery
+    Invitation
+
+
+Class:
+    Geolocation
+Responsibility:
+    Store Event location
+    Enable/Disable Entrant tracking
+    Verify user location during registration
+Collaborators:
+    Event
+    Entrant
+    Organizer
+    WaitList
+
+
+Class:
+    Invitation
+Responsibility:
+    Contains all the Lottey Winners  
+    Invites Entrants to attend the Event 
+    Tracks Invitation status (accepted / declined)
+Collaborators:
+    Event
+    Lotttery
+    Entrant
+    Organizer
+
+
+Class:
+    Database
+Responsibility:
+    Store and Maintain all App data
+    Interface with Firebase
+    Sore Notifications history
+Collaborators:
+    Event
+    User
+    Images
+    NotificationLog
+
+
+Class:
+    NotificationLog
+Responsibility:
+    Store all Notifications sent out
+    Store Notification Data ( Time, Content )
+    Allow Filter & Search
+Collaborators:
+    Notification
+    Filters
+
+
+Class:
+    Filter
+Responsibility:
+    Manage Filter parameters (preferences)
+    Filter Events based on User's preferances
+Collaborators:
+    Events
+    Entrant
+    Search
+
+
+Class:
+    Export
+Responsibility:
+    export data by converting and generating CSV file
+Collaborators:
+    Event
+    Entrant
+    Organizer
+    WaitList
+    Invitation
+
+
+Class:
+    ItemBar
+Responsibility:
+    Represents preview of specific types of items
+    Expand for Full Details
+Collaborators:
+    Entrant
+    Event
+    MenuItem
+
+
+Class:
+    Search
+Responsibility:
+    Search on Events based on user's preferances
+    Must work with Filter
+    Queries data from Firebase and outputs results
+Collaborators:
+    Event
+    Entrant
+    Filter
+    SearchBar
+    Database
+
+
+Class:
+    PopUp
+Responsibility:
+    Represents a pop-up in the app
+    Displays Action Messages
+    Prompts Confirmations for important selections
+Collaborators:
+    User - Entrant, Organizer, Admin
+    Event
+    Notification
+    Database
+
+
+Class:
+    SearchBar
+Responisibility:
+    Triggers Search Operation
+    Displays Search Sectin on the App
+Collaborators:
+    Search
+    Database
+    TextField
+
+
+Class:
+    MenuItem
+Responsibility:
+    Represents a menu item on the screen
+    Handles menu item selection
+    Can contain buttons / controls
+    Execute selection operation
+Collaborators:
+    User - Entrant, Organizer, Admin
+    MenuList
+    Event
+    Notification
+
+
+Class:
+    MenuList
+Responsibility:
+    Represent a list of items in a menu
+    Can contain several MenuItems
+Collaborators:
+    User - Entrant, Organizer, Admin
+    MenuItem
+
+
+Class:
+    TextField
+Responsibility:
+    Represent a text field on the screen
+    Contains immutable text
+    Can change depending on what text to show
+Collaborators:
+    User - Entrant, Organizer, Admin
+    Popup
+    SearchBar
+    Notification
+
+
+Class:
+    AdminConsole
+Responsibility:
+    Provide control to administrators
+Collaborators:
+    Database
+    Event
+    Images
+    NotificationLog
+    Entrant
+    Organizer
