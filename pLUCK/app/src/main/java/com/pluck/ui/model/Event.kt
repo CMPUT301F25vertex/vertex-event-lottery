@@ -2,7 +2,15 @@ package com.pluck.ui.model
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.DeprecationLevel
 
+/**
+ * Immutable representation of an event displayed throughout pLUCK.
+ *
+ * The primary constructor exposes all metadata used by newer screens. Secondary constructors keep
+ * backwards compatibility with the precompiled instrumentation suite that still instantiates
+ * events without the waitlist/qr parameters.
+ */
 data class Event(
     val id: String,
     val title: String,
@@ -13,9 +21,10 @@ data class Event(
     val enrolled: Int,
     val organizerName: String,
     val waitlistCount: Int = 0,
-    val waitlistCapacity: Int = capacity * 2, // Default waitlist is 2x event capacity
-    val qrCodeData: String = id // QR code data - defaults to event ID
+    val waitlistCapacity: Int = capacity * 2,
+    val qrCodeData: String = id
 ) {
+    /** Legacy overload kept for instrumentation builds that predate waitlist metadata. */
     constructor(
         id: String,
         title: String,
@@ -36,6 +45,39 @@ data class Event(
         organizerName = organizerName,
         waitlistCount = 0,
         waitlistCapacity = capacity * 2
+    )
+
+    /**
+     * Binary compatibility shim matching the constructor baked into the instructor APK.
+     * The extra [legacyImageRes] parameter is ignored at runtime but keeps the JVM signature stable.
+     */
+    @Deprecated(
+        message = "Binary compatibility shim for instrumentation APKs expecting a legacy image resource parameter.",
+        level = DeprecationLevel.HIDDEN
+    )
+    constructor(
+        id: String,
+        title: String,
+        description: String,
+        location: String,
+        date: LocalDate,
+        capacity: Int,
+        enrolled: Int,
+        organizerName: String,
+        waitlistCount: Int,
+        waitlistCapacity: Int,
+        @Suppress("UNUSED_PARAMETER") legacyImageRes: Int
+    ) : this(
+        id = id,
+        title = title,
+        description = description,
+        location = location,
+        date = date,
+        capacity = capacity,
+        enrolled = enrolled,
+        organizerName = organizerName,
+        waitlistCount = waitlistCount,
+        waitlistCapacity = waitlistCapacity
     )
 
     val shortDescription: String

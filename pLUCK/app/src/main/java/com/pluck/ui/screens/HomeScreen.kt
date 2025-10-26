@@ -67,6 +67,10 @@ private val homeCategories = listOf(
     EventCategory("location", "Location")
 )
 
+/**
+ * Entry point for the Home screen. This overload matches the signature compiled into the
+ * instructor tests, so keep defaultable callbacks nullable and coalesce internally.
+ */
 @Composable
 fun HomeScreen(
     userName: String?,
@@ -75,8 +79,36 @@ fun HomeScreen(
     currentRoute: String?,
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
-    onCreateEvent: () -> Unit = {},
-    onScanQRCode: () -> Unit = {},
+    onCreateEvent: (() -> Unit)? = null,
+    onScanQRCode: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    HomeScreenContent(
+        userName = userName,
+        events = events,
+        isLoading = isLoading,
+        currentRoute = currentRoute,
+        onSelectEvent = onSelectEvent,
+        onNavigate = onNavigate,
+        onCreateEvent = onCreateEvent ?: {},
+        onScanQRCode = onScanQRCode ?: {},
+        modifier = modifier
+    )
+}
+
+/**
+ * Shared implementation for the home layout so both the app and legacy tests render identically.
+ */
+@Composable
+private fun HomeScreenContent(
+    userName: String?,
+    events: List<Event>,
+    isLoading: Boolean,
+    currentRoute: String?,
+    onSelectEvent: (Event) -> Unit,
+    onNavigate: (String) -> Unit,
+    onCreateEvent: () -> Unit,
+    onScanQRCode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
@@ -133,6 +165,7 @@ fun HomeScreen(
         }
     }
 }
+
 
 @Composable
 private fun HomeHeroCard(userName: String?, onScanQRCode: () -> Unit = {}) {
