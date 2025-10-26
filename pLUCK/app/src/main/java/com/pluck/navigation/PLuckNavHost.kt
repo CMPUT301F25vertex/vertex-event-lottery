@@ -57,6 +57,7 @@ import com.pluck.ui.screens.WaitlistScreen
 import com.pluck.ui.screens.WaitlistEntry
 import com.pluck.ui.screens.WelcomeBackScreen
 import com.pluck.ui.screens.CustomThemeCreatorScreen
+import com.pluck.ui.screens.QRScannerScreen
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.delay
@@ -82,6 +83,7 @@ sealed class PLuckDestination(val route: String) {
     object Settings : PLuckDestination("settings")
     object OrganizerDashboard : PLuckDestination("organizer_dashboard")
     object AdminDashboard : PLuckDestination("admin_dashboard")
+    object QRScanner : PLuckDestination("qr_scanner")
 }
 
 @Composable
@@ -89,7 +91,8 @@ fun PLuckNavHost(
     navController: NavHostController = rememberNavController(),
     onDarkModeChange: (Boolean) -> Unit = {},
     currentThemeId: String = "blue",
-    onThemeChange: (String) -> Unit = {}
+    onThemeChange: (String) -> Unit = {},
+    isDarkMode: Boolean = false
 ) {
     val navigator = remember(navController) { PLuckNavigator(navController) }
     val scope = rememberCoroutineScope()
@@ -224,6 +227,9 @@ fun PLuckNavHost(
                 },
                 onCreateEvent = {
                     navigator.toCreateEvent()
+                },
+                onScanQRCode = {
+                    navigator.toQRScanner()
                 }
             )
         }
@@ -241,7 +247,7 @@ fun PLuckNavHost(
             if (event != null) {
                 EventDetailScreen(
                     event = event,
-                    onJoinEvent = { /* TODO: Implement join event logic */ },
+                    onJoinEvent = { _ -> /* TODO: Implement join event logic */ },
                     onViewWaitlist = { eventToView ->
                         navigator.toWaitlist(eventToView.id)
                     },
@@ -390,19 +396,32 @@ fun PLuckNavHost(
                 ) {
                     NotificationsScreen(
                         onEventDetails = { notification ->
-                            // Navigate to event detail screen
-                            // Extract event ID from notification (for now use a placeholder)
-                            // In production, NotificationItem should contain an eventId field
-                            val eventId = "1" // TODO: Get from notification.eventId
-                            navigator.toEventDetail(eventId)
+                            // Navigate to event detail screen using the event ID from the notification
+                            if (notification.eventId.isNotBlank()) {
+                                navigator.toEventDetail(notification.eventId)
+                            }
                         },
-                        onAccept = { notification ->
-                            // TODO: Implement accept event logic
-                            // This would typically call a backend API to accept the event invitation
+                        onAccept = { _ ->
+                            // Handle accepting event invitation
+                            // In production, this would call a backend API to:
+                            // 1. Update user's status for the event
+                            // 2. Reserve their spot
+                            // 3. Send confirmation notification
+                            scope.launch {
+                                // Placeholder for backend API call
+                                // EventRepository.acceptInvitation(eventId)
+                            }
                         },
-                        onDecline = { notification ->
-                            // TODO: Implement decline event logic
-                            // This would typically call a backend API to decline the event invitation
+                        onDecline = { _ ->
+                            // Handle declining event invitation
+                            // In production, this would call a backend API to:
+                            // 1. Update user's status for the event
+                            // 2. Free up their spot for others
+                            // 3. Update waitlist
+                            scope.launch {
+                                // Placeholder for backend API call
+                                // EventRepository.declineInvitation(eventId)
+                            }
                         }
                     )
                 }
@@ -411,7 +430,7 @@ fun PLuckNavHost(
         composable(PLuckDestination.CreateEvent.route) {
             CreateEventScreen(
                 isLoading = loginInProgress,
-                onCreateEvent = { title, description, location, date, capacity ->
+                onCreateEvent = { _, _, _, _, _ ->
                     // TODO: Implement event creation backend logic
                     scope.launch {
                         loginInProgress = true
@@ -451,8 +470,6 @@ fun PLuckNavHost(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    val isDarkMode = remember { themePrefs.isDarkModeEnabled() }
-
                     SettingsScreen(
                         darkModeEnabled = isDarkMode,
                         onDarkModeChange = onDarkModeChange,
@@ -513,10 +530,10 @@ fun PLuckNavHost(
                 onEventClick = { event ->
                     navigator.toEventDetail(event.id)
                 },
-                onEditEvent = { event ->
+                onEditEvent = { _ ->
                     // TODO: Navigate to edit event screen
                 },
-                onViewParticipants = { event ->
+                onViewParticipants = { _ ->
                     // TODO: Navigate to participants screen
                 }
             )
@@ -555,10 +572,23 @@ fun PLuckNavHost(
                 onSave = { newTheme ->
                     themePrefs.saveCustomTheme(newTheme)
                     customTheme = newTheme
+                    ThemeManager.setCustomTheme(newTheme)
                     onThemeChange("custom")
                     navController.popBackStack()
                 },
                 onBack = { navController.popBackStack() }
+            )
+        }
+        composable(PLuckDestination.QRScanner.route) {
+            QRScannerScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+                onEventScanned = { eventId ->
+                    // Navigate to event detail when QR code is scanned
+                    navController.popBackStack()
+                    navigator.toEventDetail(eventId)
+                }
             )
         }
     }
@@ -579,4 +609,5 @@ class PLuckNavigator(private val navController: NavHostController) {
     fun toSettings() = navController.navigate(PLuckDestination.Settings.route)
     fun toOrganizer() = navController.navigate(PLuckDestination.OrganizerDashboard.route)
     fun toAdmin() = navController.navigate(PLuckDestination.AdminDashboard.route)
+    fun toQRScanner() = navController.navigate(PLuckDestination.QRScanner.route)
 }

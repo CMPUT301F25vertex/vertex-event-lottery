@@ -76,6 +76,7 @@ fun HomeScreen(
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
     onCreateEvent: () -> Unit = {},
+    onScanQRCode: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
@@ -103,7 +104,7 @@ fun HomeScreen(
                     .padding(horizontal = 20.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HomeHeroCard(userName = userName)
+                HomeHeroCard(userName = userName, onScanQRCode = onScanQRCode)
 
                 HomeFilterRow(
                     categories = homeCategories,
@@ -134,7 +135,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeroCard(userName: String?) {
+private fun HomeHeroCard(userName: String?, onScanQRCode: () -> Unit = {}) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -176,7 +177,8 @@ private fun HomeHeroCard(userName: String?) {
                 HomeHeroAction(
                     icon = Icons.Outlined.QrCodeScanner,
                     backgroundColor = PluckPalette.Tertiary,
-                    iconTint = Color.White
+                    iconTint = Color.White,
+                    onClick = onScanQRCode
                 )
                 HomeHeroAction(
                     icon = Icons.Outlined.AccountCircle,
@@ -193,10 +195,13 @@ private fun HomeHeroAction(
     icon: ImageVector,
     backgroundColor: Color,
     iconTint: Color,
-    borderColor: Color = Color.Transparent
+    borderColor: Color = Color.Transparent,
+    onClick: () -> Unit = {}
 ) {
     Surface(
-        modifier = Modifier.size(56.dp),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .size(56.dp),
         shape = CircleShape,
         color = backgroundColor,
         contentColor = iconTint,

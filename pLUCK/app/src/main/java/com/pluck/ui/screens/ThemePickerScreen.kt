@@ -370,7 +370,7 @@ private fun CustomThemeCard(
 @Composable
 private fun ColorPreviewCircle(
     color: Color,
-    label: String
+    @Suppress("UNUSED_PARAMETER") label: String
 ) {
     Surface(
         modifier = Modifier.size(40.dp),

@@ -39,7 +39,8 @@ class ScreensSmokeTest {
         capacity = 20,
         enrolled = 8,
         organizerName = "Vertex Community",
-        waitlistCount = 5
+        waitlistCount = 5,
+        qrCodeData = "event-1"
     )
 
     private val sampleEvents = listOf(

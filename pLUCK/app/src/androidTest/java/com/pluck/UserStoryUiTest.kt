@@ -107,7 +107,9 @@ class UserStoryUiTest {
                 date = LocalDate.now().plusDays(5),
                 capacity = 120,
                 enrolled = 60,
-                organizerName = "City Events"
+                organizerName = "City Events",
+                waitlistCount = 0,
+                qrCodeData = "event-1"
             )
         )
         var selectedRoute: String? = null
@@ -121,7 +123,8 @@ class UserStoryUiTest {
                     isLoading = false,
                     currentRoute = "event_list",
                     onSelectEvent = { selectedEventId = it.id },
-                    onNavigate = { selectedRoute = it }
+                    onNavigate = { selectedRoute = it },
+                    onScanQRCode = { }
                 )
             }
         }

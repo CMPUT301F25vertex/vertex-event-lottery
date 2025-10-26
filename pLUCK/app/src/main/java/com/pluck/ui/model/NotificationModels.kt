@@ -52,6 +52,9 @@ enum class NotificationFilter {
  * @property status read state used for filtering
  * @property accentColor explicit override for icon background
  * @property callToActionButtons actions shown on the right side
+ * @property eventId associated event ID for navigation and actions
+ * @property isAccepted whether the entrant has accepted the invitation
+ * @property isDeclined whether the entrant has declined the invitation
  */
 @Immutable
 data class NotificationItem(
@@ -62,7 +65,10 @@ data class NotificationItem(
     val category: NotificationCategory,
     val status: NotificationStatus,
     val accentColor: Color,
-    val callToActionButtons: NotificationButtons = NotificationButtons()
+    val callToActionButtons: NotificationButtons = NotificationButtons(),
+    val eventId: String = "",
+    val isAccepted: Boolean = false,
+    val isDeclined: Boolean = false
 )
 
 /**
@@ -95,7 +101,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         detail = "Confirm by Oct 14 at 5pm.",
         category = NotificationCategory.SELECTION,
         status = NotificationStatus.UNREAD,
-        accentColor = Color(0xFFFE2C55)
+        accentColor = Color(0xFFFE2C55),
+        eventId = "1"
     ),
     NotificationItem(
         id = "deadline-1",
@@ -105,17 +112,19 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         category = NotificationCategory.DEADLINE,
         status = NotificationStatus.UNREAD,
         accentColor = Color(0xFF2C2C2C),
-        callToActionButtons = NotificationButtons(showDecline = true, showAccept = true, showEventDetails = true)
+        callToActionButtons = NotificationButtons(showDecline = true, showAccept = true, showEventDetails = true),
+        eventId = "2"
     ),
     NotificationItem(
         id = "waitlist-1",
-        title = "You’re on the Waitlist!",
+        title = "You're on the Waitlist!",
         subtitle = "Darts at the Clam • Draw Oct 29",
         detail = "Waitlist closes by Oct 28 at 11pm.",
         category = NotificationCategory.WAITLIST,
         status = NotificationStatus.UNREAD,
         accentColor = Color(0xFF9F15A2),
-        callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false)
+        callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false),
+        eventId = "3"
     ),
     NotificationItem(
         id = "not-selected-1",
@@ -125,7 +134,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         category = NotificationCategory.NOT_SELECTED,
         status = NotificationStatus.READ,
         accentColor = Color(0xFF2C2C2C),
-        callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false)
+        callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false),
+        eventId = "3"
     ),
     NotificationItem(
         id = "replacement-1",
@@ -134,6 +144,7 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         detail = "Waitlist closes by Oct 28 at 11pm.",
         category = NotificationCategory.REPLACEMENT,
         status = NotificationStatus.READ,
-        accentColor = Color(0xFF9F15A2)
+        accentColor = Color(0xFF9F15A2),
+        eventId = "4"
     )
 )

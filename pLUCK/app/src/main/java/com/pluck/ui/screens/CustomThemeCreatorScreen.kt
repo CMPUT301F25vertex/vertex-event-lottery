@@ -250,9 +250,11 @@ fun CustomThemeCreatorScreen(
                     else -> Unit
                 }
                 showColorPicker = false
+                editingColor = null
             },
             onDismiss = {
                 showColorPicker = false
+                editingColor = null
             }
         )
     }
@@ -490,6 +492,11 @@ private fun SimpleColorPickerDialog(
     onColorSelected: (Color) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var hexValue by remember(currentColor) {
+        mutableStateOf(currentColor.toHexString(includeHash = false))
+    }
+    var previewColor by remember(currentColor) { mutableStateOf(currentColor) }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -499,7 +506,8 @@ private fun SimpleColorPickerDialog(
             Column(
                 modifier = Modifier
                     .padding(24.dp)
-                    .widthIn(max = 420.dp),
+                    .widthIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -509,11 +517,6 @@ private fun SimpleColorPickerDialog(
                         color = PluckPalette.Primary
                     )
                 )
-
-                var hexValue by remember(currentColor) {
-                    mutableStateOf(currentColor.toHexString(includeHash = false))
-                }
-                var previewColor by remember(currentColor) { mutableStateOf(currentColor) }
 
                 val presets = listOf(
                     // Blues
@@ -538,11 +541,12 @@ private fun SimpleColorPickerDialog(
                         hexValue = sanitized
                         parseHexColor(sanitized)?.let { previewColor = it }
                     },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Hex value") },
+                    label = { Text("Hex") },
                     prefix = { Text("#") },
                     supportingText = {
-                        Text(text = if (hexValue.length == 6 || hexValue.length == 8) " " else "Use 6 or 8 hex digits")
+                        Text(text = if (hexValue.length == 6 || hexValue.length == 8) " " else "6 or 8 digits")
                     }
                 )
 
@@ -585,23 +589,30 @@ private fun SimpleColorPickerDialog(
 
                 val canApply = hexValue.length == 6 || hexValue.length == 8
 
-                Button(
-                    onClick = {
-                        onColorSelected(previewColor)
-                        onDismiss()
-                    },
-                    enabled = canApply,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Use Color", fontWeight = FontWeight.Bold)
-                }
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Cancel", fontWeight = FontWeight.SemiBold)
+                    }
 
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Cancel")
+                    Button(
+                        onClick = {
+                            if (canApply) {
+                                onColorSelected(previewColor)
+                            }
+                        },
+                        enabled = canApply,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Select", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

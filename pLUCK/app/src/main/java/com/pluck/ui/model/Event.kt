@@ -13,7 +13,8 @@ data class Event(
     val enrolled: Int,
     val organizerName: String,
     val waitlistCount: Int = 0,
-    val waitlistCapacity: Int = capacity * 2 // Default waitlist is 2x event capacity
+    val waitlistCapacity: Int = capacity * 2, // Default waitlist is 2x event capacity
+    val qrCodeData: String = id // QR code data - defaults to event ID
 ) {
     constructor(
         id: String,

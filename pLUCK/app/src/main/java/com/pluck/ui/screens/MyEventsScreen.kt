@@ -390,7 +390,7 @@ private fun MyEventCard(
 @Composable
 private fun MyEventStatusBadge(
     status: EventStatus,
-    isCreatedByUser: Boolean
+    @Suppress("UNUSED_PARAMETER") isCreatedByUser: Boolean
 ) {
     val (icon, label, backgroundColor) = when {
         status == EventStatus.PAST -> Triple(

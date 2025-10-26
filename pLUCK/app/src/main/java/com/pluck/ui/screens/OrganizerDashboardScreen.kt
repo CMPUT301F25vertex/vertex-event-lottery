@@ -125,7 +125,7 @@ fun OrganizerDashboardScreen(
 @Composable
 private fun OrganizerDashboardHero(
     organizerName: String,
-    stats: OrganizerStats
+    @Suppress("UNUSED_PARAMETER") stats: OrganizerStats
 ) {
     Surface(
         modifier = Modifier

@@ -47,7 +47,10 @@ class NotificationsScreenTest {
             detail = "Confirm by Friday.",
             category = NotificationCategory.SELECTION,
             status = NotificationStatus.UNREAD,
-            accentColor = androidx.compose.ui.graphics.Color(0xFFFE2C55)
+            accentColor = androidx.compose.ui.graphics.Color(0xFFFE2C55),
+            eventId = "",
+            isAccepted = false,
+            isDeclined = false
         ),
         NotificationItem(
             id = "read",
@@ -56,6 +59,9 @@ class NotificationsScreenTest {
             detail = "We'll notify you next time.",
             category = NotificationCategory.NOT_SELECTED,
             status = NotificationStatus.READ,
+            eventId = "",
+            isAccepted = false,
+            isDeclined = false,
             accentColor = androidx.compose.ui.graphics.Color(0xFF2C2C2C),
             callToActionButtons = NotificationButtons(showAccept = false, showDecline = false)
         )

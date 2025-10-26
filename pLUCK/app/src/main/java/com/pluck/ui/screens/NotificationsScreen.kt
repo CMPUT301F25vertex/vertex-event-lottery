@@ -94,8 +94,40 @@ fun NotificationsScreen(
         onFilterSelected = { filter = it },
         notifications = filteredItems,
         onEventDetails = onEventDetails,
-        onAccept = onAccept,
-        onDecline = onDecline
+        onAccept = { notification ->
+            // Update the notification in the list to mark as accepted
+            val index = notifications.indexOfFirst { it.id == notification.id }
+            if (index != -1) {
+                notifications[index] = notification.copy(
+                    isAccepted = true,
+                    status = NotificationStatus.READ,
+                    callToActionButtons = NotificationButtons(
+                        showEventDetails = true,
+                        showAccept = false,
+                        showDecline = false
+                    )
+                )
+            }
+            // Call the callback to handle backend logic
+            onAccept(notification)
+        },
+        onDecline = { notification ->
+            // Update the notification in the list to mark as declined
+            val index = notifications.indexOfFirst { it.id == notification.id }
+            if (index != -1) {
+                notifications[index] = notification.copy(
+                    isDeclined = true,
+                    status = NotificationStatus.READ,
+                    callToActionButtons = NotificationButtons(
+                        showEventDetails = true,
+                        showAccept = false,
+                        showDecline = false
+                    )
+                )
+            }
+            // Call the callback to handle backend logic
+            onDecline(notification)
+        }
     )
 }
 
@@ -294,8 +326,8 @@ private fun NotificationFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val background = if (selected) PluckPalette.Primary else Color.White
-    val contentColor = if (selected) Color.White else PluckPalette.Primary
+    val background = if (selected) PluckPalette.Primary else PluckPalette.Surface
+    val contentColor = if (selected) PluckPalette.Surface else PluckPalette.Primary
     Surface(
         modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(28.dp),
@@ -329,7 +361,7 @@ private fun NotificationFilterChip(
 private fun NotificationBadge(count: Int, selected: Boolean) {
     Surface(
         shape = CircleShape,
-        color = if (selected) Color.White else PluckPalette.Primary.copy(alpha = 0.1f),
+        color = if (selected) PluckPalette.Surface else PluckPalette.Primary.copy(alpha = 0.1f),
         contentColor = if (selected) PluckPalette.Primary else PluckPalette.Primary,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,

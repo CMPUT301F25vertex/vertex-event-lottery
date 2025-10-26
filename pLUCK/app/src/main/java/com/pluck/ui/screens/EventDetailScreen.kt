@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.ShowQRCodeButton
 import com.pluck.ui.model.Event
 import java.time.LocalDate
 
@@ -114,7 +115,8 @@ fun EventDetailScreen(
 
                 EventDetailReminder(remainingSpots = event.remainingSpots, waitlistCount = event.waitlistCount)
 
-                Spacer(modifier = Modifier.height(56.dp)) // Space for bottom buttons
+                // Extra space to ensure content is visible above fixed bottom buttons
+                Spacer(modifier = Modifier.height(200.dp))
 
             }
 
@@ -489,6 +491,13 @@ private fun EventDetailBottomActions(
                     )
                 )
             }
+
+            // QR Code Button
+            ShowQRCodeButton(
+                eventId = event.id,
+                eventTitle = event.title,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

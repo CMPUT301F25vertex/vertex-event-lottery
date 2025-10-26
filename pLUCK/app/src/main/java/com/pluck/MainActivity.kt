@@ -52,7 +52,8 @@ class MainActivity : ComponentActivity() {
                             prefs.setSelectedThemeId(themeId)
                              ThemeManager.setActiveThemeId(themeId)
                             selectedThemeIdFlow.value = themeId
-                        }
+                        },
+                        isDarkMode = isDarkMode
                     )
                 }
             }
