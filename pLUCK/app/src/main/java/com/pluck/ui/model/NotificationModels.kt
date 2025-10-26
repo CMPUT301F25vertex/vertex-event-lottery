@@ -3,8 +3,19 @@ package com.pluck.ui.model
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import kotlin.DeprecationLevel
 
+/**
+ * NotificationModels.kt
+ *
+ * Purpose: Consolidates notification-related enums and models used across the experience centre
+ * screens. Centralising the data classes keeps UI code declarative and makes test fixtures easy to
+ * generate via [previewNotifications].
+ *
+ * Outstanding Issues: None.
+ */
+/**
+ * Enumerates the categories surfaced inside the notification feed.
+ */
 enum class NotificationCategory {
     SELECTION,
     DEADLINE,
@@ -13,21 +24,49 @@ enum class NotificationCategory {
     REPLACEMENT
 }
 
+/**
+ * Determines whether a notification is surfaced under the unread or read tab.
+ */
 enum class NotificationStatus {
     UNREAD,
     READ
 }
 
+/**
+ * Filter applied to the notification list when toggling tabs.
+ */
 enum class NotificationFilter {
     UNREAD,
     READ
 }
 
+/**
+ * Identifies how invite metadata is delivered to downstream flows.
+ */
 enum class InviteContactType {
     EMAIL,
     PHONE
 }
 
+/**
+ * Immutable notification payload powering the experience centre UI.
+ *
+ * @property id Stable identifier used for diffing and persistence.
+ * @property title Primary announcement text.
+ * @property subtitle Supporting context such as event name.
+ * @property detail Rich detail body shown in the card content.
+ * @property category Category driving iconography and accent hues.
+ * @property status Read/unread state used for segmentation.
+ * @property accentColor Optional override for category tinting.
+ * @property callToActionButtons Flags that drive available CTA buttons.
+ * @property eventId Optional event the notification references.
+ * @property isAccepted Tracks whether the entrant already accepted their spot.
+ * @property isDeclined Tracks whether the entrant declined their spot.
+ * @property waitlistEntryId Identifier for waitlist-linked notifications.
+ * @property inviteContact Optional invite target (email or phone).
+ * @property inviteType Communication channel for invites.
+ * @property createdAtMillis Epoch timestamp used for ordering.
+ */
 @Immutable
 data class NotificationItem(
     val id: String,
@@ -45,33 +84,15 @@ data class NotificationItem(
     val inviteContact: String? = null,
     val inviteType: InviteContactType? = null,
     val createdAtMillis: Long = 0L
-) {
-    // Backwards-compatible constructor used by the prebuilt test APK.
-    @Deprecated(
-        message = "Binary compatibility shim for instrumentation APKs built before event metadata.",
-        level = DeprecationLevel.HIDDEN
-    )
-    constructor(
-        id: String,
-        title: String,
-        subtitle: String,
-        detail: String,
-        category: NotificationCategory,
-        status: NotificationStatus,
-        accentColor: Color,
-        callToActionButtons: NotificationButtons
-    ) : this(
-        id = id,
-        title = title,
-        subtitle = subtitle,
-        detail = detail,
-        category = category,
-        status = status,
-        accentColor = accentColor,
-        callToActionButtons = callToActionButtons
-    )
-}
+)
 
+/**
+ * Flags that determine which call-to-action buttons render inside a notification card.
+ *
+ * @property showEventDetails Whether to present an event details button.
+ * @property showAccept Whether to present an accept button.
+ * @property showDecline Whether to present a decline button.
+ */
 @Immutable
 data class NotificationButtons(
     val showEventDetails: Boolean = true,
@@ -79,12 +100,21 @@ data class NotificationButtons(
     val showDecline: Boolean = true
 )
 
-// Shared helper used by UI code and tests to apply the segmented filters.
+/**
+ * Filters the notification collection with the current tab selection.
+ *
+ * @receiver Iterable collection of [NotificationItem]s.
+ * @param filter Target filter (unread or read).
+ * @return List restricted to the requested filter while preserving order.
+ */
 fun Iterable<NotificationItem>.filterBy(filter: NotificationFilter): List<NotificationItem> = when (filter) {
     NotificationFilter.UNREAD -> filter { it.status == NotificationStatus.UNREAD }
     NotificationFilter.READ -> filter { it.status == NotificationStatus.READ }
 }
 
+/**
+ * Provides deterministic notification fixtures used by previews and tests.
+ */
 @VisibleForTesting
 fun previewNotifications(): List<NotificationItem> = listOf(
     NotificationItem(

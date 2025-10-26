@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.theme.autoTextColor
 
 object WelcomeBackTestTags {
     const val AutoLoginToggle = "welcome_back_auto_login_toggle"
@@ -164,7 +165,7 @@ fun WelcomeBackScreen(
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PluckPalette.Primary,
-                            contentColor = Color.White
+                            contentColor = autoTextColor(PluckPalette.Primary)
                         )
                     ) {
                         Text(

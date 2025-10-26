@@ -56,8 +56,17 @@ import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
+import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 
+/**
+ * HomeScreen.kt
+ *
+ * Purpose: Renders the primary discovery surface for entrants, mixing curated hero messaging,
+ * category filters, and event listings while delegating global navigation to [BottomNavBar].
+ *
+ * Outstanding Issues: None.
+ */
 data class EventCategory(val id: String, val label: String)
 
 private val homeCategories = listOf(
@@ -101,7 +110,7 @@ fun HomeScreen(
 }
 
 /**
- * Shared implementation for the home layout so both the app and legacy tests render identically.
+ * Shared implementation for the home layout so previews, tests, and production share the same rendering path.
  */
 @Composable
 private fun HomeScreenContent(
@@ -229,13 +238,11 @@ private fun HomeHeroCard(userName: String?, onScanQRCode: () -> Unit = {}) {
                 HomeHeroAction(
                     icon = Icons.Outlined.QrCodeScanner,
                     backgroundColor = PluckPalette.Tertiary,
-                    iconTint = Color.White,
                     onClick = onScanQRCode
                 )
                 HomeHeroAction(
                     icon = Icons.Outlined.AccountCircle,
-                    backgroundColor = PluckPalette.Secondary,
-                    iconTint = Color.White
+                    backgroundColor = PluckPalette.Secondary
                 )
             }
         }
@@ -246,7 +253,7 @@ private fun HomeHeroCard(userName: String?, onScanQRCode: () -> Unit = {}) {
 private fun HomeHeroAction(
     icon: ImageVector,
     backgroundColor: Color,
-    iconTint: Color,
+    iconTint: Color = autoTextColor(backgroundColor),
     borderColor: Color = Color.Transparent,
     onClick: () -> Unit = {}
 ) {
@@ -404,7 +411,7 @@ private fun HomeEventCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     // US 01.01.03: Show availability status to entrants
-                    EventAvailabilityBadge(event = event, accentColor = accentColor)
+                    EventAvailabilityBadge(event = event)
                 }
             }
 
@@ -454,7 +461,7 @@ private fun HomeEventCard(
  * Helps entrants identify which events they can join
  */
 @Composable
-private fun EventAvailabilityBadge(event: Event, accentColor: Color) {
+private fun EventAvailabilityBadge(event: Event) {
     val (statusText, statusColor) = when {
         !event.isFull -> "${event.remainingSpots} left" to PluckPalette.Accept
         !event.isWaitlistFull -> "Waitlist Open" to PluckPalette.Secondary
@@ -471,7 +478,7 @@ private fun EventAvailabilityBadge(event: Event, accentColor: Color) {
             text = statusText,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelLarge.copy(
-                color = Color.White,
+                color = autoTextColor(statusColor),
                 fontWeight = FontWeight.Bold
             )
         )

@@ -2,14 +2,35 @@ package com.pluck.ui.model
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.DeprecationLevel
 
+/**
+ * Event.kt
+ *
+ * Purpose: Defines the immutable domain model consumed across UI layers for describing a single
+ * lottery-backed experience. The helper properties keep UI logic declarative by precomputing
+ * derived state such as waitlist availability.
+ *
+ * Outstanding Issues: None.
+ */
 /**
  * Immutable representation of an event displayed throughout pLUCK.
  *
- * The primary constructor exposes all metadata used by newer screens. Secondary constructors keep
- * backwards compatibility with the precompiled instrumentation suite that still instantiates
- * events without the waitlist/qr parameters.
+ * @property id Stable identifier used for navigation, persistence, and ticketing.
+ * @property title User-facing title rendered in feeds and detail surfaces.
+ * @property description Markdown-safe description shown in detail views.
+ * @property location Human-readable location string surfaced to entrants.
+ * @property date Calendar date on which the event begins.
+ * @property capacity Maximum confirmed attendees.
+ * @property enrolled Current confirmed attendee count.
+ * @property organizerName Display name of the hosting organization.
+ * @property organizerId Optional stable organizer identifier used for filtering.
+ * @property waitlistCount Currently queued entrants for replacement draws.
+ * @property waitlistCapacity Maximum entrants allowed on the waitlist.
+ * @property qrCodeData Encoded payload rendered inside QR check-in surfaces.
+ * @property posterUrl Optional remote asset associated with the event.
+ * @property registrationStart Optional opening date for registration.
+ * @property registrationEnd Optional closing date for registration.
+ * @property samplingCount Number of entrants to sample in a lottery draw.
  */
 data class Event(
     val id: String,
@@ -29,82 +50,45 @@ data class Event(
     val registrationEnd: LocalDate? = null,
     val samplingCount: Int = 0
 ) {
-    /** Legacy overload kept for instrumentation builds that predate waitlist metadata. */
-    constructor(
-        id: String,
-        title: String,
-        description: String,
-        location: String,
-        date: LocalDate,
-        capacity: Int,
-        enrolled: Int,
-        organizerName: String
-    ) : this(
-        id = id,
-        title = title,
-        description = description,
-        location = location,
-        date = date,
-        capacity = capacity,
-        enrolled = enrolled,
-        organizerName = organizerName,
-        organizerId = "",
-        waitlistCount = 0,
-        waitlistCapacity = capacity * 2
-    )
-
     /**
-     * Binary compatibility shim matching the constructor baked into the instructor APK.
-     * The extra [legacyImageRes] parameter is ignored at runtime but keeps the JVM signature stable.
+     * @return A preview-friendly description limited to 120 characters.
      */
-    @Deprecated(
-        message = "Binary compatibility shim for instrumentation APKs expecting a legacy image resource parameter.",
-        level = DeprecationLevel.HIDDEN
-    )
-    constructor(
-        id: String,
-        title: String,
-        description: String,
-        location: String,
-        date: LocalDate,
-        capacity: Int,
-        enrolled: Int,
-        organizerName: String,
-        waitlistCount: Int,
-        waitlistCapacity: Int,
-        @Suppress("UNUSED_PARAMETER") legacyImageRes: Int
-    ) : this(
-        id = id,
-        title = title,
-        description = description,
-        location = location,
-        date = date,
-        capacity = capacity,
-        enrolled = enrolled,
-        organizerName = organizerName,
-        organizerId = "",
-        waitlistCount = waitlistCount,
-        waitlistCapacity = waitlistCapacity
-    )
-
     val shortDescription: String
         get() = description.take(120)
 
+    /**
+     * @return Formatted date string suitable for cards and summaries.
+     */
     val dateLabel: String
         get() = date.format(DATE_FORMATTER)
 
+    /**
+     * @return Remaining confirmed spots before the event reaches capacity.
+     */
     val remainingSpots: Int
         get() = (capacity - enrolled).coerceAtLeast(0)
 
+    /**
+     * @return Remaining waitlist capacity after accounting for queued entrants.
+     */
     val waitlistAvailable: Int
         get() = (waitlistCapacity - waitlistCount).coerceAtLeast(0)
 
+    /**
+     * @return True when the waitlist has reached its configured capacity.
+     */
     val isWaitlistFull: Boolean
         get() = waitlistCount >= waitlistCapacity
 
+    /**
+     * @return True when confirmed entrants match or exceed capacity.
+     */
     val isFull: Boolean
         get() = enrolled >= capacity
 
+    /**
+     * @return True when the registration window currently accepts entrants.
+     */
     val isRegistrationOpen: Boolean
         get() {
             val today = LocalDate.now()
@@ -113,6 +97,9 @@ data class Event(
             return startOk && endOk
         }
 
+    /**
+     * @return True when the event date has passed.
+     */
     val isPastEvent: Boolean
         get() = date.isBefore(LocalDate.now())
 

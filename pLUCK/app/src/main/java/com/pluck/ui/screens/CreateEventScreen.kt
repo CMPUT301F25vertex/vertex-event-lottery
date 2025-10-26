@@ -66,6 +66,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.theme.autoTextColor
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -425,7 +426,7 @@ fun CreateEventScreen(
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PluckPalette.Primary,
-                            contentColor = Color.White,
+                            contentColor = autoTextColor(PluckPalette.Primary),
                             disabledContainerColor = PluckPalette.Muted.copy(alpha = 0.3f),
                             disabledContentColor = PluckPalette.Muted
                         ),
@@ -435,7 +436,7 @@ fun CreateEventScreen(
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color.White,
+                                color = autoTextColor(PluckPalette.Primary),
                                 strokeWidth = 2.dp
                             )
                         } else {

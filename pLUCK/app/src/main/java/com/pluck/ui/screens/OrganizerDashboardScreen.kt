@@ -49,6 +49,7 @@ import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
+import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 
 /**
@@ -262,13 +263,14 @@ private fun OrganizerStatCard(
 
 @Composable
 private fun OrganizerCreateEventCard(onClick: () -> Unit) {
+    val onSecondary = autoTextColor(PluckPalette.Secondary)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(90.dp),
         shape = RoundedCornerShape(28.dp),
         color = PluckPalette.Secondary,
-        contentColor = PluckPalette.Surface,
+        contentColor = onSecondary,
         tonalElevation = 0.dp,
         shadowElevation = 16.dp,
         onClick = onClick
@@ -287,22 +289,21 @@ private fun OrganizerCreateEventCard(onClick: () -> Unit) {
                 Text(
                     text = "Create New Event",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Bold
                     )
                 )
                 Text(
                     text = "Set up a new lottery event for your community",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color.White.copy(alpha = 0.9f)
+                        color = onSecondary.copy(alpha = 0.9f)
                     )
                 )
             }
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.2f),
-                contentColor = Color.White
+                color = onSecondary.copy(alpha = 0.2f),
+                contentColor = onSecondary
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -479,13 +480,14 @@ private fun OrganizerActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val onPrimary = autoTextColor(PluckPalette.Primary)
     Button(
         onClick = onClick,
         modifier = modifier.height(40.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = PluckPalette.Primary,
-            contentColor = Color.White
+            contentColor = onPrimary
         ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
     ) {

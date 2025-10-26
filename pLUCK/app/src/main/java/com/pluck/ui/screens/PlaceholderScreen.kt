@@ -16,11 +16,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.theme.autoTextColor
 
 @Composable
 fun PlaceholderScreen(
@@ -74,7 +74,7 @@ fun PlaceholderScreen(
                             onClick = onAction,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = PluckPalette.Primary,
-                                contentColor = Color.White
+                                contentColor = autoTextColor(PluckPalette.Primary)
                             )
                         ) {
                             Text(actionLabel)

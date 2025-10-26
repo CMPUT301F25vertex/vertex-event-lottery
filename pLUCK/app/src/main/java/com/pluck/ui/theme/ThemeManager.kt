@@ -1,23 +1,12 @@
-/**
- * ThemeManager.kt
- *
- * Purpose: Manages theme selection for the application.
- * Provides theme switching capabilities with in-memory storage.
- *
- * Features:
- * - Load and manage predefined themes
- * - Theme selection
- * - Get available themes
- *
- * Design Pattern: Simple theme repository
- *
- * Outstanding Issues: None
- */
 package com.pluck.ui.theme
 
 /**
- * Manages theme selection.
- * Provides methods to get and manage themes.
+ * ThemeManager.kt
+ *
+ * Purpose: Centralised in-memory registry for the currently selected palette, providing a simple
+ * bridge between persisted preferences and Compose theme application.
+ *
+ * Outstanding Issues: None.
  */
 object ThemeManager {
     private var customTheme: CustomTheme? = null
@@ -61,8 +50,8 @@ object ThemeManager {
     fun getCustomTheme(): CustomTheme? = customTheme
 
     /**
-     * Persists the ID of the active theme so legacy call sites can render with
-     * the latest selection even if they do not pass a theme identifier.
+     * Persists the ID of the active theme so callers that rely on the implicit
+     * default still render with the most recent selection.
      */
     fun setActiveThemeId(themeId: String) {
         activeThemeId = themeId

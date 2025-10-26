@@ -62,6 +62,7 @@ import com.pluck.ui.model.NotificationItem
 import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.model.filterBy
 import com.pluck.ui.model.previewNotifications
+import com.pluck.ui.theme.autoTextColor
 
 /**
  * NotificationsScreen.kt
@@ -221,7 +222,7 @@ private fun NotificationsHeaderRow(unreadCount: Int) {
             FloatingIconButton(
                 icon = Icons.Outlined.Person,
                 backgroundColor = PluckPalette.Secondary,
-                contentColor = Color.White
+                contentColor = autoTextColor(PluckPalette.Secondary)
             )
             FloatingIconButton(
                 icon = Icons.Outlined.Notifications,
@@ -530,7 +531,7 @@ private fun NotificationStatusIndicator(status: NotificationStatus, accentColor:
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = autoTextColor(accentColor)
                 )
             )
         }
@@ -581,7 +582,7 @@ private fun ActionRow(
             NotificationActionButton(
                 label = "Event Details",
                 backgroundColor = PluckPalette.Primary,
-                contentColor = PluckPalette.Surface,
+                contentColor = autoTextColor(PluckPalette.Primary),
                 enabled = !isProcessing,
                 onClick = onEventDetails
             )
@@ -590,7 +591,7 @@ private fun ActionRow(
             NotificationActionButton(
                 label = "Accept",
                 backgroundColor = PluckPalette.Accept,
-                contentColor = PluckPalette.Surface,
+                contentColor = autoTextColor(PluckPalette.Accept),
                 enabled = !isProcessing,
                 onClick = onAccept
             )
@@ -599,7 +600,7 @@ private fun ActionRow(
             NotificationActionButton(
                 label = "Decline",
                 backgroundColor = PluckPalette.Decline,
-                contentColor = PluckPalette.Surface,
+                contentColor = autoTextColor(PluckPalette.Decline),
                 enabled = !isProcessing,
                 onClick = onDecline
             )

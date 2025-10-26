@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.theme.autoTextColor
 
 object CreateAccountTestTags {
     const val DisplayNameField = "create_account_display_name"
@@ -230,7 +231,7 @@ fun CreateAccountScreen(
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PluckPalette.Primary,
-                            contentColor = Color.White
+                            contentColor = autoTextColor(PluckPalette.Primary)
                         )
                     ) {
                         Text(
