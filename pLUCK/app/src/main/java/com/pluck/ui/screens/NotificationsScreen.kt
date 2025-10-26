@@ -30,13 +30,13 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,18 +74,17 @@ import com.pluck.ui.model.previewNotifications
  */
 @Composable
 fun NotificationsScreen(
+    notifications: List<NotificationItem> = previewNotifications(),
     modifier: Modifier = Modifier,
-    initialNotifications: List<NotificationItem> = previewNotifications(),
+    isLoading: Boolean = false,
+    processingNotificationIds: Set<String> = emptySet(),
     onEventDetails: (NotificationItem) -> Unit = {},
     onAccept: (NotificationItem) -> Unit = {},
     onDecline: (NotificationItem) -> Unit = {}
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
-    val notifications = remember(initialNotifications) {
-        mutableStateListOf(*initialNotifications.toTypedArray())
-    }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
-    val filteredItems = notifications.filterBy(filter)
+    val filteredItems = remember(notifications, filter) { notifications.filterBy(filter) }
 
     NotificationsContent(
         modifier = modifier,
@@ -93,41 +92,11 @@ fun NotificationsScreen(
         selectedFilter = filter,
         onFilterSelected = { filter = it },
         notifications = filteredItems,
+        isLoading = isLoading,
+        processingNotificationIds = processingNotificationIds,
         onEventDetails = onEventDetails,
-        onAccept = { notification ->
-            // Update the notification in the list to mark as accepted
-            val index = notifications.indexOfFirst { it.id == notification.id }
-            if (index != -1) {
-                notifications[index] = notification.copy(
-                    isAccepted = true,
-                    status = NotificationStatus.READ,
-                    callToActionButtons = NotificationButtons(
-                        showEventDetails = true,
-                        showAccept = false,
-                        showDecline = false
-                    )
-                )
-            }
-            // Call the callback to handle backend logic
-            onAccept(notification)
-        },
-        onDecline = { notification ->
-            // Update the notification in the list to mark as declined
-            val index = notifications.indexOfFirst { it.id == notification.id }
-            if (index != -1) {
-                notifications[index] = notification.copy(
-                    isDeclined = true,
-                    status = NotificationStatus.READ,
-                    callToActionButtons = NotificationButtons(
-                        showEventDetails = true,
-                        showAccept = false,
-                        showDecline = false
-                    )
-                )
-            }
-            // Call the callback to handle backend logic
-            onDecline(notification)
-        }
+        onAccept = onAccept,
+        onDecline = onDecline
     )
 }
 
@@ -141,6 +110,8 @@ private fun NotificationsContent(
     selectedFilter: NotificationFilter,
     onFilterSelected: (NotificationFilter) -> Unit,
     notifications: List<NotificationItem>,
+    isLoading: Boolean,
+    processingNotificationIds: Set<String>,
     onEventDetails: (NotificationItem) -> Unit,
     onAccept: (NotificationItem) -> Unit,
     onDecline: (NotificationItem) -> Unit
@@ -160,12 +131,18 @@ private fun NotificationsContent(
                 selectedFilter = selectedFilter,
                 onFilterSelected = onFilterSelected
             )
-            NotificationsFeedPanel(
-                notifications = notifications,
-                onEventDetails = onEventDetails,
-                onAccept = onAccept,
-                onDecline = onDecline
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                NotificationsFeedPanel(
+                    notifications = notifications,
+                    processingNotificationIds = processingNotificationIds,
+                    onEventDetails = onEventDetails,
+                    onAccept = onAccept,
+                    onDecline = onDecline
+                )
+                if (isLoading) {
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                }
+            }
         }
     }
 }
@@ -382,6 +359,7 @@ private fun NotificationBadge(count: Int, selected: Boolean) {
 @Composable
 private fun NotificationsFeedPanel(
     notifications: List<NotificationItem>,
+    processingNotificationIds: Set<String>,
     onEventDetails: (NotificationItem) -> Unit,
     onAccept: (NotificationItem) -> Unit,
     onDecline: (NotificationItem) -> Unit
@@ -402,6 +380,7 @@ private fun NotificationsFeedPanel(
                 NotificationCard(
                     index = index,
                     item = item,
+                    isProcessing = processingNotificationIds.contains(item.id),
                     onEventDetails = { onEventDetails(item) },
                     onAccept = { onAccept(item) },
                     onDecline = { onDecline(item) }
@@ -418,6 +397,7 @@ private fun NotificationsFeedPanel(
 private fun NotificationCard(
     index: Int,
     item: NotificationItem,
+    isProcessing: Boolean,
     onEventDetails: () -> Unit,
     onAccept: () -> Unit,
     onDecline: () -> Unit
@@ -447,6 +427,7 @@ private fun NotificationCard(
                 NotificationCardBody(item = item)
                 ActionRow(
                     buttons = item.callToActionButtons,
+                    isProcessing = isProcessing,
                     onEventDetails = onEventDetails,
                     onAccept = onAccept,
                     onDecline = onDecline
@@ -583,6 +564,7 @@ private fun NotificationCardBody(item: NotificationItem) {
 @Composable
 private fun ActionRow(
     buttons: NotificationButtons,
+    isProcessing: Boolean,
     onEventDetails: () -> Unit,
     onAccept: () -> Unit,
     onDecline: () -> Unit
@@ -608,6 +590,7 @@ private fun ActionRow(
                 label = "Accept",
                 backgroundColor = PluckPalette.Accept,
                 contentColor = PluckPalette.Surface,
+                enabled = !isProcessing,
                 onClick = onAccept
             )
         }
@@ -616,7 +599,21 @@ private fun ActionRow(
                 label = "Decline",
                 backgroundColor = PluckPalette.Decline,
                 contentColor = PluckPalette.Surface,
+                enabled = !isProcessing,
                 onClick = onDecline
+            )
+        }
+    }
+    if (isProcessing) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp
             )
         }
     }
@@ -630,11 +627,13 @@ private fun RowScope.NotificationActionButton(
     label: String,
     backgroundColor: Color,
     contentColor: Color,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Button(
         onClick = onClick,
         modifier = Modifier.weight(1f),
+        enabled = enabled,
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,

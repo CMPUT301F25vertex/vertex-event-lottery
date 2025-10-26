@@ -15,12 +15,14 @@
  */
 package com.pluck.navigation
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,32 +39,43 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.DeviceAuthPreferences
-import com.pluck.ui.model.EventRepository
+import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
+import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.screens.CreateAccountScreen
+import com.pluck.ui.screens.CreateEventRequest
 import com.pluck.ui.screens.CreateEventScreen
+import com.pluck.ui.screens.EditEventPosterScreen
 import com.pluck.ui.screens.EventDetailScreen
 import com.pluck.ui.screens.HomeScreen
+import com.pluck.ui.screens.EventStatus
+import com.pluck.ui.screens.MyEventItem
 import com.pluck.ui.screens.MyEventsScreen
 import com.pluck.ui.screens.NotificationsScreen
 import com.pluck.ui.screens.OrganizerDashboardScreen
+import com.pluck.ui.screens.OrganizerStats
 import com.pluck.ui.screens.PlaceholderScreen
 import com.pluck.ui.screens.ProfileScreen
 import com.pluck.ui.screens.SettingsScreen
 import com.pluck.ui.screens.ThemePickerScreen
 import com.pluck.ui.screens.WaitlistScreen
-import com.pluck.ui.screens.WaitlistEntry
 import com.pluck.ui.screens.WelcomeBackScreen
 import com.pluck.ui.screens.CustomThemeCreatorScreen
 import com.pluck.ui.screens.QRScannerScreen
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
+import com.pluck.ui.viewmodel.EventViewModel
+import com.pluck.ui.viewmodel.NotificationsViewModel
+import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 sealed class PLuckDestination(val route: String) {
     object DeviceLogin : PLuckDestination("device_login")
@@ -77,6 +91,11 @@ sealed class PLuckDestination(val route: String) {
         fun createRoute(eventId: String) = "$route/$eventId"
     }
     object CreateEvent : PLuckDestination("create_event")
+    object EditEvent : PLuckDestination("edit_event") {
+        const val EVENT_ID_ARG = "eventId"
+        val routeWithArg = "$route/{$EVENT_ID_ARG}"
+        fun createRoute(eventId: String) = "$route/$eventId"
+    }
     object MyEvents : PLuckDestination("my_events")
     object Profile : PLuckDestination("profile")
     object Notifications : PLuckDestination("notifications")
@@ -108,8 +127,39 @@ fun PLuckNavHost(
     var deviceId by remember { mutableStateOf(authenticator.currentDeviceId()) }
     var autoLoginEnabled by rememberSaveable { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
     var customTheme by remember { mutableStateOf(themePrefs.getCustomTheme()) }
+    var profileUpdateMessage by remember { mutableStateOf<String?>(null) }
+    var profileUpdateError by remember { mutableStateOf<String?>(null) }
+    var profileUpdating by remember { mutableStateOf(false) }
 
-    val allEvents = remember { EventRepository.getEvents() }
+    val eventViewModel: EventViewModel = viewModel()
+    val waitlistViewModel: WaitlistViewModel = viewModel()
+    val notificationsViewModel: NotificationsViewModel = viewModel()
+
+    val events by eventViewModel.events.collectAsState()
+    val selectedEvent by eventViewModel.selectedEvent.collectAsState()
+    val eventsLoading by eventViewModel.isLoading.collectAsState()
+    val eventError by eventViewModel.error.collectAsState()
+
+    val waitlistEntries by waitlistViewModel.waitlistEntries.collectAsState()
+    val chosenEntries by waitlistViewModel.chosenEntries.collectAsState()
+    val waitlistLoading by waitlistViewModel.isLoading.collectAsState()
+    val waitlistError by waitlistViewModel.error.collectAsState()
+    val userWaitlistEntryId by waitlistViewModel.userWaitlistEntryId.collectAsState()
+    val userWaitlistStatus by waitlistViewModel.userWaitlistStatus.collectAsState()
+    val userEventHistory by waitlistViewModel.userEventHistory.collectAsState()
+    val notifications by notificationsViewModel.notifications.collectAsState()
+    val notificationsLoading by notificationsViewModel.isLoading.collectAsState()
+    val processingNotificationIds by notificationsViewModel.processingNotificationIds.collectAsState()
+    val notificationError by notificationsViewModel.error.collectAsState()
+    val inviteFeedback by notificationsViewModel.inviteFeedback.collectAsState()
+    val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
+    val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
+
+    LaunchedEffect(currentUser) {
+        if (currentUser == null) {
+            waitlistViewModel.resetUserWaitlistEntry()
+        }
+    }
 
     LaunchedEffect(customTheme) {
         ThemeManager.setCustomTheme(customTheme)
@@ -143,6 +193,45 @@ fun PLuckNavHost(
                 delay(1000)
                 navigator.toEventList(clearBackStack = true)
             }
+        }
+    }
+
+    LaunchedEffect(currentUser) {
+        val device = currentUser?.deviceId.orEmpty()
+        if (device.isNotBlank()) {
+            waitlistViewModel.loadUserEventHistory(device)
+        } else {
+            waitlistViewModel.resetUserWaitlistEntry()
+        }
+        notificationsViewModel.observeNotifications(currentUser)
+    }
+
+    LaunchedEffect(notificationError) {
+        notificationError?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            notificationsViewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(waitlistError) {
+        waitlistError?.let { message ->
+            Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
+            waitlistViewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(eventError) {
+        eventError?.let { message ->
+            Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
+            eventViewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(navigateToEventDetails) {
+        val eventToOpen = navigateToEventDetails
+        if (!eventToOpen.isNullOrBlank()) {
+            navigator.toEventDetail(eventToOpen)
+            notificationsViewModel.clearNavigationRequest()
         }
     }
 
@@ -211,8 +300,8 @@ fun PLuckNavHost(
             // Home screen with bottom navigation
             HomeScreen(
                 userName = currentUser?.displayName,
-                events = allEvents,
-                isLoading = false,
+                events = events,
+                isLoading = eventsLoading,
                 currentRoute = navController.currentBackStackEntry?.destination?.route,
                 onSelectEvent = { event ->
                     navigator.toEventDetail(event.id)
@@ -242,24 +331,134 @@ fun PLuckNavHost(
             )
         ) { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EventDetail.EVENT_ID_ARG)
-            val event = remember(eventId) { eventId?.let(EventRepository::getEvent) }
+            val resolvedEvent = remember(eventId, events, selectedEvent) {
+                val fromList = events.firstOrNull { it.id == eventId }
+                fromList ?: selectedEvent?.takeIf { it.id == eventId }
+            }
+            val currentUserId = currentUser?.deviceId.orEmpty()
 
-            if (event != null) {
-                EventDetailScreen(
-                    event = event,
-                    onJoinEvent = { _ -> /* TODO: Implement join event logic */ },
-                    onViewWaitlist = { eventToView ->
-                        navigator.toWaitlist(eventToView.id)
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    }
-                )
-            } else {
-                PlaceholderScreen(
-                    title = "Event not found",
-                    description = "We couldn't find the selected event."
-                )
+            LaunchedEffect(eventId) {
+                notificationsViewModel.clearFeedback()
+            }
+
+            LaunchedEffect(eventId) {
+                if (eventId != null && resolvedEvent == null) {
+                    eventViewModel.loadEvent(eventId)
+                }
+            }
+
+            LaunchedEffect(eventId, currentUserId) {
+                if (eventId != null && currentUserId.isNotBlank()) {
+                    waitlistViewModel.checkUserWaitlistStatus(eventId, currentUserId)
+                }
+            }
+
+            when {
+                resolvedEvent != null -> {
+                    val isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
+                        userWaitlistStatus == WaitlistStatus.SELECTED
+                    val isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED
+                    val organizerId = currentUser?.deviceId.orEmpty()
+                    val canEditPoster = currentUser?.let { profile ->
+                        val organizerMatch = resolvedEvent.organizerId.isNotBlank() &&
+                            resolvedEvent.organizerId == profile.deviceId
+                        val fallbackMatch = resolvedEvent.organizerId.isBlank() &&
+                            profile.displayName.isNotBlank() &&
+                            resolvedEvent.organizerName.equals(profile.displayName, ignoreCase = true)
+                        organizerMatch || fallbackMatch
+                    } ?: false
+                    val canInviteEntrants = canEditPoster && organizerId.isNotBlank()
+
+                    EventDetailScreen(
+                        event = resolvedEvent,
+                        isUserOnWaitlist = isUserWaiting,
+                        isUserConfirmed = isUserConfirmed,
+                        onJoinEvent = join@{ eventToJoin ->
+                            Toast.makeText(context, "Join event button clicked!", Toast.LENGTH_SHORT).show()
+                            val profile = currentUser
+                            if (profile == null) {
+                                Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
+                                return@join
+                            }
+
+                            scope.launch {
+                                Toast.makeText(context, "Joining waitlist...", Toast.LENGTH_SHORT).show()
+                                waitlistViewModel.joinWaitlist(
+                                    eventId = eventToJoin.id,
+                                    userId = profile.deviceId,
+                                    userName = profile.displayName
+                                ) {
+                                    waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
+                                    Toast.makeText(context, "Successfully joined waitlist!", Toast.LENGTH_SHORT).show()
+                                    navigator.toWaitlist(eventToJoin.id)
+                                }
+                            }
+                        },
+                        onLeaveWaitlist = { eventToLeave ->
+                            Toast.makeText(context, "Leave event button clicked!", Toast.LENGTH_SHORT).show()
+                            val entryId = userWaitlistEntryId
+                            val profile = currentUser
+                            if (entryId != null) {
+                                scope.launch {
+                                    Toast.makeText(context, "Leaving waitlist...", Toast.LENGTH_SHORT).show()
+                                    waitlistViewModel.leaveWaitlist(entryId) {
+                                        if (profile != null) {
+                                            waitlistViewModel.checkUserWaitlistStatus(eventToLeave.id, profile.deviceId)
+                                        }
+                                        Toast.makeText(context, "Successfully left waitlist!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        onViewWaitlist = { eventToView ->
+                            navigator.toWaitlist(eventToView.id)
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                        canEditPoster = canEditPoster,
+                        onEditPoster = { eventToEdit ->
+                            navigator.toEditEvent(eventToEdit.id)
+                        },
+                        canInviteEntrants = canInviteEntrants,
+                        inviteFeedbackMessage = inviteFeedback?.message,
+                        inviteFeedbackIsError = inviteFeedback?.isError == true,
+                        inviteInProgress = inviteInProgress,
+                        onInviteEntrant = { contact, type ->
+                            if (organizerId.isNotBlank()) {
+                                notificationsViewModel.sendInvite(
+                                    eventId = resolvedEvent.id,
+                                    organizerId = organizerId,
+                                    contact = contact,
+                                    type = type
+                                )
+                            }
+                        },
+                        onClearInviteFeedback = {
+                            notificationsViewModel.clearFeedback()
+                        }
+                    )
+                }
+                eventsLoading -> {
+                    PlaceholderScreen(
+                        title = "Loading event",
+                        description = "Fetching the latest details..."
+                    )
+                }
+                eventError != null -> {
+                    PlaceholderScreen(
+                        title = "Event unavailable",
+                        description = eventError ?: "Unable to load the selected event."
+                    )
+                }
+                else -> {
+                    PlaceholderScreen(
+                        title = "Event not found",
+                        description = "We couldn't find the selected event."
+                    )
+                }
             }
         }
         composable(
@@ -271,35 +470,96 @@ fun PLuckNavHost(
             )
         ) { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.Waitlist.EVENT_ID_ARG)
-            val event = remember(eventId) { eventId?.let(EventRepository::getEvent) }
+            val resolvedEvent = remember(eventId, events, selectedEvent) {
+                val fromList = events.firstOrNull { it.id == eventId }
+                fromList ?: selectedEvent?.takeIf { it.id == eventId }
+            }
 
-            if (event != null) {
-                // Generate sample waitlist entries
-                val waitlistEntries = remember(event.id) {
-                    val names = listOf("Alice Johnson", "Bob Smith", "Charlie Davis", "Diana Chen", "Ethan Brown")
-                    names.take(event.waitlistCount.coerceAtMost(5)).mapIndexed { index, name ->
-                        WaitlistEntry(
-                            id = "waitlist-${event.id}-$index",
-                            userName = name,
-                            position = index + 1,
-                            joinedDate = java.time.LocalDate.now().minusDays((5 - index).toLong()),
-                            isCurrentUser = index == 1 // Make the second person the current user
-                        )
+            LaunchedEffect(eventId, currentUser?.deviceId) {
+                if (eventId != null) {
+                    // Observe event for real-time updates
+                    eventViewModel.observeEvent(eventId)
+
+                    val currentUserId = currentUser?.deviceId.orEmpty()
+                    waitlistViewModel.observeWaitlist(eventId, currentUserId)
+                    waitlistViewModel.observeChosenEntries(eventId, currentUserId)
+                    if (currentUserId.isNotBlank()) {
+                        waitlistViewModel.checkUserWaitlistStatus(eventId, currentUserId)
                     }
                 }
+            }
 
-                WaitlistScreen(
-                    event = event,
-                    waitlistEntries = waitlistEntries,
-                    onBack = {
-                        navController.popBackStack()
-                    }
-                )
-            } else {
-                PlaceholderScreen(
-                    title = "Event not found",
-                    description = "We couldn't find the selected event."
-                )
+            when {
+                resolvedEvent != null -> {
+                    WaitlistScreen(
+                        event = resolvedEvent,
+                        waitlistEntries = waitlistEntries,
+                        chosenEntries = chosenEntries,
+                        isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
+                            userWaitlistStatus == WaitlistStatus.SELECTED,
+                        isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED,
+                        onJoinWaitlist = join@{
+                            Toast.makeText(context, "Join button clicked!", Toast.LENGTH_SHORT).show()
+                            val profile = currentUser
+                            if (profile == null) {
+                                Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
+                                return@join
+                            }
+
+                            scope.launch {
+                                Toast.makeText(context, "Joining waitlist...", Toast.LENGTH_SHORT).show()
+                                waitlistViewModel.joinWaitlist(
+                                    eventId = resolvedEvent.id,
+                                    userId = profile.deviceId,
+                                    userName = profile.displayName
+                                ) {
+                                    waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                                    Toast.makeText(context, "Successfully joined waitlist!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onLeaveWaitlist = leave@{
+                            Toast.makeText(context, "Leave button clicked!", Toast.LENGTH_SHORT).show()
+                            val entryId = userWaitlistEntryId
+                            val profile = currentUser
+                            if (entryId == null) {
+                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                                return@leave
+                            }
+
+                            scope.launch {
+                                Toast.makeText(context, "Leaving waitlist...", Toast.LENGTH_SHORT).show()
+                                waitlistViewModel.leaveWaitlist(entryId) {
+                                    if (profile != null && eventId != null) {
+                                        waitlistViewModel.checkUserWaitlistStatus(eventId, profile.deviceId)
+                                    }
+                                    Toast.makeText(context, "Successfully left waitlist!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+                waitlistLoading || eventsLoading -> {
+                    PlaceholderScreen(
+                        title = "Loading waitlist",
+                        description = "Fetching live entrant positions..."
+                    )
+                }
+                waitlistError != null -> {
+                    PlaceholderScreen(
+                        title = "Waitlist unavailable",
+                        description = waitlistError ?: "Unable to load the waitlist."
+                    )
+                }
+                else -> {
+                    PlaceholderScreen(
+                        title = "Event not found",
+                        description = "We couldn't find the selected event."
+                    )
+                }
             }
         }
         composable(PLuckDestination.Profile.route) {
@@ -329,8 +589,29 @@ fun PLuckNavHost(
                     ProfileScreen(
                         userName = currentUser?.displayName ?: "Anonymous",
                         userEmail = currentUser?.email,
+                        userPhone = currentUser?.phoneNumber,
                         deviceId = deviceId,
                         isLoading = loginInProgress,
+                        isUpdatingProfile = profileUpdating,
+                        updateMessage = profileUpdateMessage,
+                        updateError = profileUpdateError,
+                        onUpdateProfile = { name, email, phone ->
+                            scope.launch {
+                                profileUpdating = true
+                                profileUpdateMessage = null
+                                profileUpdateError = null
+                                when (val result = authenticator.updateProfile(name, email, phone)) {
+                                    is DeviceAuthResult.Success -> {
+                                        currentUser = result.profile
+                                        profileUpdateMessage = "Profile updated successfully."
+                                    }
+                                    is DeviceAuthResult.Error -> {
+                                        profileUpdateError = result.message
+                                    }
+                                }
+                                profileUpdating = false
+                            }
+                        },
                         onMyEvents = {
                             navigator.toMyEvents()
                         },
@@ -340,6 +621,8 @@ fun PLuckNavHost(
                         onSignOut = {
                             currentUser = null
                             loginError = null
+                            profileUpdateMessage = null
+                            profileUpdateError = null
                             FirebaseAuth.getInstance().signOut()
                             initializingSession = false
                             navController.navigate(PLuckDestination.DeviceLogin.route) {
@@ -353,6 +636,8 @@ fun PLuckNavHost(
                                     is DeviceAuthResult.Success -> {
                                         currentUser = null
                                         loginError = null
+                                        profileUpdateMessage = null
+                                        profileUpdateError = null
                                         FirebaseAuth.getInstance().signOut()
                                         initializingSession = false
                                         navController.navigate(PLuckDestination.DeviceLogin.route) {
@@ -395,56 +680,180 @@ fun PLuckNavHost(
                         .padding(paddingValues)
                 ) {
                     NotificationsScreen(
+                        notifications = notifications,
+                        isLoading = notificationsLoading,
+                        processingNotificationIds = processingNotificationIds,
                         onEventDetails = { notification ->
-                            // Navigate to event detail screen using the event ID from the notification
+                            notificationsViewModel.markRead(notification.id)
                             if (notification.eventId.isNotBlank()) {
                                 navigator.toEventDetail(notification.eventId)
                             }
                         },
-                        onAccept = { _ ->
-                            // Handle accepting event invitation
-                            // In production, this would call a backend API to:
-                            // 1. Update user's status for the event
-                            // 2. Reserve their spot
-                            // 3. Send confirmation notification
-                            scope.launch {
-                                // Placeholder for backend API call
-                                // EventRepository.acceptInvitation(eventId)
-                            }
+                        onAccept = { notification ->
+                            notificationsViewModel.acceptNotification(notification, currentUser)
                         },
-                        onDecline = { _ ->
-                            // Handle declining event invitation
-                            // In production, this would call a backend API to:
-                            // 1. Update user's status for the event
-                            // 2. Free up their spot for others
-                            // 3. Update waitlist
-                            scope.launch {
-                                // Placeholder for backend API call
-                                // EventRepository.declineInvitation(eventId)
-                            }
+                        onDecline = { notification ->
+                            notificationsViewModel.declineNotification(notification)
                         }
                     )
                 }
             }
         }
         composable(PLuckDestination.CreateEvent.route) {
+            var formError by remember { mutableStateOf<String?>(null) }
+
             CreateEventScreen(
-                isLoading = loginInProgress,
-                onCreateEvent = { _, _, _, _, _ ->
-                    // TODO: Implement event creation backend logic
-                    scope.launch {
-                        loginInProgress = true
-                        // Simulate API call
-                        delay(1500)
-                        loginInProgress = false
-                        // Navigate back to home after successful creation
-                        navigator.toEventList()
+                isLoading = eventsLoading,
+                errorMessage = formError ?: eventError,
+                onCreateEvent = { request ->
+                    formError = null
+
+                    val organizer = currentUser
+                    if (organizer == null) {
+                        formError = "Sign in to create events."
+                        return@CreateEventScreen
+                    }
+
+                    val parsedDate = try {
+                        LocalDate.parse(request.date.trim())
+                    } catch (ex: DateTimeParseException) {
+                        formError = "Enter the date as YYYY-MM-DD."
+                        return@CreateEventScreen
+                    }
+
+                    val capacityValue = request.capacity.toIntOrNull()
+                    if (capacityValue == null || capacityValue <= 0) {
+                        formError = "Capacity must be a positive number."
+                        return@CreateEventScreen
+                    }
+
+                    val registrationStartDate = try {
+                        LocalDate.parse(request.registrationStart.trim())
+                    } catch (ex: DateTimeParseException) {
+                        formError = "Enter registration dates as YYYY-MM-DD."
+                        return@CreateEventScreen
+                    }
+
+                    val registrationEndDate = try {
+                        LocalDate.parse(request.registrationEnd.trim())
+                    } catch (ex: DateTimeParseException) {
+                        formError = "Enter registration dates as YYYY-MM-DD."
+                        return@CreateEventScreen
+                    }
+
+                    if (registrationEndDate.isBefore(registrationStartDate)) {
+                        formError = "Registration end must be after the start date."
+                        return@CreateEventScreen
+                    }
+
+                    val waitlistCapacity = request.waitlistLimit.toIntOrNull()
+                    if (waitlistCapacity == null || waitlistCapacity <= 0) {
+                        formError = "Provide a positive waitlist limit."
+                        return@CreateEventScreen
+                    }
+
+                    val samplingCount = request.samplingCount.toIntOrNull()
+                    if (samplingCount == null || samplingCount <= 0) {
+                        formError = "Sampling count must be a positive number."
+                        return@CreateEventScreen
+                    }
+
+                    val newEvent = Event(
+                        id = "",
+                        title = request.title.trim(),
+                        description = request.description.trim(),
+                        location = request.location.trim(),
+                        date = parsedDate,
+                        capacity = capacityValue,
+                        enrolled = 0,
+                        organizerName = organizer.displayName,
+                        waitlistCapacity = waitlistCapacity,
+                        posterUrl = request.posterUrl,
+                        registrationStart = registrationStartDate,
+                        registrationEnd = registrationEndDate,
+                        samplingCount = samplingCount
+                    )
+
+                    eventViewModel.createEvent(newEvent, organizer.deviceId) { eventId ->
+                        formError = null
+                        navController.popBackStack()
+                        navigator.toEventDetail(eventId)
                     }
                 },
                 onCancel = {
                     navController.popBackStack()
                 }
             )
+        }
+        composable(
+            route = PLuckDestination.EditEvent.routeWithArg,
+            arguments = listOf(
+                navArgument(PLuckDestination.EditEvent.EVENT_ID_ARG) {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString(PLuckDestination.EditEvent.EVENT_ID_ARG)
+            val resolvedEvent = remember(eventId, events, selectedEvent) {
+                val fromList = events.firstOrNull { it.id == eventId }
+                fromList ?: selectedEvent?.takeIf { it.id == eventId }
+            }
+
+            LaunchedEffect(eventId) {
+                if (!eventId.isNullOrBlank() && resolvedEvent == null) {
+                    eventViewModel.loadEvent(eventId)
+                }
+            }
+
+            when {
+                resolvedEvent != null -> {
+                    EditEventPosterScreen(
+                        eventTitle = resolvedEvent.title,
+                        currentPosterUrl = resolvedEvent.posterUrl,
+                        isSaving = eventsLoading,
+                        errorMessage = eventError,
+                        onBack = { navController.popBackStack() },
+                        onClearError = { eventViewModel.clearError() },
+                        onSavePoster = { posterUrl ->
+                            val updates = mutableMapOf<String, Any>(
+                                "updatedAt" to FieldValue.serverTimestamp()
+                            )
+                            if (posterUrl.isNullOrBlank()) {
+                                updates["imageUrl"] = FieldValue.delete()
+                            } else {
+                                updates["imageUrl"] = posterUrl
+                            }
+                            eventViewModel.updateEvent(resolvedEvent.id, updates) {
+                                navController.popBackStack()
+                            }
+                        }
+                    )
+                }
+                eventsLoading -> {
+                    PlaceholderScreen(
+                        title = "Updating event",
+                        description = "Fetching event details..."
+                    )
+                }
+                eventError != null -> {
+                    PlaceholderScreen(
+                        title = "Event unavailable",
+                        description = eventError ?: "Unable to edit this event right now.",
+                        actionLabel = "Try again",
+                        onAction = {
+                            if (!eventId.isNullOrBlank()) {
+                                eventViewModel.loadEvent(eventId)
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    PlaceholderScreen(
+                        title = "Event not found",
+                        description = "We could not locate that event."
+                    )
+                }
+            }
         }
         composable(PLuckDestination.Settings.route) {
             Scaffold(
@@ -499,14 +908,64 @@ fun PLuckNavHost(
                     )
                 }
             ) { paddingValues ->
+                val myEvents = remember(
+                    events,
+                    userEventHistory,
+                    currentUser?.deviceId,
+                    currentUser?.displayName
+                ) {
+                    val today = LocalDate.now()
+                    val organizerId = currentUser?.deviceId.orEmpty()
+                    val organizerName = currentUser?.displayName.orEmpty()
+                    val historyByEventId = userEventHistory.associateBy { it.event.id }
+
+                    val mergedEvents = buildMap<String, Event> {
+                        events.forEach { event ->
+                            put(event.id, event)
+                        }
+                        userEventHistory.forEach { history ->
+                            putIfAbsent(history.event.id, history.event)
+                        }
+                    }.values
+
+                    mergedEvents.map { event ->
+                        val history = historyByEventId[event.id]
+                        val status = when (history?.status) {
+                            WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
+                            WaitlistStatus.SELECTED,
+                            WaitlistStatus.WAITING -> EventStatus.WAITLIST
+                            WaitlistStatus.DECLINED,
+                            WaitlistStatus.CANCELLED -> if (event.date.isBefore(today)) {
+                                EventStatus.PAST
+                            } else {
+                                EventStatus.UPCOMING
+                            }
+                            else -> when {
+                                event.date.isBefore(today) -> EventStatus.PAST
+                                event.isFull -> EventStatus.WAITLIST
+                                else -> EventStatus.UPCOMING
+                            }
+                        }
+
+                        MyEventItem(
+                            event = event,
+                            status = status,
+                            isCreatedByUser = event.organizerId == organizerId ||
+                                (organizerName.isNotBlank() &&
+                                    event.organizerName.equals(organizerName, ignoreCase = true)),
+                            joinedDate = history?.joinedDate,
+                            historyStatus = history?.status
+                        )
+                    }.sortedWith(compareBy<MyEventItem> { it.event.date })
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
                     MyEventsScreen(
-                        events = emptyList(), // TODO: Get user's events from repository
-                        isLoading = false,
+                        events = myEvents,
+                        isLoading = eventsLoading,
                         onEventClick = { event ->
                             navigator.toEventDetail(event.id)
                         }
@@ -515,23 +974,34 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
+            val organizerEvents = remember(events, currentUser?.displayName) {
+                val organizerName = currentUser?.displayName
+                if (organizerName.isNullOrBlank()) {
+                    emptyList()
+                } else {
+                    events.filter { it.organizerName == organizerName }
+                }
+            }
+            val organizerStats = remember(organizerEvents) {
+                OrganizerStats(
+                    totalEvents = organizerEvents.size,
+                    activeEvents = organizerEvents.count { !it.isFull },
+                    totalParticipants = organizerEvents.sumOf { it.enrolled }
+                )
+            }
             OrganizerDashboardScreen(
                 organizerName = currentUser?.displayName ?: "Organizer",
-                stats = com.pluck.ui.screens.OrganizerStats(
-                    totalEvents = 0,
-                    activeEvents = 0,
-                    totalParticipants = 0
-                ),
-                events = emptyList(), // TODO: Get organizer's events from repository
-                isLoading = false,
+                stats = organizerStats,
+                events = organizerEvents,
+                isLoading = eventsLoading,
                 onCreateEvent = {
                     navigator.toCreateEvent()
                 },
                 onEventClick = { event ->
                     navigator.toEventDetail(event.id)
                 },
-                onEditEvent = { _ ->
-                    // TODO: Navigate to edit event screen
+                onEditEvent = { event ->
+                    navigator.toEditEvent(event.id)
                 },
                 onViewParticipants = { _ ->
                     // TODO: Navigate to participants screen
@@ -601,6 +1071,7 @@ class PLuckNavigator(private val navController: NavHostController) {
         }
     }
     fun toEventDetail(eventId: String) = navController.navigate(PLuckDestination.EventDetail.createRoute(eventId))
+    fun toEditEvent(eventId: String) = navController.navigate(PLuckDestination.EditEvent.createRoute(eventId))
     fun toWaitlist(eventId: String) = navController.navigate(PLuckDestination.Waitlist.createRoute(eventId))
     fun toCreateEvent() = navController.navigate(PLuckDestination.CreateEvent.route)
     fun toMyEvents() = navController.navigate(PLuckDestination.MyEvents.route)

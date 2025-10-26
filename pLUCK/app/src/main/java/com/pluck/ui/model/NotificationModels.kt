@@ -23,6 +23,11 @@ enum class NotificationFilter {
     READ
 }
 
+enum class InviteContactType {
+    EMAIL,
+    PHONE
+}
+
 @Immutable
 data class NotificationItem(
     val id: String,
@@ -35,7 +40,11 @@ data class NotificationItem(
     val callToActionButtons: NotificationButtons = NotificationButtons(),
     val eventId: String = "",
     val isAccepted: Boolean = false,
-    val isDeclined: Boolean = false
+    val isDeclined: Boolean = false,
+    val waitlistEntryId: String? = null,
+    val inviteContact: String? = null,
+    val inviteType: InviteContactType? = null,
+    val createdAtMillis: Long = 0L
 ) {
     // Backwards-compatible constructor used by the prebuilt test APK.
     @Deprecated(
@@ -86,7 +95,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         category = NotificationCategory.SELECTION,
         status = NotificationStatus.UNREAD,
         accentColor = Color(0xFFFE2C55),
-        eventId = "1"
+        eventId = "1",
+        createdAtMillis = 0L
     ),
     NotificationItem(
         id = "deadline-1",
@@ -97,7 +107,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         status = NotificationStatus.UNREAD,
         accentColor = Color(0xFF2C2C2C),
         callToActionButtons = NotificationButtons(showDecline = true, showAccept = true, showEventDetails = true),
-        eventId = "2"
+        eventId = "2",
+        createdAtMillis = 0L
     ),
     NotificationItem(
         id = "waitlist-1",
@@ -108,7 +119,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         status = NotificationStatus.UNREAD,
         accentColor = Color(0xFF9F15A2),
         callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false),
-        eventId = "3"
+        eventId = "3",
+        createdAtMillis = 0L
     ),
     NotificationItem(
         id = "not-selected-1",
@@ -119,7 +131,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         status = NotificationStatus.READ,
         accentColor = Color(0xFF2C2C2C),
         callToActionButtons = NotificationButtons(showEventDetails = true, showAccept = false, showDecline = false),
-        eventId = "3"
+        eventId = "3",
+        createdAtMillis = 0L
     ),
     NotificationItem(
         id = "replacement-1",
@@ -129,7 +142,8 @@ fun previewNotifications(): List<NotificationItem> = listOf(
         category = NotificationCategory.REPLACEMENT,
         status = NotificationStatus.READ,
         accentColor = Color(0xFF9F15A2),
-        eventId = "4"
+        eventId = "4",
+        createdAtMillis = 0L
     )
 )
 

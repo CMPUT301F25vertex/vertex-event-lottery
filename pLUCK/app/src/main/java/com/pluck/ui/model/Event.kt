@@ -20,9 +20,14 @@ data class Event(
     val capacity: Int,
     val enrolled: Int,
     val organizerName: String,
+    val organizerId: String = "",
     val waitlistCount: Int = 0,
     val waitlistCapacity: Int = capacity * 2,
-    val qrCodeData: String = id
+    val qrCodeData: String = id,
+    val posterUrl: String? = null,
+    val registrationStart: LocalDate? = null,
+    val registrationEnd: LocalDate? = null,
+    val samplingCount: Int = 0
 ) {
     /** Legacy overload kept for instrumentation builds that predate waitlist metadata. */
     constructor(
@@ -43,6 +48,7 @@ data class Event(
         capacity = capacity,
         enrolled = enrolled,
         organizerName = organizerName,
+        organizerId = "",
         waitlistCount = 0,
         waitlistCapacity = capacity * 2
     )
@@ -76,6 +82,7 @@ data class Event(
         capacity = capacity,
         enrolled = enrolled,
         organizerName = organizerName,
+        organizerId = "",
         waitlistCount = waitlistCount,
         waitlistCapacity = waitlistCapacity
     )
@@ -97,6 +104,17 @@ data class Event(
 
     val isFull: Boolean
         get() = enrolled >= capacity
+
+    val isRegistrationOpen: Boolean
+        get() {
+            val today = LocalDate.now()
+            val startOk = registrationStart?.let { !today.isBefore(it) } ?: true
+            val endOk = registrationEnd?.let { !today.isAfter(it) } ?: true
+            return startOk && endOk
+        }
+
+    val isPastEvent: Boolean
+        get() = date.isBefore(LocalDate.now())
 
     companion object {
         private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy")

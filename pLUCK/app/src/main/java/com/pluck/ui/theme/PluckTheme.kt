@@ -28,6 +28,9 @@
 package com.pluck.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -164,7 +167,13 @@ fun PluckTheme(
         customTheme.toLightColors()
     }
 
-    // Create Material color scheme from custom theme
+    // Create Material color scheme with auto-calculated contrast-safe text colors
+    val onPrimary = autoTextColor(pluckColors.primary)
+    val onSecondary = autoTextColor(pluckColors.secondary)
+    val onTertiary = autoTextColor(pluckColors.tertiary)
+    val onBackground = ensureContrast(pluckColors.background, pluckColors.primary, minRatio = 4.5)
+    val onSurface = ensureContrast(pluckColors.surface, pluckColors.primary, minRatio = 4.5)
+
     val colorScheme = if (darkTheme) {
         darkColorScheme(
             primary = pluckColors.primary,
@@ -172,11 +181,11 @@ fun PluckTheme(
             tertiary = pluckColors.tertiary,
             background = pluckColors.background,
             surface = pluckColors.surface,
-            onPrimary = pluckColors.background,
-            onSecondary = pluckColors.background,
-            onTertiary = pluckColors.background,
-            onBackground = pluckColors.primary,
-            onSurface = pluckColors.primary
+            onPrimary = onPrimary,
+            onSecondary = onSecondary,
+            onTertiary = onTertiary,
+            onBackground = onBackground,
+            onSurface = onSurface
         )
     } else {
         lightColorScheme(
@@ -185,15 +194,18 @@ fun PluckTheme(
             tertiary = pluckColors.tertiary,
             background = pluckColors.background,
             surface = pluckColors.surface,
-            onPrimary = Color.White,
-            onSecondary = Color.White,
-            onTertiary = Color.White,
-            onBackground = pluckColors.primary,
-            onSurface = pluckColors.primary
+            onPrimary = onPrimary,
+            onSecondary = onSecondary,
+            onTertiary = onTertiary,
+            onBackground = onBackground,
+            onSurface = onSurface
         )
     }
 
-    CompositionLocalProvider(LocalPluckColors provides pluckColors) {
+    CompositionLocalProvider(
+        LocalPluckColors provides pluckColors,
+        LocalRippleTheme provides PluckRippleTheme
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             content = content
@@ -208,4 +220,22 @@ object PluckThemeColors {
     val current: PluckColors
         @Composable
         get() = LocalPluckColors.current
+}
+
+private object PluckRippleTheme : RippleTheme {
+    @Composable
+    override fun defaultColor(): Color {
+        val colors = PluckThemeColors.current
+        val alpha = if (colors.isDark) 0.35f else 0.2f
+        return colors.primary.copy(alpha = alpha)
+    }
+
+    @Composable
+    override fun rippleAlpha(): RippleAlpha {
+        val colors = PluckThemeColors.current
+        return RippleTheme.defaultRippleAlpha(
+            defaultColor(),
+            lightTheme = !colors.isDark
+        )
+    }
 }

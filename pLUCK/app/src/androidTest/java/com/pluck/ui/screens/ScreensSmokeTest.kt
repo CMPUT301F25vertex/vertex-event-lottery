@@ -71,6 +71,7 @@ class ScreensSmokeTest {
     private val sampleWaitlistEntries = listOf(
         WaitlistEntry(
             id = "waitlist-1",
+            userId = "user-a",
             userName = "Jordan Lee",
             position = 1,
             joinedDate = LocalDate.now().minusDays(1),
@@ -78,6 +79,7 @@ class ScreensSmokeTest {
         ),
         WaitlistEntry(
             id = "waitlist-2",
+            userId = "user-b",
             userName = "You",
             position = 2,
             joinedDate = LocalDate.now().minusDays(2),
@@ -125,6 +127,8 @@ class ScreensSmokeTest {
             PluckTheme {
                 EventDetailScreen(
                     event = sampleEvent,
+                    isUserOnWaitlist = false,
+                    isUserConfirmed = false,
                     onJoinEvent = {}
                 )
             }

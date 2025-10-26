@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -55,8 +56,10 @@ import androidx.compose.ui.zIndex
 import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.model.Event
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * MyEventsScreen.kt
@@ -86,8 +89,12 @@ enum class EventStatus {
 data class MyEventItem(
     val event: Event,
     val status: EventStatus,
-    val isCreatedByUser: Boolean = false
+    val isCreatedByUser: Boolean = false,
+    val joinedDate: LocalDate? = null,
+    val historyStatus: WaitlistStatus? = null
 )
+
+private val HISTORY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 @Composable
 fun MyEventsScreen(
@@ -103,7 +110,7 @@ fun MyEventsScreen(
             MyEventsFilter.ALL -> events
             MyEventsFilter.UPCOMING -> events.filter { it.status == EventStatus.UPCOMING }
             MyEventsFilter.PAST -> events.filter { it.status == EventStatus.PAST }
-            MyEventsFilter.JOINED -> events.filter { !it.isCreatedByUser }
+            MyEventsFilter.JOINED -> events.filter { it.historyStatus != null }
             MyEventsFilter.CREATED -> events.filter { it.isCreatedByUser }
         }
     }
@@ -322,6 +329,7 @@ private fun MyEventCard(
                     )
                     MyEventStatusBadge(
                         status = item.status,
+                        historyStatus = item.historyStatus,
                         isCreatedByUser = item.isCreatedByUser
                     )
                 }
@@ -351,6 +359,15 @@ private fun MyEventCard(
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                item.joinedDate?.let { joined ->
+                    Text(
+                        text = "Joined on ${joined.format(HISTORY_DATE_FORMATTER)}",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
                     )
                 }
 
@@ -387,33 +404,79 @@ private fun MyEventCard(
     }
 }
 
+private data class BadgeDescriptor(
+    val icon: ImageVector,
+    val label: String,
+    val backgroundColor: Color,
+    val contentColor: Color
+)
+
 @Composable
 private fun MyEventStatusBadge(
     status: EventStatus,
+    historyStatus: WaitlistStatus?,
     @Suppress("UNUSED_PARAMETER") isCreatedByUser: Boolean
 ) {
-    val (icon, label, backgroundColor) = when {
-        status == EventStatus.PAST -> Triple(
-            Icons.Outlined.History,
-            "Past",
-            PluckPalette.Muted.copy(alpha = 0.16f)
-        )
-        status == EventStatus.CONFIRMED -> Triple(
+    val badge = when (historyStatus) {
+        WaitlistStatus.ACCEPTED -> BadgeDescriptor(
             Icons.Outlined.CheckCircle,
             "Confirmed",
-            PluckPalette.Accept.copy(alpha = 0.16f)
+            PluckPalette.Accept.copy(alpha = 0.16f),
+            PluckPalette.Accept
         )
-        status == EventStatus.WAITLIST -> Triple(
+        WaitlistStatus.SELECTED -> BadgeDescriptor(
+            Icons.Outlined.HourglassBottom,
+            "Selected",
+            PluckPalette.Secondary.copy(alpha = 0.16f),
+            PluckPalette.Secondary
+        )
+        WaitlistStatus.WAITING -> BadgeDescriptor(
             Icons.Outlined.HourglassBottom,
             "Waitlist",
-            PluckPalette.Secondary.copy(alpha = 0.16f)
+            PluckPalette.Secondary.copy(alpha = 0.16f),
+            PluckPalette.Secondary
         )
-        else -> Triple(
-            Icons.Outlined.CalendarMonth,
-            "Upcoming",
-            PluckPalette.Tertiary.copy(alpha = 0.16f)
+        WaitlistStatus.DECLINED -> BadgeDescriptor(
+            Icons.Outlined.Close,
+            "Declined",
+            PluckPalette.Muted.copy(alpha = 0.16f),
+            PluckPalette.Muted
         )
+        WaitlistStatus.CANCELLED -> BadgeDescriptor(
+            Icons.Outlined.Close,
+            "Cancelled",
+            PluckPalette.Muted.copy(alpha = 0.16f),
+            PluckPalette.Muted
+        )
+        null -> when (status) {
+            EventStatus.PAST -> BadgeDescriptor(
+                Icons.Outlined.History,
+                "Past",
+                PluckPalette.Muted.copy(alpha = 0.16f),
+                PluckPalette.Muted
+            )
+            EventStatus.CONFIRMED -> BadgeDescriptor(
+                Icons.Outlined.CheckCircle,
+                "Confirmed",
+                PluckPalette.Accept.copy(alpha = 0.16f),
+                PluckPalette.Accept
+            )
+            EventStatus.WAITLIST -> BadgeDescriptor(
+                Icons.Outlined.HourglassBottom,
+                "Waitlist",
+                PluckPalette.Secondary.copy(alpha = 0.16f),
+                PluckPalette.Secondary
+            )
+            else -> BadgeDescriptor(
+                Icons.Outlined.CalendarMonth,
+                "Upcoming",
+                PluckPalette.Tertiary.copy(alpha = 0.16f),
+                PluckPalette.Tertiary
+            )
+        }
     }
+
+    val (icon, label, backgroundColor, contentColor) = badge
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -428,13 +491,13 @@ private fun MyEventStatusBadge(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
-                tint = PluckPalette.Primary
+                tint = contentColor
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    color = PluckPalette.Primary
+                    color = contentColor
                 )
             )
         }

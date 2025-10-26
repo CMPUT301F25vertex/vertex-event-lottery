@@ -1,0 +1,1043 @@
+﻿diff --git a/pLUCK/app/src/androidTest/java/com/pluck/ui/screens/ScreensSmokeTest.kt b/pLUCK/app/src/androidTest/java/com/pluck/ui/screens/ScreensSmokeTest.kt
+index 115314f..2130547 100644
+--- a/pLUCK/app/src/androidTest/java/com/pluck/ui/screens/ScreensSmokeTest.kt
++++ b/pLUCK/app/src/androidTest/java/com/pluck/ui/screens/ScreensSmokeTest.kt
+@@ -125,6 +125,7 @@ class ScreensSmokeTest {
+             PluckTheme {
+                 EventDetailScreen(
+                     event = sampleEvent,
++                    isUserOnWaitlist = false,
+                     onJoinEvent = {}
+                 )
+             }
+diff --git a/pLUCK/app/src/main/java/com/pluck/navigation/PLuckNavHost.kt b/pLUCK/app/src/main/java/com/pluck/navigation/PLuckNavHost.kt
+index d060d13..2a1be08 100644
+--- a/pLUCK/app/src/main/java/com/pluck/navigation/PLuckNavHost.kt
++++ b/pLUCK/app/src/main/java/com/pluck/navigation/PLuckNavHost.kt
+@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
+ import androidx.compose.material3.Scaffold
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.collectAsState
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.remember
+@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.platform.LocalContext
++import androidx.lifecycle.viewmodel.compose.viewModel
+ import androidx.navigation.NavHostController
+ import androidx.navigation.NavType
+ import androidx.navigation.compose.NavHost
+@@ -39,29 +41,35 @@ import com.google.firebase.auth.FirebaseAuth
+ import com.pluck.data.DeviceAuthResult
+ import com.pluck.data.DeviceAuthenticator
+ import com.pluck.data.DeviceAuthPreferences
+-import com.pluck.ui.model.EventRepository
++import com.pluck.ui.model.Event
+ import com.pluck.ui.model.EntrantProfile
+ import com.pluck.ui.components.BottomNavBar
+ import com.pluck.ui.screens.CreateAccountScreen
+ import com.pluck.ui.screens.CreateEventScreen
+ import com.pluck.ui.screens.EventDetailScreen
+ import com.pluck.ui.screens.HomeScreen
++import com.pluck.ui.screens.EventStatus
++import com.pluck.ui.screens.MyEventItem
+ import com.pluck.ui.screens.MyEventsScreen
+ import com.pluck.ui.screens.NotificationsScreen
+ import com.pluck.ui.screens.OrganizerDashboardScreen
++import com.pluck.ui.screens.OrganizerStats
+ import com.pluck.ui.screens.PlaceholderScreen
+ import com.pluck.ui.screens.ProfileScreen
+ import com.pluck.ui.screens.SettingsScreen
+ import com.pluck.ui.screens.ThemePickerScreen
+ import com.pluck.ui.screens.WaitlistScreen
+-import com.pluck.ui.screens.WaitlistEntry
+ import com.pluck.ui.screens.WelcomeBackScreen
+ import com.pluck.ui.screens.CustomThemeCreatorScreen
+ import com.pluck.ui.screens.QRScannerScreen
+ import com.pluck.ui.theme.ThemeManager
+ import com.pluck.ui.theme.ThemePreferences
++import com.pluck.ui.viewmodel.EventViewModel
++import com.pluck.ui.viewmodel.WaitlistViewModel
+ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.launch
++import java.time.LocalDate
++import java.time.format.DateTimeParseException
+ 
+ sealed class PLuckDestination(val route: String) {
+     object DeviceLogin : PLuckDestination("device_login")
+@@ -109,7 +117,25 @@ fun PLuckNavHost(
+     var autoLoginEnabled by rememberSaveable { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
+     var customTheme by remember { mutableStateOf(themePrefs.getCustomTheme()) }
+ 
+-    val allEvents = remember { EventRepository.getEvents() }
++    val eventViewModel: EventViewModel = viewModel()
++    val waitlistViewModel: WaitlistViewModel = viewModel()
++
++    val events by eventViewModel.events.collectAsState()
++    val selectedEvent by eventViewModel.selectedEvent.collectAsState()
++    val eventsLoading by eventViewModel.isLoading.collectAsState()
++    val eventError by eventViewModel.error.collectAsState()
++
++    val waitlistEntries by waitlistViewModel.waitlistEntries.collectAsState()
++    val chosenEntries by waitlistViewModel.chosenEntries.collectAsState()
++    val waitlistLoading by waitlistViewModel.isLoading.collectAsState()
++    val waitlistError by waitlistViewModel.error.collectAsState()
++    val userWaitlistEntryId by waitlistViewModel.userWaitlistEntryId.collectAsState()
++
++    LaunchedEffect(currentUser) {
++        if (currentUser == null) {
++            waitlistViewModel.resetUserWaitlistEntry()
++        }
++    }
+ 
+     LaunchedEffect(customTheme) {
+         ThemeManager.setCustomTheme(customTheme)
+@@ -211,8 +237,8 @@ fun PLuckNavHost(
+             // Home screen with bottom navigation
+             HomeScreen(
+                 userName = currentUser?.displayName,
+-                events = allEvents,
+-                isLoading = false,
++                events = events,
++                isLoading = eventsLoading,
+                 currentRoute = navController.currentBackStackEntry?.destination?.route,
+                 onSelectEvent = { event ->
+                     navigator.toEventDetail(event.id)
+@@ -242,24 +268,72 @@ fun PLuckNavHost(
+             )
+         ) { backStackEntry ->
+             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EventDetail.EVENT_ID_ARG)
+-            val event = remember(eventId) { eventId?.let(EventRepository::getEvent) }
++            val resolvedEvent = remember(eventId, events, selectedEvent) {
++                val fromList = events.firstOrNull { it.id == eventId }
++                fromList ?: selectedEvent?.takeIf { it.id == eventId }
++            }
++            val currentUserId = currentUser?.deviceId.orEmpty()
+ 
+-            if (event != null) {
+-                EventDetailScreen(
+-                    event = event,
+-                    onJoinEvent = { _ -> /* TODO: Implement join event logic */ },
+-                    onViewWaitlist = { eventToView ->
+-                        navigator.toWaitlist(eventToView.id)
+-                    },
+-                    onBack = {
+-                        navController.popBackStack()
+-                    }
+-                )
+-            } else {
+-                PlaceholderScreen(
+-                    title = "Event not found",
+-                    description = "We couldn't find the selected event."
+-                )
++            LaunchedEffect(eventId) {
++                if (eventId != null && resolvedEvent == null) {
++                    eventViewModel.loadEvent(eventId)
++                }
++            }
++
++            LaunchedEffect(eventId, currentUserId) {
++                if (eventId != null && currentUserId.isNotBlank()) {
++                    waitlistViewModel.checkUserWaitlistStatus(eventId, currentUserId)
++                }
++            }
++
++            when {
++                resolvedEvent != null -> {
++                    EventDetailScreen(
++                        event = resolvedEvent,
++                        isUserOnWaitlist = userWaitlistEntryId != null,
++                        onJoinEvent = { eventToJoin ->
++                            currentUser?.let { profile ->
++                                waitlistViewModel.joinWaitlist(
++                                    eventId = eventToJoin.id,
++                                    userId = profile.deviceId,
++                                    userName = profile.displayName
++                                ) {
++                                    navigator.toWaitlist(eventToJoin.id)
++                                }
++                            }
++                        },
++                        onLeaveWaitlist = { eventToLeave ->
++                            val entryId = userWaitlistEntryId
++                            if (entryId != null) {
++                                waitlistViewModel.leaveWaitlist(entryId)
++                            }
++                        },
++                        onViewWaitlist = { eventToView ->
++                            navigator.toWaitlist(eventToView.id)
++                        },
++                        onBack = {
++                            navController.popBackStack()
++                        }
++                    )
++                }
++                eventsLoading -> {
++                    PlaceholderScreen(
++                        title = "Loading event",
++                        description = "Fetching the latest details..."
++                    )
++                }
++                eventError != null -> {
++                    PlaceholderScreen(
++                        title = "Event unavailable",
++                        description = eventError ?: "Unable to load the selected event."
++                    )
++                }
++                else -> {
++                    PlaceholderScreen(
++                        title = "Event not found",
++                        description = "We couldn't find the selected event."
++                    )
++                }
+             }
+         }
+         composable(
+@@ -271,35 +345,54 @@ fun PLuckNavHost(
+             )
+         ) { backStackEntry ->
+             val eventId = backStackEntry.arguments?.getString(PLuckDestination.Waitlist.EVENT_ID_ARG)
+-            val event = remember(eventId) { eventId?.let(EventRepository::getEvent) }
++            val resolvedEvent = remember(eventId, events, selectedEvent) {
++                val fromList = events.firstOrNull { it.id == eventId }
++                fromList ?: selectedEvent?.takeIf { it.id == eventId }
++            }
+ 
+-            if (event != null) {
+-                // Generate sample waitlist entries
+-                val waitlistEntries = remember(event.id) {
+-                    val names = listOf("Alice Johnson", "Bob Smith", "Charlie Davis", "Diana Chen", "Ethan Brown")
+-                    names.take(event.waitlistCount.coerceAtMost(5)).mapIndexed { index, name ->
+-                        WaitlistEntry(
+-                            id = "waitlist-${event.id}-$index",
+-                            userName = name,
+-                            position = index + 1,
+-                            joinedDate = java.time.LocalDate.now().minusDays((5 - index).toLong()),
+-                            isCurrentUser = index == 1 // Make the second person the current user
+-                        )
++            LaunchedEffect(eventId, currentUser?.deviceId) {
++                if (eventId != null) {
++                    if (resolvedEvent == null) {
++                        eventViewModel.loadEvent(eventId)
++                    }
++                    val currentUserId = currentUser?.deviceId.orEmpty()
++                    waitlistViewModel.observeWaitlist(eventId, currentUserId)
++                    waitlistViewModel.observeChosenEntries(eventId, currentUserId)
++                    if (currentUserId.isNotBlank()) {
++                        waitlistViewModel.checkUserWaitlistStatus(eventId, currentUserId)
+                     }
+                 }
++            }
+ 
+-                WaitlistScreen(
+-                    event = event,
+-                    waitlistEntries = waitlistEntries,
+-                    onBack = {
+-                        navController.popBackStack()
+-                    }
+-                )
+-            } else {
+-                PlaceholderScreen(
+-                    title = "Event not found",
+-                    description = "We couldn't find the selected event."
+-                )
++            when {
++                resolvedEvent != null -> {
++                    WaitlistScreen(
++                        event = resolvedEvent,
++                        waitlistEntries = waitlistEntries,
++                        chosenEntries = chosenEntries,
++                        onBack = {
++                            navController.popBackStack()
++                        }
++                    )
++                }
++                waitlistLoading || eventsLoading -> {
++                    PlaceholderScreen(
++                        title = "Loading waitlist",
++                        description = "Fetching live entrant positions..."
++                    )
++                }
++                waitlistError != null -> {
++                    PlaceholderScreen(
++                        title = "Waitlist unavailable",
++                        description = waitlistError ?: "Unable to load the waitlist."
++                    )
++                }
++                else -> {
++                    PlaceholderScreen(
++                        title = "Event not found",
++                        description = "We couldn't find the selected event."
++                    )
++                }
+             }
+         }
+         composable(PLuckDestination.Profile.route) {
+@@ -409,7 +502,7 @@ fun PLuckNavHost(
+                             // 3. Send confirmation notification
+                             scope.launch {
+                                 // Placeholder for backend API call
+-                                // EventRepository.acceptInvitation(eventId)
++                                // waitlistViewModel.acceptInvitation(notification.waitlistEntryId)
+                             }
+                         },
+                         onDecline = { _ ->
+@@ -420,7 +513,7 @@ fun PLuckNavHost(
+                             // 3. Update waitlist
+                             scope.launch {
+                                 // Placeholder for backend API call
+-                                // EventRepository.declineInvitation(eventId)
++                                // waitlistViewModel.declineInvitation(notification.waitlistEntryId)
+                             }
+                         }
+                     )
+@@ -428,17 +521,48 @@ fun PLuckNavHost(
+             }
+         }
+         composable(PLuckDestination.CreateEvent.route) {
++            var formError by remember { mutableStateOf<String?>(null) }
++
+             CreateEventScreen(
+-                isLoading = loginInProgress,
+-                onCreateEvent = { _, _, _, _, _ ->
+-                    // TODO: Implement event creation backend logic
+-                    scope.launch {
+-                        loginInProgress = true
+-                        // Simulate API call
+-                        delay(1500)
+-                        loginInProgress = false
+-                        // Navigate back to home after successful creation
+-                        navigator.toEventList()
++                isLoading = eventsLoading,
++                errorMessage = formError ?: eventError,
++                onCreateEvent = { title, description, location, date, capacity ->
++                    formError = null
++
++                    val organizer = currentUser
++                    if (organizer == null) {
++                        formError = "Sign in to create events."
++                        return@CreateEventScreen
++                    }
++
++                    val parsedDate = try {
++                        LocalDate.parse(date.trim())
++                    } catch (ex: DateTimeParseException) {
++                        formError = "Enter the date as YYYY-MM-DD."
++                        return@CreateEventScreen
++                    }
++
++                    val capacityValue = capacity.toIntOrNull()
++                    if (capacityValue == null || capacityValue <= 0) {
++                        formError = "Capacity must be a positive number."
++                        return@CreateEventScreen
++                    }
++
++                    val newEvent = Event(
++                        id = "",
++                        title = title.trim(),
++                        description = description.trim(),
++                        location = location.trim(),
++                        date = parsedDate,
++                        capacity = capacityValue,
++                        enrolled = 0,
++                        organizerName = organizer.displayName
++                    )
++
++                    eventViewModel.createEvent(newEvent, organizer.deviceId) { eventId ->
++                        formError = null
++                        navController.popBackStack()
++                        navigator.toEventDetail(eventId)
+                     }
+                 },
+                 onCancel = {
+@@ -499,14 +623,31 @@ fun PLuckNavHost(
+                     )
+                 }
+             ) { paddingValues ->
++                val myEvents = remember(events, currentUser?.displayName) {
++                    val organizerName = currentUser?.displayName.orEmpty()
++                    val today = LocalDate.now()
++                    events.map { event ->
++                        val status = when {
++                            event.date.isBefore(today) -> EventStatus.PAST
++                            event.isFull -> EventStatus.WAITLIST
++                            else -> EventStatus.UPCOMING
++                        }
++                        MyEventItem(
++                            event = event,
++                            status = status,
++                            isCreatedByUser = organizerName.isNotBlank() &&
++                                event.organizerName.equals(organizerName, ignoreCase = true)
++                        )
++                    }
++                }
+                 Box(
+                     modifier = Modifier
+                         .fillMaxSize()
+                         .padding(paddingValues)
+                 ) {
+                     MyEventsScreen(
+-                        events = emptyList(), // TODO: Get user's events from repository
+-                        isLoading = false,
++                        events = myEvents,
++                        isLoading = eventsLoading,
+                         onEventClick = { event ->
+                             navigator.toEventDetail(event.id)
+                         }
+@@ -515,15 +656,26 @@ fun PLuckNavHost(
+             }
+         }
+         composable(PLuckDestination.OrganizerDashboard.route) {
++            val organizerEvents = remember(events, currentUser?.displayName) {
++                val organizerName = currentUser?.displayName
++                if (organizerName.isNullOrBlank()) {
++                    emptyList()
++                } else {
++                    events.filter { it.organizerName == organizerName }
++                }
++            }
++            val organizerStats = remember(organizerEvents) {
++                OrganizerStats(
++                    totalEvents = organizerEvents.size,
++                    activeEvents = organizerEvents.count { !it.isFull },
++                    totalParticipants = organizerEvents.sumOf { it.enrolled }
++                )
++            }
+             OrganizerDashboardScreen(
+                 organizerName = currentUser?.displayName ?: "Organizer",
+-                stats = com.pluck.ui.screens.OrganizerStats(
+-                    totalEvents = 0,
+-                    activeEvents = 0,
+-                    totalParticipants = 0
+-                ),
+-                events = emptyList(), // TODO: Get organizer's events from repository
+-                isLoading = false,
++                stats = organizerStats,
++                events = organizerEvents,
++                isLoading = eventsLoading,
+                 onCreateEvent = {
+                     navigator.toCreateEvent()
+                 },
+diff --git a/pLUCK/app/src/main/java/com/pluck/ui/components/BottomNavBar.kt b/pLUCK/app/src/main/java/com/pluck/ui/components/BottomNavBar.kt
+index 900e3a5..0ff3e70 100644
+--- a/pLUCK/app/src/main/java/com/pluck/ui/components/BottomNavBar.kt
++++ b/pLUCK/app/src/main/java/com/pluck/ui/components/BottomNavBar.kt
+@@ -33,7 +33,9 @@ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.graphics.Color
+ import androidx.compose.ui.graphics.vector.ImageVector
++import androidx.compose.ui.text.style.TextOverflow
+ import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.sp
+ import androidx.compose.ui.zIndex
+ 
+ /**
+@@ -118,7 +120,14 @@ fun BottomNavBar(
+                             contentDescription = tab.label
+                         )
+                     },
+-                    label = { Text(tab.label) },
++                    label = {
++                        Text(
++                            text = tab.label,
++                            maxLines = 1,
++                            overflow = TextOverflow.Ellipsis,
++                            fontSize = 11.sp
++                        )
++                    },
+                     selected = selected,
+                     onClick = { onNavigate(tab.route) },
+                     colors = NavigationBarItemDefaults.colors(
+@@ -155,7 +164,14 @@ fun BottomNavBar(
+                             contentDescription = tab.label
+                         )
+                     },
+-                    label = { Text(tab.label) },
++                    label = {
++                        Text(
++                            text = tab.label,
++                            maxLines = 1,
++                            overflow = TextOverflow.Ellipsis,
++                            fontSize = 11.sp
++                        )
++                    },
+                     selected = selected,
+                     onClick = { onNavigate(tab.route) },
+                     colors = NavigationBarItemDefaults.colors(
+diff --git a/pLUCK/app/src/main/java/com/pluck/ui/model/EventRepository.kt b/pLUCK/app/src/main/java/com/pluck/ui/model/EventRepository.kt
+deleted file mode 100644
+index 3c2540a..0000000
+--- a/pLUCK/app/src/main/java/com/pluck/ui/model/EventRepository.kt
++++ /dev/null
+@@ -1,48 +0,0 @@
+-package com.pluck.ui.model
+-
+-import java.time.LocalDate
+-
+-object EventRepository {
+-    private val sampleEvents = listOf(
+-        Event(
+-            id = "1",
+-            title = "City Night Market",
+-            description = "Experience the vibrant night market with curated food stalls, live performances, and interactive installations across the downtown plaza.",
+-            location = "Downtown Plaza",
+-            date = LocalDate.now().plusDays(5),
+-            capacity = 200,
+-            enrolled = 168,
+-            organizerName = "Events Team",
+-            waitlistCount = 45,
+-            waitlistCapacity = 400
+-        ),
+-        Event(
+-            id = "2",
+-            title = "Community Hackathon",
+-            description = "A weekend-long collaborative hackathon focused on solving community challenges with technology and creative ideas.",
+-            location = "Innovation Lab",
+-            date = LocalDate.now().plusDays(12),
+-            capacity = 120,
+-            enrolled = 96,
+-            organizerName = "Innovation Collective",
+-            waitlistCount = 28,
+-            waitlistCapacity = 240
+-        ),
+-        Event(
+-            id = "3",
+-            title = "Artists in the Park",
+-            description = "Outdoor art walk showcasing local artists, live mural painting, workshops, and food trucks.",
+-            location = "Riverview Park",
+-            date = LocalDate.now().plusDays(20),
+-            capacity = 300,
+-            enrolled = 212,
+-            organizerName = "City Arts Council",
+-            waitlistCount = 67,
+-            waitlistCapacity = 600
+-        )
+-    )
+-
+-    fun getEvents(): List<Event> = sampleEvents
+-
+-    fun getEvent(id: String): Event? = sampleEvents.find { it.id == id }
+-}
+diff --git a/pLUCK/app/src/main/java/com/pluck/ui/screens/EventDetailScreen.kt b/pLUCK/app/src/main/java/com/pluck/ui/screens/EventDetailScreen.kt
+index d8b5549..6c7b436 100644
+--- a/pLUCK/app/src/main/java/com/pluck/ui/screens/EventDetailScreen.kt
++++ b/pLUCK/app/src/main/java/com/pluck/ui/screens/EventDetailScreen.kt
+@@ -60,7 +60,9 @@ import java.time.LocalDate
+ @Composable
+ fun EventDetailScreen(
+     event: Event,
++    isUserOnWaitlist: Boolean,
+     onJoinEvent: (Event) -> Unit,
++    onLeaveWaitlist: (Event) -> Unit = {},
+     onViewWaitlist: (Event) -> Unit = {},
+     onBack: () -> Unit = {},
+     modifier: Modifier = Modifier
+@@ -123,7 +125,9 @@ fun EventDetailScreen(
+             // Bottom action section - fixed at bottom
+             EventDetailBottomActions(
+                 event = event,
++                isUserOnWaitlist = isUserOnWaitlist,
+                 onJoinEvent = onJoinEvent,
++                onLeaveWaitlist = onLeaveWaitlist,
+                 onViewWaitlist = onViewWaitlist,
+                 modifier = Modifier
+                     .align(Alignment.BottomCenter)
+@@ -428,10 +432,15 @@ private fun EventDetailReminder(
+ @Composable
+ private fun EventDetailBottomActions(
+     event: Event,
++    isUserOnWaitlist: Boolean,
+     onJoinEvent: (Event) -> Unit,
++    onLeaveWaitlist: (Event) -> Unit,
+     onViewWaitlist: (Event) -> Unit,
+     modifier: Modifier = Modifier
+ ) {
++    val waitlistFull = event.isWaitlistFull
++    val canJoinWaitlist = !isUserOnWaitlist && !waitlistFull
++
+     Surface(
+         modifier = modifier
+             .fillMaxWidth()
+@@ -449,22 +458,88 @@ private fun EventDetailBottomActions(
+             horizontalAlignment = Alignment.CenterHorizontally,
+             verticalArrangement = Arrangement.spacedBy(12.dp)
+         ) {
+-            Button(
+-                onClick = { onJoinEvent(event) },
+-                modifier = Modifier.fillMaxWidth(),
+-                shape = RoundedCornerShape(24.dp),
+-                colors = ButtonDefaults.buttonColors(
+-                    containerColor = PluckPalette.Primary,
+-                    contentColor = PluckPalette.Surface
+-                ),
+-                contentPadding = PaddingValues(vertical = 16.dp)
+-            ) {
+-                Text(
+-                    text = if (event.remainingSpots > 0) "Join Waiting List" else "Stay Updated",
+-                    style = MaterialTheme.typography.titleMedium.copy(
+-                        fontWeight = FontWeight.Bold
++            when {
++                isUserOnWaitlist -> {
++                    Surface(
++                        modifier = Modifier.fillMaxWidth(),
++                        shape = RoundedCornerShape(20.dp),
++                        color = PluckPalette.Secondary.copy(alpha = 0.12f),
++                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
++                    ) {
++                        Text(
++                            text = "You're already on this waitlist.",
++                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
++                            style = MaterialTheme.typography.bodyMedium.copy(
++                                color = PluckPalette.Secondary,
++                                fontWeight = FontWeight.Medium
++                            )
++                        )
++                    }
++                }
++                waitlistFull -> {
++                    Surface(
++                        modifier = Modifier.fillMaxWidth(),
++                        shape = RoundedCornerShape(20.dp),
++                        color = PluckPalette.Muted.copy(alpha = 0.12f),
++                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
++                    ) {
++                        Text(
++                            text = "Waitlist is full. Check back after the next draw.",
++                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
++                            style = MaterialTheme.typography.bodyMedium.copy(
++                                color = PluckPalette.Muted,
++                                fontWeight = FontWeight.Medium
++                            )
++                        )
++                    }
++                }
++            }
++
++            if (isUserOnWaitlist) {
++                Button(
++                    onClick = { onLeaveWaitlist(event) },
++                    modifier = Modifier.fillMaxWidth(),
++                    shape = RoundedCornerShape(24.dp),
++                    colors = ButtonDefaults.buttonColors(
++                        containerColor = PluckPalette.Surface,
++                        contentColor = PluckPalette.Primary
++                    ),
++                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
++                    contentPadding = PaddingValues(vertical = 14.dp)
++                ) {
++                    Text(
++                        text = "Leave Waitlist",
++                        style = MaterialTheme.typography.titleMedium.copy(
++                            fontWeight = FontWeight.Bold
++                        )
+                     )
+-                )
++                }
++            } else {
++                Button(
++                    onClick = { onJoinEvent(event) },
++                    enabled = canJoinWaitlist,
++                    modifier = Modifier.fillMaxWidth(),
++                    shape = RoundedCornerShape(24.dp),
++                    colors = ButtonDefaults.buttonColors(
++                        containerColor = PluckPalette.Primary,
++                        contentColor = PluckPalette.Surface,
++                        disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
++                        disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
++                    ),
++                    contentPadding = PaddingValues(vertical = 16.dp)
++                ) {
++                    val label = when {
++                        event.remainingSpots > 0 -> "Join Lottery"
++                        waitlistFull -> "Waitlist Full"
++                        else -> "Join Waitlist"
++                    }
++                    Text(
++                        text = label,
++                        style = MaterialTheme.typography.titleMedium.copy(
++                            fontWeight = FontWeight.Bold
++                        )
++                    )
++                }
+             }
+ 
+             Button(
+@@ -510,12 +585,13 @@ private fun EventDetailPreview() {
+             id = "preview",
+             title = "Swimming Lessons Event",
+             description = "Join us for an exciting swimming lesson experience! Our expert instructors will guide you through fundamental techniques in a supportive environment. Perfect for beginners looking to build confidence in the water. This lottery-based registration ensures fair access for all community members.",
+-            location = "City Pool ΓÇó 123 Main Street",
++            location = "City Pool \u2022 123 Main Street",
+             date = LocalDate.now().plusDays(4),
+             capacity = 20,
+             enrolled = 15,
+             organizerName = "Vertex Community Center"
+         ),
++        isUserOnWaitlist = false,
+         onJoinEvent = {}
+     )
+ }
+diff --git a/pLUCK/app/src/main/java/com/pluck/ui/screens/HomeScreen.kt b/pLUCK/app/src/main/java/com/pluck/ui/screens/HomeScreen.kt
+index 9bc317d..13a84a2 100644
+--- a/pLUCK/app/src/main/java/com/pluck/ui/screens/HomeScreen.kt
++++ b/pLUCK/app/src/main/java/com/pluck/ui/screens/HomeScreen.kt
+@@ -384,21 +384,8 @@ private fun HomeEventCard(
+                         maxLines = 1,
+                         overflow = TextOverflow.Ellipsis
+                     )
+-                    Surface(
+-                        shape = RoundedCornerShape(18.dp),
+-                        color = accentColor,
+-                        tonalElevation = 0.dp,
+-                        shadowElevation = 4.dp
+-                    ) {
+-                        Text(
+-                            text = "${event.remainingSpots} left",
+-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+-                            style = MaterialTheme.typography.labelLarge.copy(
+-                                color = Color.White,
+-                                fontWeight = FontWeight.Bold
+-                            )
+-                        )
+-                    }
++                    // US 01.01.03: Show availability status to entrants
++                    EventAvailabilityBadge(event = event, accentColor = accentColor)
+                 }
+             }
+ 
+@@ -443,6 +430,35 @@ private fun HomeEventCard(
+     }
+ }
+ 
++/**
++ * US 01.01.03: Availability badge showing if event is open, full, or waitlist-only
++ * Helps entrants identify which events they can join
++ */
++@Composable
++private fun EventAvailabilityBadge(event: Event, accentColor: Color) {
++    val (statusText, statusColor) = when {
++        !event.isFull -> "${event.remainingSpots} left" to PluckPalette.Accept
++        !event.isWaitlistFull -> "Waitlist Open" to PluckPalette.Secondary
++        else -> "Full" to PluckPalette.Muted
++    }
++
++    Surface(
++        shape = RoundedCornerShape(18.dp),
++        color = statusColor,
++        tonalElevation = 0.dp,
++        shadowElevation = 4.dp
++    ) {
++        Text(
++            text = statusText,
++            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
++            style = MaterialTheme.typography.labelLarge.copy(
++                color = Color.White,
++                fontWeight = FontWeight.Bold
++            )
++        )
++    }
++}
++
+ @Composable
+ private fun EventMetaRow(
+     icon: ImageVector,
+diff --git a/pLUCK/app/src/main/java/com/pluck/ui/screens/WaitlistScreen.kt b/pLUCK/app/src/main/java/com/pluck/ui/screens/WaitlistScreen.kt
+index 5d196b6..aa86cb5 100644
+--- a/pLUCK/app/src/main/java/com/pluck/ui/screens/WaitlistScreen.kt
++++ b/pLUCK/app/src/main/java/com/pluck/ui/screens/WaitlistScreen.kt
+@@ -31,15 +31,23 @@ import androidx.compose.foundation.shape.CircleShape
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.filled.ArrowBack
++import androidx.compose.material.icons.outlined.CheckCircle
+ import androidx.compose.material.icons.outlined.Groups
+ import androidx.compose.material.icons.outlined.Person
+ import androidx.compose.material.icons.outlined.Schedule
++import androidx.compose.material3.ExperimentalMaterial3Api
++import androidx.compose.material3.FilterChip
++import androidx.compose.material3.FilterChipDefaults
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.IconButton
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.Surface
+ import androidx.compose.material3.Text
+ import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.draw.clip
+@@ -55,6 +63,14 @@ import com.pluck.ui.components.PluckPalette
+ import com.pluck.ui.model.Event
+ import java.time.LocalDate
+ 
++/**
++ * Tabs for waitlist view
++ */
++private enum class WaitlistTab {
++    WAITING,  // US 02.02.01: Entrants on waiting list
++    CHOSEN    // US 02.06.01: Chosen/selected entrants
++}
++
+ /**
+  * Data class representing a waitlist entry
+  */
+@@ -63,19 +79,25 @@ data class WaitlistEntry(
+     val userName: String,
+     val position: Int,
+     val joinedDate: LocalDate,
+-    val isCurrentUser: Boolean = false
++    val isCurrentUser: Boolean = false,
++    val isChosen: Boolean = false  // US 02.06.01: Track if entrant was selected in lottery
+ )
+ 
+ /**
+- * Waitlist screen showing all users in the queue for an event
++ * US 02.02.01 & US 02.06.01: Waitlist screen showing waiting and chosen entrants
++ * Organizers can view both the waiting list and lottery-selected entrants
+  */
++@OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun WaitlistScreen(
+     event: Event,
+     waitlistEntries: List<WaitlistEntry> = emptyList(),
++    chosenEntries: List<WaitlistEntry> = emptyList(),
+     onBack: () -> Unit = {},
+     modifier: Modifier = Modifier
+ ) {
++    var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
++
+     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
+         Box(modifier = Modifier.fillMaxSize()) {
+             // Back button
+@@ -113,6 +135,14 @@ fun WaitlistScreen(
+                 // Header Card
+                 WaitlistHeaderCard(event = event)
+ 
++                // US 02.02.01 & US 02.06.01: Tab selector for Waiting vs Chosen
++                WaitlistTabSelector(
++                    selectedTab = selectedTab,
++                    onTabSelected = { selectedTab = it },
++                    waitingCount = waitlistEntries.size,
++                    chosenCount = chosenEntries.size
++                )
++
+                 // Waitlist entries
+                 Surface(
+                     modifier = Modifier
+@@ -124,9 +154,31 @@ fun WaitlistScreen(
+                     shadowElevation = 12.dp,
+                     border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                 ) {
+-                    when {
+-                        waitlistEntries.isEmpty() -> WaitlistEmptyState()
+-                        else -> WaitlistEntriesList(entries = waitlistEntries)
++                    when (selectedTab) {
++                        WaitlistTab.WAITING -> {
++                            when {
++                                waitlistEntries.isEmpty() -> WaitlistEmptyState(
++                                    message = "No one on the waitlist yet",
++                                    description = "Be the first to join the waitlist for this event!"
++                                )
++                                else -> WaitlistEntriesList(
++                                    entries = waitlistEntries,
++                                    title = "Waitlist Queue"
++                                )
++                            }
++                        }
++                        WaitlistTab.CHOSEN -> {
++                            when {
++                                chosenEntries.isEmpty() -> WaitlistEmptyState(
++                                    message = "No entrants chosen yet",
++                                    description = "Run the lottery to randomly select entrants from the waitlist."
++                                )
++                                else -> WaitlistEntriesList(
++                                    entries = chosenEntries,
++                                    title = "Chosen Entrants"
++                                )
++                            }
++                        }
+                     }
+                 }
+             }
+@@ -233,8 +285,77 @@ private fun WaitlistStatItem(
+     }
+ }
+ 
++/**
++ * US 02.02.01 & US 02.06.01: Tab selector for switching between views
++ */
++@OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+-private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
++private fun WaitlistTabSelector(
++    selectedTab: WaitlistTab,
++    onTabSelected: (WaitlistTab) -> Unit,
++    waitingCount: Int,
++    chosenCount: Int
++) {
++    Surface(
++        modifier = Modifier
++            .fillMaxWidth()
++            .widthIn(max = 460.dp),
++        shape = RoundedCornerShape(24.dp),
++        color = PluckPalette.Surface,
++        tonalElevation = 0.dp,
++        shadowElevation = 12.dp,
++        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
++    ) {
++        Row(
++            modifier = Modifier
++                .fillMaxWidth()
++                .padding(horizontal = 16.dp, vertical = 12.dp),
++            horizontalArrangement = Arrangement.spacedBy(12.dp)
++        ) {
++            FilterChip(
++                selected = selectedTab == WaitlistTab.WAITING,
++                onClick = { onTabSelected(WaitlistTab.WAITING) },
++                label = { Text("Waiting ($waitingCount)") },
++                leadingIcon = {
++                    Icon(
++                        Icons.Outlined.Schedule,
++                        contentDescription = null,
++                        modifier = Modifier.size(18.dp)
++                    )
++                },
++                modifier = Modifier.weight(1f),
++                colors = FilterChipDefaults.filterChipColors(
++                    containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
++                    labelColor = if (selectedTab == WaitlistTab.WAITING) Color.White else PluckPalette.Primary,
++                    selectedContainerColor = PluckPalette.Tertiary,
++                    selectedLabelColor = Color.White
++                )
++            )
++            FilterChip(
++                selected = selectedTab == WaitlistTab.CHOSEN,
++                onClick = { onTabSelected(WaitlistTab.CHOSEN) },
++                label = { Text("Chosen ($chosenCount)") },
++                leadingIcon = {
++                    Icon(
++                        Icons.Outlined.CheckCircle,
++                        contentDescription = null,
++                        modifier = Modifier.size(18.dp)
++                    )
++                },
++                modifier = Modifier.weight(1f),
++                colors = FilterChipDefaults.filterChipColors(
++                    containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
++                    labelColor = if (selectedTab == WaitlistTab.CHOSEN) Color.White else PluckPalette.Primary,
++                    selectedContainerColor = PluckPalette.Accept,
++                    selectedLabelColor = Color.White
++                )
++            )
++        }
++    }
++}
++
++@Composable
++private fun WaitlistEntriesList(entries: List<WaitlistEntry>, title: String) {
+     val listState = rememberLazyListState()
+     Column(
+         modifier = Modifier
+@@ -243,7 +364,7 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
+         verticalArrangement = Arrangement.spacedBy(16.dp)
+     ) {
+         Text(
+-            text = "Waitlist Queue",
++            text = title,
+             style = MaterialTheme.typography.titleLarge.copy(
+                 fontWeight = FontWeight.Bold,
+                 color = PluckPalette.Primary
+@@ -265,7 +386,12 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
+ 
+ @Composable
+ private fun WaitlistEntryCard(entry: WaitlistEntry) {
+-    val accentColor = if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
++    // US 02.06.01: Different styling for chosen entrants
++    val accentColor = when {
++        entry.isChosen -> PluckPalette.Accept
++        entry.isCurrentUser -> PluckPalette.Secondary
++        else -> PluckPalette.Primary
++    }
+ 
+     Surface(
+         modifier = Modifier.fillMaxWidth(),
+@@ -339,12 +465,16 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
+ 
+             Surface(
+                 shape = RoundedCornerShape(16.dp),
+-                color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.25f else 0.15f),
++                color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
+                 tonalElevation = 0.dp,
+                 shadowElevation = 0.dp
+             ) {
+                 Text(
+-                    text = if (entry.isCurrentUser) "You" else "In Queue",
++                    text = when {
++                        entry.isChosen -> "Selected"
++                        entry.isCurrentUser -> "You"
++                        else -> "In Queue"
++                    },
+                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                     style = MaterialTheme.typography.labelMedium.copy(
+                         fontWeight = FontWeight.SemiBold,
+@@ -357,7 +487,7 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
+ }
+ 
+ @Composable
+-private fun WaitlistEmptyState() {
++private fun WaitlistEmptyState(message: String, description: String) {
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+@@ -366,7 +496,7 @@ private fun WaitlistEmptyState() {
+         horizontalAlignment = Alignment.CenterHorizontally
+     ) {
+         Text(
+-            text = "No one on the waitlist yet",
++            text = message,
+             style = MaterialTheme.typography.titleMedium.copy(
+                 fontWeight = FontWeight.SemiBold,
+                 color = PluckPalette.Primary
+@@ -375,7 +505,7 @@ private fun WaitlistEmptyState() {
+         )
+         Spacer(modifier = Modifier.height(12.dp))
+         Text(
+-            text = "Be the first to join the waitlist for this event!",
++            text = description,
+             style = MaterialTheme.typography.bodyMedium.copy(
+                 color = PluckPalette.Muted
+             ),
+@@ -434,9 +564,27 @@ private fun WaitlistScreenPreview() {
+         )
+     )
+ 
++    val previewChosenEntries = listOf(
++        WaitlistEntry(
++            id = "6",
++            userName = "Frank Wilson",
++            position = 1,
++            joinedDate = LocalDate.now().minusDays(4),
++            isChosen = true
++        ),
++        WaitlistEntry(
++            id = "7",
++            userName = "Grace Lee",
++            position = 2,
++            joinedDate = LocalDate.now().minusDays(2),
++            isChosen = true
++        )
++    )
++
+     WaitlistScreen(
+         event = previewEvent,
+         waitlistEntries = previewEntries,
++        chosenEntries = previewChosenEntries,
+         onBack = {}
+     )
+ }

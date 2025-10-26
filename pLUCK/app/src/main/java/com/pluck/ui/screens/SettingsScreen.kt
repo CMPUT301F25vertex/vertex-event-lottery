@@ -1,6 +1,7 @@
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Security
@@ -278,10 +281,15 @@ private fun SettingsToggleItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp),
-        color = Color.Transparent,
-        onClick = { if (enabled) onCheckedChange(!checked) },
-        enabled = enabled
+            .height(80.dp)
+            .clickable(
+                enabled = enabled,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                if (enabled) onCheckedChange(!checked)
+            },
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
@@ -327,7 +335,6 @@ private fun SettingsToggleItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsActionItem(
     label: String,
@@ -337,9 +344,14 @@ private fun SettingsActionItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp),
-        color = Color.Transparent,
-        onClick = onClick
+            .height(72.dp)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                onClick()
+            },
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
@@ -372,12 +384,10 @@ private fun SettingsActionItem(
                 color = PluckPalette.Primary.copy(alpha = 0.08f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "›",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            color = PluckPalette.Primary,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = PluckPalette.Primary
                     )
                 }
             }

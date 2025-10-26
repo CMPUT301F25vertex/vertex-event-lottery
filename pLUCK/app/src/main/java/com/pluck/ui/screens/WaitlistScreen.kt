@@ -1,9 +1,9 @@
 /**
  * WaitlistScreen.kt
  *
- * Purpose: Displays the waitlist for an event with queue position and status.
+ * Purpose: Displays waitlist details, supporting queue management, chosen entrants, and joining/leave actions.
  *
- * Design Pattern: Composable UI Screen with list rendering
+ * Design Pattern: Composable UI Screen with state hoisting
  *
  * Outstanding Issues: None
  */
@@ -31,15 +31,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,32 +63,47 @@ import androidx.compose.ui.unit.sp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
+import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
-/**
- * Data class representing a waitlist entry
- */
+private enum class WaitlistTab {
+    WAITING,
+    CHOSEN
+}
+
 data class WaitlistEntry(
     val id: String,
+    val userId: String = "",
     val userName: String,
     val position: Int,
     val joinedDate: LocalDate,
-    val isCurrentUser: Boolean = false
+    val isCurrentUser: Boolean = false,
+    val isChosen: Boolean = false
 )
 
-/**
- * Waitlist screen showing all users in the queue for an event
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WaitlistScreen(
     event: Event,
     waitlistEntries: List<WaitlistEntry> = emptyList(),
+    chosenEntries: List<WaitlistEntry> = emptyList(),
+    isUserWaiting: Boolean = false,
+    isUserConfirmed: Boolean = false,
+    onJoinWaitlist: () -> Unit = {},
+    onLeaveWaitlist: () -> Unit = {},
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
+    val waitlistSize = waitlistEntries.size
+    val waitlistFull = waitlistSize >= event.waitlistCapacity
+    val currentUserPosition = waitlistEntries.firstOrNull { it.isCurrentUser }?.position
+    val derivedUserWaiting = isUserWaiting || waitlistEntries.any { it.isCurrentUser }
+    val derivedUserConfirmed = isUserConfirmed || chosenEntries.any { it.isCurrentUser }
+
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Back button
             Surface(
                 modifier = Modifier
                     .padding(top = 24.dp, start = 24.dp)
@@ -100,7 +125,6 @@ fun WaitlistScreen(
                 }
             }
 
-            // Main content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -110,10 +134,27 @@ fun WaitlistScreen(
             ) {
                 Spacer(modifier = Modifier.height(56.dp))
 
-                // Header Card
                 WaitlistHeaderCard(event = event)
 
-                // Waitlist entries
+                WaitlistSummaryCard(
+                    event = event,
+                    waitlistSize = waitlistSize,
+                    waitlistCapacity = event.waitlistCapacity,
+                    isUserWaiting = derivedUserWaiting,
+                    isUserConfirmed = derivedUserConfirmed,
+                    currentUserPosition = currentUserPosition,
+                    waitlistFull = waitlistFull,
+                    onJoinWaitlist = onJoinWaitlist,
+                    onLeaveWaitlist = onLeaveWaitlist
+                )
+
+                WaitlistTabSelector(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                    waitingCount = waitlistEntries.size,
+                    chosenCount = chosenEntries.size
+                )
+
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
@@ -124,9 +165,33 @@ fun WaitlistScreen(
                     shadowElevation = 12.dp,
                     border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
                 ) {
-                    when {
-                        waitlistEntries.isEmpty() -> WaitlistEmptyState()
-                        else -> WaitlistEntriesList(entries = waitlistEntries)
+                    when (selectedTab) {
+                        WaitlistTab.WAITING -> {
+                            if (waitlistEntries.isEmpty()) {
+                                WaitlistEmptyState(
+                                    message = "No one on the waitlist yet",
+                                    description = "Be the first to join the waitlist for this event!"
+                                )
+                            } else {
+                                WaitlistEntriesList(
+                                    entries = waitlistEntries,
+                                    title = "Waitlist Queue"
+                                )
+                            }
+                        }
+                        WaitlistTab.CHOSEN -> {
+                            if (chosenEntries.isEmpty()) {
+                                WaitlistEmptyState(
+                                    message = "No entrants chosen yet",
+                                    description = "Run the lottery to randomly select entrants from the waitlist."
+                                )
+                            } else {
+                                WaitlistEntriesList(
+                                    entries = chosenEntries,
+                                    title = "Chosen Entrants"
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -136,6 +201,13 @@ fun WaitlistScreen(
 
 @Composable
 private fun WaitlistHeaderCard(event: Event) {
+    val selectionMessage = if (event.samplingCount > 0) {
+        val plural = if (event.samplingCount == 1) "" else "s"
+        "Lottery draws randomly select ${event.samplingCount} entrant$plural each time. Everyone else keeps their waitlist spot for the next draw."
+    } else {
+        "Lottery draws randomly select entrants from the waiting list. If you are not chosen, you remain in line for the next draw."
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,6 +258,14 @@ private fun WaitlistHeaderCard(event: Event) {
                     accentColor = PluckPalette.Accept
                 )
             }
+
+            Text(
+                text = selectionMessage,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Muted
+                ),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -234,16 +314,184 @@ private fun WaitlistStatItem(
 }
 
 @Composable
-private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
+private fun WaitlistSummaryCard(
+    event: Event,
+    waitlistSize: Int,
+    waitlistCapacity: Int,
+    isUserWaiting: Boolean,
+    isUserConfirmed: Boolean,
+    currentUserPosition: Int?,
+    waitlistFull: Boolean,
+    onJoinWaitlist: () -> Unit,
+    onLeaveWaitlist: () -> Unit
+) {
+    val registrationClosed = !event.isRegistrationOpen
+    val isPastEvent = event.isPastEvent
+    val primaryLabel = when {
+        isPastEvent -> "Event Has Occurred"
+        isUserConfirmed -> "Release My Spot"
+        isUserWaiting -> "Leave Waitlist"
+        waitlistFull -> "Waitlist Full"
+        registrationClosed -> "Registration Closed"
+        else -> "Join Waitlist"
+    }
+
+    val primaryEnabled = when {
+        isPastEvent -> false
+        isUserConfirmed -> true
+        isUserWaiting -> true
+        waitlistFull -> false
+        registrationClosed -> false
+        else -> true
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 460.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Waitlist status",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = PluckPalette.Primary
+                    )
+                )
+                Text(
+                    text = buildString {
+                        append(waitlistSize)
+                        append(" of ")
+                        append(waitlistCapacity)
+                        append(" entrants currently on the waitlist.")
+                        if (currentUserPosition != null) {
+                            append(" You are #")
+                            append(currentUserPosition)
+                            append(" in line.")
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = PluckPalette.Muted
+                    )
+                )
+            }
+
+            Button(
+                onClick = {
+                    if (isUserWaiting || isUserConfirmed) {
+                        onLeaveWaitlist()
+                    } else {
+                        onJoinWaitlist()
+                    }
+                },
+                enabled = primaryEnabled,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isUserWaiting || isUserConfirmed) PluckPalette.Surface else PluckPalette.Primary,
+                    contentColor = if (isUserWaiting || isUserConfirmed) PluckPalette.Primary else PluckPalette.Surface,
+                    disabledContainerColor = PluckPalette.Muted.copy(alpha = 0.25f),
+                    disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
+                ),
+                border = if (isUserWaiting || isUserConfirmed) BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)) else null,
+                contentPadding = PaddingValues(vertical = 14.dp)
+            ) {
+                Text(primaryLabel)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WaitlistTabSelector(
+    selectedTab: WaitlistTab,
+    onTabSelected: (WaitlistTab) -> Unit,
+    waitingCount: Int,
+    chosenCount: Int
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 460.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FilterChip(
+                selected = selectedTab == WaitlistTab.WAITING,
+                onClick = { onTabSelected(WaitlistTab.WAITING) },
+                label = { Text("Waiting ($waitingCount)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
+                    labelColor = if (selectedTab == WaitlistTab.WAITING) autoTextColor(PluckPalette.Tertiary) else PluckPalette.Primary,
+                    selectedContainerColor = PluckPalette.Tertiary,
+                    selectedLabelColor = autoTextColor(PluckPalette.Tertiary)
+                )
+            )
+            FilterChip(
+                selected = selectedTab == WaitlistTab.CHOSEN,
+                onClick = { onTabSelected(WaitlistTab.CHOSEN) },
+                label = { Text("Chosen ($chosenCount)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
+                    labelColor = if (selectedTab == WaitlistTab.CHOSEN) autoTextColor(PluckPalette.Accept) else PluckPalette.Primary,
+                    selectedContainerColor = PluckPalette.Accept,
+                    selectedLabelColor = autoTextColor(PluckPalette.Accept)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun WaitlistEntriesList(entries: List<WaitlistEntry>, title: String) {
     val listState = rememberLazyListState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 20.dp),
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Waitlist Queue",
+            text = title,
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.Bold,
                 color = PluckPalette.Primary
@@ -251,7 +499,6 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
@@ -265,7 +512,11 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
 
 @Composable
 private fun WaitlistEntryCard(entry: WaitlistEntry) {
-    val accentColor = if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
+    val accentColor = when {
+        entry.isChosen -> PluckPalette.Accept
+        entry.isCurrentUser -> PluckPalette.Secondary
+        else -> PluckPalette.Primary
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -281,7 +532,7 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
         Row(
             modifier = Modifier
                 .background(
-                    color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.14f else 0.06f),
+                    color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.18f else 0.06f),
                     shape = RoundedCornerShape(24.dp)
                 )
                 .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -328,8 +579,9 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
                             color = PluckPalette.Primary
                         )
                     )
+                    val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
                     Text(
-                        text = "Joined ${entry.joinedDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))}",
+                        text = "Joined ${entry.joinedDate.format(dateFormatter)}",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = PluckPalette.Muted
                         )
@@ -339,12 +591,16 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
 
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.25f else 0.15f),
+                color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {
                 Text(
-                    text = if (entry.isCurrentUser) "You" else "In Queue",
+                    text = when {
+                        entry.isChosen -> "Selected"
+                        entry.isCurrentUser -> "You"
+                        else -> "In Queue"
+                    },
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
@@ -357,7 +613,7 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
 }
 
 @Composable
-private fun WaitlistEmptyState() {
+private fun WaitlistEmptyState(message: String, description: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -366,7 +622,7 @@ private fun WaitlistEmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "No one on the waitlist yet",
+            text = message,
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.SemiBold,
                 color = PluckPalette.Primary
@@ -375,7 +631,7 @@ private fun WaitlistEmptyState() {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Be the first to join the waitlist for this event!",
+            text = description,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = PluckPalette.Muted
             ),
@@ -389,55 +645,69 @@ private fun WaitlistEmptyState() {
 private fun WaitlistScreenPreview() {
     val previewEvent = Event(
         id = "1",
-        title = "Swimming Lessons Event",
-        description = "Learn the fundamentals with expert instructors.",
+        title = "Swimming Lessons",
+        description = "Learn the fundamentals of swimming with certified instructors.",
         location = "City Pool",
         date = LocalDate.now().plusDays(3),
         capacity = 20,
         enrolled = 18,
         organizerName = "Vertex Community",
         waitlistCount = 5,
-        waitlistCapacity = 40
+        waitlistCapacity = 40,
+        samplingCount = 3
     )
 
-    val previewEntries = listOf(
+    val waitlistEntries = listOf(
         WaitlistEntry(
             id = "1",
+            userId = "user-1",
             userName = "Alice Johnson",
             position = 1,
-            joinedDate = LocalDate.now().minusDays(5)
-        ),
-        WaitlistEntry(
-            id = "2",
-            userName = "Bob Smith",
-            position = 2,
-            joinedDate = LocalDate.now().minusDays(3),
+            joinedDate = LocalDate.now().minusDays(5),
             isCurrentUser = true
         ),
         WaitlistEntry(
+            id = "2",
+            userId = "user-2",
+            userName = "Bob Smith",
+            position = 2,
+            joinedDate = LocalDate.now().minusDays(3)
+        ),
+        WaitlistEntry(
             id = "3",
+            userId = "user-3",
             userName = "Charlie Davis",
             position = 3,
             joinedDate = LocalDate.now().minusDays(2)
+        )
+    )
+
+    val chosenEntries = listOf(
+        WaitlistEntry(
+            id = "10",
+            userId = "user-10",
+            userName = "Dana Lee",
+            position = 1,
+            joinedDate = LocalDate.now().minusDays(4),
+            isChosen = true
         ),
         WaitlistEntry(
-            id = "4",
-            userName = "Diana Chen",
-            position = 4,
-            joinedDate = LocalDate.now().minusDays(1)
-        ),
-        WaitlistEntry(
-            id = "5",
-            userName = "Ethan Brown",
-            position = 5,
-            joinedDate = LocalDate.now()
+            id = "11",
+            userId = "user-11",
+            userName = "Evan Torres",
+            position = 2,
+            joinedDate = LocalDate.now().minusDays(1),
+            isChosen = true
         )
     )
 
     WaitlistScreen(
         event = previewEvent,
-        waitlistEntries = previewEntries,
+        waitlistEntries = waitlistEntries,
+        chosenEntries = chosenEntries,
+        isUserWaiting = true,
+        onJoinWaitlist = {},
+        onLeaveWaitlist = {},
         onBack = {}
     )
 }
-

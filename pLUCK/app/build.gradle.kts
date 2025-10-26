@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.mlkit.barcode)
     implementation(libs.play.services.location)
     implementation("com.google.zxing:core:3.5.3")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // CameraX
     implementation(libs.camerax.core)

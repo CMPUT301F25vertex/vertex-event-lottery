@@ -77,6 +77,38 @@ class DeviceAuthenticator(private val context: Context) {
         }
     }
 
+    suspend fun updateProfile(displayName: String, email: String?, phoneNumber: String?): DeviceAuthResult {
+        if (displayName.isBlank()) {
+            return DeviceAuthResult.Error("Display name is required.")
+        }
+        val deviceId = resolveDeviceId()
+        return try {
+            val profile = withContext(Dispatchers.IO) {
+                ensureFirebaseUser()
+                auth.currentUser?.updateProfile(
+                    UserProfileChangeRequest.Builder()
+                        .setDisplayName(displayName.trim())
+                        .build()
+                )?.await()
+
+                val docRef = firestore.collection("entrants").document(deviceId)
+                val payload = mapOf(
+                    "displayName" to displayName.trim(),
+                    "email" to email?.trim().orEmpty(),
+                    "phoneNumber" to phoneNumber?.trim().orEmpty(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+                docRef.set(payload, SetOptions.merge()).await()
+                docRef.get().await().toEntrantProfile()
+            }
+            DeviceAuthResult.Success(profile)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Profile update failed", t)
+            val detail = t.message ?: t.localizedMessage ?: t.javaClass.simpleName
+            DeviceAuthResult.Error("Failed to update profile. $detail", t)
+        }
+    }
+
     suspend fun fetchExistingProfile(): EntrantProfile? {
         val deviceId = resolveDeviceId()
         return withContext(Dispatchers.IO) {

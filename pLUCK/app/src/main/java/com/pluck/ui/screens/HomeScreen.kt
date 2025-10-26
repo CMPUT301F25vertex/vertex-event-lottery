@@ -61,10 +61,14 @@ import java.time.LocalDate
 data class EventCategory(val id: String, val label: String)
 
 private val homeCategories = listOf(
+    EventCategory("all", "All"),
     EventCategory("upcoming", "Upcoming"),
-    EventCategory("interests", "Interests"),
-    EventCategory("open", "Open"),
-    EventCategory("location", "Location")
+    EventCategory("today", "Today"),
+    EventCategory("week", "This Week"),
+    EventCategory("available", "Available"),
+    EventCategory("full", "Full"),
+    EventCategory("location", "By Location"),
+    EventCategory("past", "Past")
 )
 
 /**
@@ -112,7 +116,22 @@ private fun HomeScreenContent(
     modifier: Modifier = Modifier
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
-    val filteredEvents = remember(events, selectedCategoryId) { events }
+    val filteredEvents = remember(events, selectedCategoryId) {
+        val today = LocalDate.now()
+        val weekFromNow = today.plusDays(7)
+
+        when (selectedCategoryId) {
+            "past" -> events.filter { it.isPastEvent }.sortedByDescending { it.date }
+            "all" -> events.filter { !it.isPastEvent }.sortedBy { it.date }
+            "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.date }
+            "today" -> events.filter { !it.isPastEvent && it.date == today }
+            "week" -> events.filter { !it.isPastEvent && it.date >= today && it.date <= weekFromNow }.sortedBy { it.date }
+            "available" -> events.filter { !it.isPastEvent && (!it.isFull || !it.isWaitlistFull) }.sortedBy { it.date }
+            "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.date }
+            "location" -> events.filter { !it.isPastEvent }.sortedBy { it.location }
+            else -> events.filter { !it.isPastEvent }
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -384,21 +403,8 @@ private fun HomeEventCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = accentColor,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 4.dp
-                    ) {
-                        Text(
-                            text = "${event.remainingSpots} left",
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
+                    // US 01.01.03: Show availability status to entrants
+                    EventAvailabilityBadge(event = event, accentColor = accentColor)
                 }
             }
 
@@ -440,6 +446,35 @@ private fun HomeEventCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * US 01.01.03: Availability badge showing if event is open, full, or waitlist-only
+ * Helps entrants identify which events they can join
+ */
+@Composable
+private fun EventAvailabilityBadge(event: Event, accentColor: Color) {
+    val (statusText, statusColor) = when {
+        !event.isFull -> "${event.remainingSpots} left" to PluckPalette.Accept
+        !event.isWaitlistFull -> "Waitlist Open" to PluckPalette.Secondary
+        else -> "Full" to PluckPalette.Muted
+    }
+
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = statusColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 4.dp
+    ) {
+        Text(
+            text = statusText,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelLarge.copy(
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        )
     }
 }
 
