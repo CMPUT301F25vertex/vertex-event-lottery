@@ -10,6 +10,7 @@
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +22,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -231,6 +235,7 @@ private fun WaitlistStatItem(
 
 @Composable
 private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
+    val listState = rememberLazyListState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -246,8 +251,10 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
         )
 
         LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 8.dp)
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             itemsIndexed(entries, key = { _, entry -> entry.id }) { _, entry ->
                 WaitlistEntryCard(entry = entry)
@@ -258,30 +265,46 @@ private fun WaitlistEntriesList(entries: List<WaitlistEntry>) {
 
 @Composable
 private fun WaitlistEntryCard(entry: WaitlistEntry) {
+    val accentColor = if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = if (entry.isCurrentUser) PluckPalette.Secondary.copy(alpha = 0.08f) else PluckPalette.Primary.copy(alpha = 0.04f),
+        color = PluckPalette.Surface,
         tonalElevation = 0.dp,
-        shadowElevation = if (entry.isCurrentUser) 8.dp else 4.dp,
-        border = if (entry.isCurrentUser) BorderStroke(2.dp, PluckPalette.Secondary) else null
+        shadowElevation = if (entry.isCurrentUser) 10.dp else 4.dp,
+        border = BorderStroke(
+            width = if (entry.isCurrentUser) 2.dp else 1.dp,
+            color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.85f else 0.25f)
+        )
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .background(
+                    color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.14f else 0.06f),
+                    shape = RoundedCornerShape(24.dp)
+                )
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .height(48.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentColor.copy(alpha = 0.9f))
+            )
+
             Row(
+                modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Position badge
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary,
+                    color = accentColor,
                     tonalElevation = 0.dp,
                     shadowElevation = 4.dp
                 ) {
@@ -297,7 +320,6 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
                     }
                 }
 
-                // User info
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = entry.userName + if (entry.isCurrentUser) " (You)" else "",
@@ -313,6 +335,22 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
                         )
                     )
                 }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = accentColor.copy(alpha = if (entry.isCurrentUser) 0.25f else 0.15f),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Text(
+                    text = if (entry.isCurrentUser) "You" else "In Queue",
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = accentColor
+                    )
+                )
             }
         }
     }

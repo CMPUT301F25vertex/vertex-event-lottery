@@ -50,7 +50,6 @@ class NavTabTest {
     @Test
     fun navTabs_allTabsConfigured() {
         assertNotNull("Home tab should be configured", NavTabs.Home)
-        assertNotNull("Events tab should be configured", NavTabs.Events)
         assertNotNull("Notifications tab should be configured", NavTabs.Notifications)
         assertNotNull("Settings tab should be configured", NavTabs.Settings)
         assertNotNull("Profile tab should be configured", NavTabs.Profile)
@@ -105,7 +104,7 @@ class NavTabTest {
      */
     @Test
     fun navTabs_allListContainsFiveTabs() {
-        assertEquals("Should have 5 tabs", 5, NavTabs.all.size)
+        assertEquals("Should have 4 tabs", 4, NavTabs.all.size)
     }
 
     /**
@@ -115,10 +114,9 @@ class NavTabTest {
     fun navTabs_allListInCorrectOrder() {
         val tabs = NavTabs.all
         assertEquals("First tab should be Home", NavTabs.Home, tabs[0])
-        assertEquals("Second tab should be Events", NavTabs.Events, tabs[1])
-        assertEquals("Third tab should be Notifications", NavTabs.Notifications, tabs[2])
-        assertEquals("Fourth tab should be Settings", NavTabs.Settings, tabs[3])
-        assertEquals("Fifth tab should be Profile", NavTabs.Profile, tabs[4])
+        assertEquals("Second tab should be Notifications", NavTabs.Notifications, tabs[1])
+        assertEquals("Third tab should be Settings", NavTabs.Settings, tabs[2])
+        assertEquals("Fourth tab should be Profile", NavTabs.Profile, tabs[3])
     }
 
     /**

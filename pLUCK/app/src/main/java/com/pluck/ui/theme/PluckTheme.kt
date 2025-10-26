@@ -129,10 +129,29 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = DarkPluckPalette.Primary
 )
 
+/**
+ * Legacy overload preserved for UI tests and call sites that only care about light/dark mode.
+ * It delegates to the full implementation using the last active theme ID tracked by ThemeManager.
+ */
 @Composable
 fun PluckTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    themeId: String = "blue",
+    content: @Composable () -> Unit
+) {
+    PluckTheme(
+        darkTheme = darkTheme,
+        themeId = ThemeManager.getActiveThemeId(),
+        content = content
+    )
+}
+
+/**
+ * Full-featured theming entry point that accepts both the mode and palette identifier.
+ */
+@Composable
+fun PluckTheme(
+    darkTheme: Boolean,
+    themeId: String,
     content: @Composable () -> Unit
 ) {
     // Get the selected theme

@@ -470,10 +470,10 @@ private fun EventDetailBottomActions(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PluckPalette.Secondary.copy(alpha = 0.15f),
-                    contentColor = PluckPalette.Primary
+                    containerColor = PluckPalette.Secondary,
+                    contentColor = PluckPalette.Surface
                 ),
-                border = BorderStroke(2.dp, PluckPalette.Secondary.copy(alpha = 0.4f)),
+                border = BorderStroke(0.dp, Color.Transparent),
                 contentPadding = PaddingValues(vertical = 14.dp)
             ) {
                 Icon(
@@ -510,4 +510,3 @@ private fun EventDetailPreview() {
         onJoinEvent = {}
     )
 }
-

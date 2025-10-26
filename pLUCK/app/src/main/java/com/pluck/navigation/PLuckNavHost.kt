@@ -52,9 +52,13 @@ import com.pluck.ui.screens.OrganizerDashboardScreen
 import com.pluck.ui.screens.PlaceholderScreen
 import com.pluck.ui.screens.ProfileScreen
 import com.pluck.ui.screens.SettingsScreen
+import com.pluck.ui.screens.ThemePickerScreen
 import com.pluck.ui.screens.WaitlistScreen
 import com.pluck.ui.screens.WaitlistEntry
 import com.pluck.ui.screens.WelcomeBackScreen
+import com.pluck.ui.screens.CustomThemeCreatorScreen
+import com.pluck.ui.theme.ThemeManager
+import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -84,6 +88,7 @@ sealed class PLuckDestination(val route: String) {
 fun PLuckNavHost(
     navController: NavHostController = rememberNavController(),
     onDarkModeChange: (Boolean) -> Unit = {},
+    currentThemeId: String = "blue",
     onThemeChange: (String) -> Unit = {}
 ) {
     val navigator = remember(navController) { PLuckNavigator(navController) }
@@ -91,6 +96,7 @@ fun PLuckNavHost(
     val context = LocalContext.current
     val authenticator = remember(context) { DeviceAuthenticator(context.applicationContext) }
     val authPreferences = remember(context) { DeviceAuthPreferences(context.applicationContext) }
+    val themePrefs = remember(context) { ThemePreferences(context.applicationContext) }
 
     var currentUser by remember { mutableStateOf<EntrantProfile?>(null) }
     var loginInProgress by remember { mutableStateOf(false) }
@@ -98,8 +104,13 @@ fun PLuckNavHost(
     var initializingSession by remember { mutableStateOf(true) }
     var deviceId by remember { mutableStateOf(authenticator.currentDeviceId()) }
     var autoLoginEnabled by rememberSaveable { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
+    var customTheme by remember { mutableStateOf(themePrefs.getCustomTheme()) }
 
     val allEvents = remember { EventRepository.getEvents() }
+
+    LaunchedEffect(customTheme) {
+        ThemeManager.setCustomTheme(customTheme)
+    }
 
     // Only runs once on app start to fetch existing profile
     LaunchedEffect(authenticator) {
@@ -440,7 +451,6 @@ fun PLuckNavHost(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    val themePrefs = remember { com.pluck.ui.theme.ThemePreferences(context) }
                     val isDarkMode = remember { themePrefs.isDarkModeEnabled() }
 
                     SettingsScreen(
@@ -518,14 +528,17 @@ fun PLuckNavHost(
             )
         }
         composable("theme_picker") {
-            val themePrefs = remember { com.pluck.ui.theme.ThemePreferences(context) }
-            val currentThemeId = remember { themePrefs.getSelectedThemeId() }
-
-            com.pluck.ui.screens.ThemePickerScreen(
+            ThemePickerScreen(
                 currentThemeId = currentThemeId,
-                themes = com.pluck.ui.theme.ThemeManager.getAllThemes(),
+                themes = ThemeManager.getAllThemes(),
+                customTheme = customTheme,
                 onThemeSelected = { themeId ->
-                    onThemeChange(themeId)
+                    if (themeId != "custom" || customTheme != null) {
+                        onThemeChange(themeId)
+                    }
+                },
+                onCreateOrEditCustomTheme = {
+                    navController.navigate("custom_theme_creator")
                 },
                 onResetToDefault = {
                     onThemeChange("blue")
@@ -534,6 +547,18 @@ fun PLuckNavHost(
                 onBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+        composable("custom_theme_creator") {
+            CustomThemeCreatorScreen(
+                initialTheme = customTheme ?: ThemeManager.getThemeById(currentThemeId),
+                onSave = { newTheme ->
+                    themePrefs.saveCustomTheme(newTheme)
+                    customTheme = newTheme
+                    onThemeChange("custom")
+                    navController.popBackStack()
+                },
+                onBack = { navController.popBackStack() }
             )
         }
     }

@@ -1,5 +1,13 @@
 package com.pluck.ui.screens
 
+/**
+ * NotificationsScreenTest.kt
+ *
+ * Purpose: Validates the segmented inbox experience including default filters, toggling,
+ * and action affordances (e.g., event details button visibility). Each test renders the
+ * screen inside [PluckTheme] to mirror runtime styling.
+ */
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag

@@ -14,6 +14,14 @@
  */
 package com.pluck.ui.screens
 
+/**
+ * CreateAccountScreenTest.kt
+ *
+ * Purpose: UI contract tests for CreateAccountScreen covering validation, loading states,
+ * optional inputs, and callback wiring. Ensures the onboarding surface remains stable as
+ * theming/components evolve.
+ */
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled

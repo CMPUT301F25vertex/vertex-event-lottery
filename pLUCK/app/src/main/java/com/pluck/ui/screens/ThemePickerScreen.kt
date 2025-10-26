@@ -8,7 +8,7 @@
  * - Display all available themes
  * - Live theme preview
  * - Theme selection and persistence
- * - Custom theme creation (future enhancement)
+ * - Custom theme slot with builder entry point
  *
  * Design Pattern: Stateful composable with theme preview cards
  *
@@ -105,6 +105,7 @@ fun ThemePickerScreen(
  */
 @Composable
 private fun ThemePickerHeader(
+    onBack: () -> Unit = {},
     onResetToDefault: () -> Unit = {},
     showReset: Boolean = false
 ) {
@@ -117,8 +118,17 @@ private fun ThemePickerHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = PluckPalette.Primary
+                )
+            }
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -136,13 +146,14 @@ private fun ThemePickerHeader(
                     )
                 )
             }
+            Spacer(modifier = Modifier.size(48.dp))
         }
 
         if (showReset) {
-            androidx.compose.material3.OutlinedButton(
+            OutlinedButton(
                 onClick = onResetToDefault,
                 shape = RoundedCornerShape(16.dp),
-                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = PluckPalette.Primary
                 ),
                 border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.3f))
@@ -245,6 +256,105 @@ private fun ThemeCard(
                         color = Color(theme.lightBackground),
                         label = "Background"
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomThemeCard(
+    customTheme: CustomTheme?,
+    isSelected: Boolean,
+    onApply: () -> Unit,
+    onCreateOrEdit: () -> Unit
+) {
+    val hasCustomTheme = customTheme != null
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = hasCustomTheme, onClick = {
+                if (hasCustomTheme) onApply()
+            }),
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = if (isSelected) 6.dp else 2.dp,
+        shadowElevation = if (isSelected) 12.dp else 6.dp,
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) PluckPalette.Primary else PluckPalette.Primary.copy(alpha = 0.12f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Custom Theme",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = PluckPalette.Primary
+                    )
+                )
+                if (hasCustomTheme && isSelected) {
+                    Surface(
+                        shape = CircleShape,
+                        color = PluckPalette.Primary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(4.dp)
+                        )
+                    }
+                }
+            }
+
+            if (customTheme != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ColorPreviewCircle(color = Color(customTheme.lightPrimary), label = "Primary")
+                    ColorPreviewCircle(color = Color(customTheme.lightSecondary), label = "Secondary")
+                    ColorPreviewCircle(color = Color(customTheme.lightBackground), label = "Background")
+                }
+
+                Text(
+                    text = "Apply your saved palette or tweak it anytime.",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = PluckPalette.Muted)
+                )
+            } else {
+                Text(
+                    text = "Design your own palette for both light and dark modes.",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = PluckPalette.Muted)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onApply,
+                    enabled = hasCustomTheme,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(if (hasCustomTheme) "Apply Custom Theme" else "Create Custom Theme")
+                }
+                OutlinedButton(
+                    onClick = onCreateOrEdit,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(if (hasCustomTheme) "Edit Colors" else "Start Designing")
                 }
             }
         }

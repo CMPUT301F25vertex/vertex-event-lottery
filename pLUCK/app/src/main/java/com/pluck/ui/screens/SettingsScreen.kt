@@ -54,6 +54,24 @@ import com.pluck.ui.components.PluckPalette
  *
  * Outstanding Issues: None.
  */
+/**
+ * Backwards-compatible overload retained for instrumentation tests compiled against
+ * the previous two-parameter SettingsScreen signature.
+ */
+@Composable
+fun SettingsScreen(
+    darkModeEnabled: Boolean,
+    onDarkModeChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SettingsScreen(
+        darkModeEnabled = darkModeEnabled,
+        onDarkModeChange = onDarkModeChange,
+        onNavigateToThemePicker = {},
+        modifier = modifier
+    )
+}
+
 @Composable
 fun SettingsScreen(
     darkModeEnabled: Boolean = false,

@@ -1,5 +1,13 @@
 package com.pluck
 
+/**
+ * UserStoryUiTest.kt
+ *
+ * Purpose: End-to-end Compose instrumentation tests that validate the core user stories
+ * (registration, returning user flows, and home experience). These tests intentionally
+ * wrap every screen in [PluckTheme] to match production styling.
+ */
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag

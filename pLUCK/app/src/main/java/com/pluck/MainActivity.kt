@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import com.pluck.navigation.PLuckNavHost
 import com.pluck.ui.theme.PluckTheme
+import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -24,9 +25,12 @@ class MainActivity : ComponentActivity() {
 
         // Load preferences
         val prefs = ThemePreferences(this)
+        ThemeManager.setCustomTheme(prefs.getCustomTheme())
         lifecycleScope.launch {
             darkModeFlow.value = prefs.isDarkModeEnabled()
-            selectedThemeIdFlow.value = prefs.getSelectedThemeId()
+            val storedThemeId = prefs.getSelectedThemeId()
+            ThemeManager.setActiveThemeId(storedThemeId)
+            selectedThemeIdFlow.value = storedThemeId
         }
 
         setContent {
@@ -43,8 +47,10 @@ class MainActivity : ComponentActivity() {
                             prefs.setDarkModeEnabled(enabled)
                             darkModeFlow.value = enabled
                         },
+                        currentThemeId = selectedThemeId,
                         onThemeChange = { themeId ->
                             prefs.setSelectedThemeId(themeId)
+                             ThemeManager.setActiveThemeId(themeId)
                             selectedThemeIdFlow.value = themeId
                         }
                     )

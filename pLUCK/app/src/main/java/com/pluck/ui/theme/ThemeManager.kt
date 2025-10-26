@@ -21,6 +21,7 @@ package com.pluck.ui.theme
  */
 object ThemeManager {
     private var customTheme: CustomTheme? = null
+    private var activeThemeId: String = CustomTheme.Blue.id
 
     /**
      * Retrieves a theme by its ID.
@@ -58,4 +59,17 @@ object ThemeManager {
      * @return Currently stored custom theme, if present.
      */
     fun getCustomTheme(): CustomTheme? = customTheme
+
+    /**
+     * Persists the ID of the active theme so legacy call sites can render with
+     * the latest selection even if they do not pass a theme identifier.
+     */
+    fun setActiveThemeId(themeId: String) {
+        activeThemeId = themeId
+    }
+
+    /**
+     * @return ID of the currently applied theme, falling back to the default palette.
+     */
+    fun getActiveThemeId(): String = activeThemeId
 }

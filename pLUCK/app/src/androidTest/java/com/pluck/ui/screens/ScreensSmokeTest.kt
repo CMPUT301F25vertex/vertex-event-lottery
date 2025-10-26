@@ -1,5 +1,12 @@
 package com.pluck.ui.screens
 
+/**
+ * ScreensSmokeTest.kt
+ *
+ * Purpose: Lightweight regression suite that renders each top-level screen to ensure
+ * critical content blocks remain visible after refactors (theme changes, navigation updates, etc.).
+ */
+
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule

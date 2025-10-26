@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -318,12 +319,14 @@ private fun ThemePreviewCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PreviewTile(
+                    modifier = Modifier.weight(1f),
                     label = "Light",
                     background = lightBackground,
                     accent = lightPrimary,
                     contentColor = Color.Black.copy(alpha = 0.7f)
                 )
                 PreviewTile(
+                    modifier = Modifier.weight(1f),
                     label = "Dark",
                     background = darkBackground,
                     accent = darkPrimary,
@@ -336,15 +339,14 @@ private fun ThemePreviewCard(
 
 @Composable
 private fun PreviewTile(
+    modifier: Modifier = Modifier,
     label: String,
     background: Color,
     accent: Color,
     contentColor: Color
 ) {
     Surface(
-        modifier = Modifier
-            .weight(1f)
-            .height(120.dp),
+        modifier = modifier.height(120.dp),
         shape = RoundedCornerShape(20.dp),
         color = background,
         tonalElevation = 0.dp,
@@ -586,6 +588,7 @@ private fun SimpleColorPickerDialog(
                 Button(
                     onClick = {
                         onColorSelected(previewColor)
+                        onDismiss()
                     },
                     enabled = canApply,
                     modifier = Modifier.fillMaxWidth(),
