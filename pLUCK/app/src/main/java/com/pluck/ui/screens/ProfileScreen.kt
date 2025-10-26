@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material3.AlertDialog
@@ -66,13 +68,14 @@ fun ProfileScreen(
     var editableEmail by remember(userEmail) { mutableStateOf(userEmail.orEmpty()) }
     var editablePhone by remember(userPhone) { mutableStateOf(userPhone.orEmpty()) }
     var showEditSection by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             Surface(
                 modifier = Modifier
@@ -86,6 +89,7 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(scrollState)
                         .padding(horizontal = 28.dp, vertical = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     horizontalAlignment = Alignment.Start
@@ -368,8 +372,8 @@ private fun ProfileActionButton(
     }
 }
 
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ProfileDestructiveActionButton(
     text: String,
     description: String,
@@ -380,7 +384,7 @@ private fun ProfileDestructiveActionButton(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 96.dp),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(20.dp),
         color = PluckPalette.Surface,
         tonalElevation = 0.dp,
         shadowElevation = 8.dp,
@@ -388,35 +392,34 @@ private fun ProfileDestructiveActionButton(
         enabled = enabled,
         onClick = onClick
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(PluckPalette.Decline.copy(alpha = 0.08f))
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 24.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = PluckPalette.Decline.copy(alpha = 0.2f),
-                contentColor = PluckPalette.Decline,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.DeleteForever,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = PluckPalette.Decline.copy(alpha = 0.2f),
+                    contentColor = PluckPalette.Decline,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.DeleteForever,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -424,13 +427,13 @@ private fun ProfileDestructiveActionButton(
                         color = PluckPalette.Decline
                     )
                 )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = PluckPalette.Decline.copy(alpha = 0.8f)
-                    )
-                )
             }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Decline.copy(alpha = 0.85f)
+                )
+            )
         }
     }
 }
