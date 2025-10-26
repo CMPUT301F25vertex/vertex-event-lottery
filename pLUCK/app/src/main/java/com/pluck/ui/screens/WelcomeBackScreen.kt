@@ -23,12 +23,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+
+object WelcomeBackTestTags {
+    const val AutoLoginToggle = "welcome_back_auto_login_toggle"
+}
 
 @Composable
 fun WelcomeBackScreen(
@@ -123,6 +128,7 @@ fun WelcomeBackScreen(
                             Switch(
                                 checked = autoLoginEnabled,
                                 onCheckedChange = onAutoLoginToggle,
+                                modifier = Modifier.testTag(WelcomeBackTestTags.AutoLoginToggle),
                                 enabled = !isLoading,
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,

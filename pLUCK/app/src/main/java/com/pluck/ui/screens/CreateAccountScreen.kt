@@ -40,6 +40,7 @@ object CreateAccountTestTags {
     const val DisplayNameField = "create_account_display_name"
     const val EmailField = "create_account_email"
     const val PhoneField = "create_account_phone"
+    const val AutoLoginToggle = "create_account_auto_login_toggle"
 }
 
 @Composable
@@ -185,20 +186,21 @@ fun CreateAccountScreen(
                                     )
                                 )
                                 Text(
-                                    text = "Sign in automatically next time you launch the app.",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = PluckPalette.Muted
-                                    )
-                                )
-                            }
-                            Switch(
-                                checked = autoLoginEnabled,
-                                onCheckedChange = onAutoLoginToggle,
-                                enabled = !isLoading,
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = PluckPalette.Primary
-                                )
+                        text = "Sign in automatically next time you launch the app.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+                Switch(
+                    checked = autoLoginEnabled,
+                    onCheckedChange = onAutoLoginToggle,
+                    modifier = Modifier.testTag(CreateAccountTestTags.AutoLoginToggle),
+                    enabled = !isLoading,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PluckPalette.Primary
+                    )
                             )
                         }
                     }

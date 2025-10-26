@@ -1,26 +1,20 @@
 package com.pluck
 
-/**
- * UserStoryUiTest.kt
- *
- * Purpose: End-to-end Compose instrumentation tests that validate the core user stories
- * (registration, returning user flows, and home experience). These tests intentionally
- * wrap every screen in [PluckTheme] to match production styling.
- */
-
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pluck.ui.model.Event
 import com.pluck.ui.screens.CreateAccountScreen
 import com.pluck.ui.screens.CreateAccountTestTags
 import com.pluck.ui.screens.HomeScreen
 import com.pluck.ui.screens.WelcomeBackScreen
+import com.pluck.ui.screens.WelcomeBackTestTags
 import com.pluck.ui.theme.PluckTheme
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,22 +25,22 @@ import java.time.LocalDate
 class UserStoryUiTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeRule = createComposeRule()
 
     @Test
-    fun newUserRegistration_submitsProvidedDetails() {
+    fun registrationFlow_submitsProvidedDetails() {
         var submittedName: String? = null
         var submittedEmail: String? = null
         var submittedPhone: String? = null
 
-        composeTestRule.setContent {
+        composeRule.setContent {
             PluckTheme {
                 CreateAccountScreen(
                     deviceId = "DEVICE-123",
                     isLoading = false,
                     errorMessage = null,
                     autoLoginEnabled = false,
-                    onAutoLoginToggle = { },
+                    onAutoLoginToggle = {},
                     onCreateAccount = { name, email, phone ->
                         submittedName = name
                         submittedEmail = email
@@ -56,13 +50,15 @@ class UserStoryUiTest {
             }
         }
 
-        composeTestRule.onNodeWithText("pLUCK").assertIsDisplayed()
-        composeTestRule.onNodeWithTag(CreateAccountTestTags.DisplayNameField).performTextInput("Sarah Johnson")
-        composeTestRule.onNodeWithTag(CreateAccountTestTags.EmailField).performTextInput("sarah@example.com")
-        composeTestRule.onNodeWithText("Phone Number (Optional)").performTextInput("555-0100")
-        composeTestRule.onNodeWithText("Create Account").performClick()
+        composeRule.onNodeWithTag(CreateAccountTestTags.DisplayNameField)
+            .performTextInput("Sarah Johnson")
+        composeRule.onNodeWithTag(CreateAccountTestTags.EmailField)
+            .performTextInput("sarah@example.com")
+        composeRule.onNodeWithTag(CreateAccountTestTags.PhoneField)
+            .performTextInput("555-0100")
+        composeRule.onNodeWithText("Create Account").assertIsEnabled().performClick()
 
-        composeTestRule.runOnIdle {
+        composeRule.runOnIdle {
             assertEquals("Sarah Johnson", submittedName)
             assertEquals("sarah@example.com", submittedEmail)
             assertEquals("555-0100", submittedPhone)
@@ -70,34 +66,37 @@ class UserStoryUiTest {
     }
 
     @Test
-    fun returningUserScreen_togglesAutoLoginAndContinues() {
+    fun returningUser_canToggleAutoLoginAndContinue() {
+        var toggleState: Boolean? = null
         var continueCount = 0
 
-        composeTestRule.setContent {
+        composeRule.setContent {
             PluckTheme {
                 WelcomeBackScreen(
                     userName = "Michael Chen",
                     deviceId = "DEVICE-MC-456",
                     isLoading = false,
                     autoLoginEnabled = false,
-                    onAutoLoginToggle = { _ -> },
+                    onAutoLoginToggle = { toggleState = it },
                     onContinue = { continueCount++ }
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Welcome Back").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Device ID: DEVICE-MC-456").assertIsDisplayed()
+        composeRule.onNodeWithText("Welcome Back").assertIsDisplayed()
+        composeRule.onNodeWithText("Device ID: DEVICE-MC-456").assertIsDisplayed()
 
-        composeTestRule.onNodeWithText("Continue").performClick()
+        composeRule.onNodeWithTag(WelcomeBackTestTags.AutoLoginToggle).performClick()
+        composeRule.onNodeWithText("Continue").performClick()
 
-        composeTestRule.runOnIdle {
+        composeRule.runOnIdle {
+            assertEquals(true, toggleState)
             assertEquals(1, continueCount)
         }
     }
 
     @Test
-    fun homeScreen_showsEventsAndBottomNavigation() {
+    fun homeExperience_supportsEventSelectionAndNavigation() {
         val sampleEvents = listOf(
             Event(
                 id = "event-1",
@@ -115,7 +114,7 @@ class UserStoryUiTest {
         var selectedRoute: String? = null
         var selectedEventId: String? = null
 
-        composeTestRule.setContent {
+        composeRule.setContent {
             PluckTheme {
                 HomeScreen(
                     userName = "Jordan",
@@ -124,16 +123,16 @@ class UserStoryUiTest {
                     currentRoute = "event_list",
                     onSelectEvent = { selectedEventId = it.id },
                     onNavigate = { selectedRoute = it },
-                    onScanQRCode = { }
+                    onScanQRCode = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Discover Events").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Community Showcase").performClick()
-        composeTestRule.onNodeWithText("Notifications").performClick()
+        composeRule.onNodeWithText("Discover Events").assertIsDisplayed()
+        composeRule.onNodeWithText("Community Showcase").performClick()
+        composeRule.onNodeWithText("Notifications").performClick()
 
-        composeTestRule.runOnIdle {
+        composeRule.runOnIdle {
             assertEquals("event-1", selectedEventId)
             assertEquals("notifications", selectedRoute)
         }

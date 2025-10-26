@@ -1,19 +1,11 @@
 package com.pluck.ui.screens
 
-/**
- * ScreensSmokeTest.kt
- *
- * Purpose: Lightweight regression suite that renders each top-level screen to ensure
- * critical content blocks remain visible after refactors (theme changes, navigation updates, etc.).
- */
-
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.pluck.PLuckApp
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.NotificationItem
 import com.pluck.ui.model.NotificationStatus
@@ -74,8 +66,7 @@ class ScreensSmokeTest {
             userId = "user-a",
             userName = "Jordan Lee",
             position = 1,
-            joinedDate = LocalDate.now().minusDays(1),
-            isCurrentUser = false
+            joinedDate = LocalDate.now().minusDays(1)
         ),
         WaitlistEntry(
             id = "waitlist-2",
@@ -92,7 +83,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun homeScreen_displaysHeader() {
+    fun homeScreen_rendersHeroSection() {
         composeRule.setContent {
             PluckTheme {
                 HomeScreen(
@@ -107,10 +98,11 @@ class ScreensSmokeTest {
         }
 
         composeRule.onNodeWithText("Find your next experience").assertIsDisplayed()
+        composeRule.onNodeWithText("All").assertIsDisplayed()
     }
 
     @Test
-    fun createEventScreen_displaysForm() {
+    fun createEventScreen_rendersFormFields() {
         composeRule.setContent {
             PluckTheme {
                 CreateEventScreen()
@@ -122,29 +114,29 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun eventDetailScreen_showsEventInfo() {
+    fun eventDetailScreen_displaysPrimaryActions() {
         composeRule.setContent {
             PluckTheme {
                 EventDetailScreen(
                     event = sampleEvent,
                     isUserOnWaitlist = false,
                     isUserConfirmed = false,
-                    onJoinEvent = {}
+                    onJoinEvent = {},
+                    onViewWaitlist = {}
                 )
             }
         }
 
         composeRule.onNodeWithText("Community Yoga").assertIsDisplayed()
-        composeRule.onNodeWithText("Join Waiting List").assertIsDisplayed()
+        composeRule.onNodeWithText("Join Waitlist").assertIsDisplayed()
+        composeRule.onNodeWithText("View Waitlist").assertIsDisplayed()
     }
 
     @Test
-    fun notificationsScreen_displaysSections() {
+    fun notificationsScreen_rendersTabs() {
         composeRule.setContent {
             PluckTheme {
-                NotificationsScreen(
-                    initialNotifications = sampleNotifications
-                )
+                NotificationsScreen(notifications = sampleNotifications)
             }
         }
 
@@ -153,12 +145,13 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun profileScreen_displaysActions() {
+    fun profileScreen_showsQuickActions() {
         composeRule.setContent {
             PluckTheme {
                 ProfileScreen(
                     userName = "Caiden Weiss",
                     userEmail = "caiden@example.com",
+                    userPhone = "780-555-0100",
                     deviceId = "device-1234",
                     isLoading = false,
                     onSignOut = {},
@@ -174,7 +167,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun myEventsScreen_displaysFilters() {
+    fun myEventsScreen_showsFilters() {
         composeRule.setContent {
             PluckTheme {
                 MyEventsScreen(
@@ -190,7 +183,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun organizerDashboard_displaysStats() {
+    fun organizerDashboard_showsStats() {
         composeRule.setContent {
             PluckTheme {
                 OrganizerDashboardScreen(
@@ -210,7 +203,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun waitlistScreen_showsEntries() {
+    fun waitlistScreen_rendersQueues() {
         composeRule.setContent {
             PluckTheme {
                 WaitlistScreen(
@@ -225,7 +218,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun welcomeBackScreen_displaysMessage() {
+    fun welcomeBackScreen_rendersDeviceCard() {
         composeRule.setContent {
             PluckTheme {
                 WelcomeBackScreen(
@@ -240,11 +233,11 @@ class ScreensSmokeTest {
         }
 
         composeRule.onNodeWithText("Welcome Back").assertIsDisplayed()
-        composeRule.onNodeWithText("Continue").assertIsDisplayed()
+        composeRule.onNodeWithText("Device ID: device-5678").assertIsDisplayed()
     }
 
     @Test
-    fun settingsScreen_displaysSections() {
+    fun settingsScreen_listsSections() {
         composeRule.setContent {
             PluckTheme {
                 SettingsScreen(
@@ -259,7 +252,7 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun placeholderScreen_displaysContent() {
+    fun placeholderScreen_rendersCallToAction() {
         composeRule.setContent {
             PluckTheme {
                 PlaceholderScreen(
@@ -275,3 +268,4 @@ class ScreensSmokeTest {
         composeRule.onNodeWithText("Return").assertIsDisplayed()
     }
 }
+

@@ -582,6 +582,7 @@ private fun ActionRow(
                 label = "Event Details",
                 backgroundColor = PluckPalette.Primary,
                 contentColor = PluckPalette.Surface,
+                enabled = !isProcessing,
                 onClick = onEventDetails
             )
         }

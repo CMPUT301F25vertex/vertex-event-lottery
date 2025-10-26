@@ -2,67 +2,71 @@ package com.pluck.ui.model
 
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * NotificationFilterTest.kt
- *
- * Purpose: Verifies filtering behaviour for notifications.
- *
- * Design Pattern: Pure function unit tests.
- *
- * Outstanding Issues: None
- */
 class NotificationFilterTest {
 
-    private val notifications = listOf(
-        NotificationItem(
-            id = "one",
-            title = "Unread",
-            subtitle = "",
-            detail = "",
-            category = NotificationCategory.SELECTION,
-            status = NotificationStatus.UNREAD,
-            accentColor = Color.Black
-        ),
-        NotificationItem(
-            id = "two",
-            title = "Read",
-            subtitle = "",
-            detail = "",
-            category = NotificationCategory.DEADLINE,
-            status = NotificationStatus.READ,
-            accentColor = Color.Black
-        ),
-        NotificationItem(
-            id = "three",
-            title = "Unread 2",
-            subtitle = "",
-            detail = "",
-            category = NotificationCategory.WAITLIST,
-            status = NotificationStatus.UNREAD,
-            accentColor = Color.Black
-        )
+    private val unreadSelection = NotificationItem(
+        id = "unread-selection",
+        title = "You've been selected!",
+        subtitle = "Community Yoga",
+        detail = "Confirm by Friday at noon.",
+        category = NotificationCategory.SELECTION,
+        status = NotificationStatus.UNREAD,
+        accentColor = Color(0xFFFF4081),
+        callToActionButtons = NotificationButtons(showAccept = true, showDecline = true, showEventDetails = true)
     )
 
-    @Test
-    fun `filter unread returns only unread items`() {
-        val filtered = notifications.filterBy(NotificationFilter.UNREAD)
+    private val readDigest = NotificationItem(
+        id = "read-digest",
+        title = "Lottery results posted",
+        subtitle = "Cooking with Gordon",
+        detail = "Thanks for entering! Check back next week.",
+        category = NotificationCategory.NOT_SELECTED,
+        status = NotificationStatus.READ,
+        accentColor = Color(0xFF444444),
+        callToActionButtons = NotificationButtons(showAccept = false, showDecline = false, showEventDetails = true)
+    )
 
-        assertEquals(listOf("one", "three"), filtered.map { it.id })
+    private val unreadWaitlist = NotificationItem(
+        id = "unread-waitlist",
+        title = "You're #2 on the waitlist",
+        subtitle = "Street Photography Walk",
+        detail = "We'll notify you if a spot opens.",
+        category = NotificationCategory.WAITLIST,
+        status = NotificationStatus.UNREAD
+    )
+
+    private val sample = listOf(unreadSelection, readDigest, unreadWaitlist)
+
+    @Test
+    fun `unread filter returns only unread notifications and preserves order`() {
+        val filtered = sample.filterBy(NotificationFilter.UNREAD)
+
+        assertEquals(listOf(unreadSelection, unreadWaitlist), filtered)
+        assertTrue(filtered.all { it.status == NotificationStatus.UNREAD })
     }
 
     @Test
-    fun `filter read returns only read items`() {
-        val filtered = notifications.filterBy(NotificationFilter.READ)
+    fun `read filter emits only read notifications`() {
+        val filtered = sample.filterBy(NotificationFilter.READ)
 
-        assertEquals(listOf("two"), filtered.map { it.id })
+        assertEquals(listOf(readDigest), filtered)
+        assertTrue(filtered.all { it.status == NotificationStatus.READ })
     }
 
     @Test
-    fun `filter maintains original order`() {
-        val filtered = notifications.filterBy(NotificationFilter.UNREAD)
+    fun `filter ignores auxiliary metadata when matching`() {
+        val enriched = unreadSelection.copy(
+            callToActionButtons = NotificationButtons(showAccept = false, showDecline = false, showEventDetails = true),
+            isAccepted = true,
+            eventId = "event-123"
+        )
 
-        assertEquals(listOf("Unread", "Unread 2"), filtered.map { it.title })
+        val filtered = listOf(enriched).filterBy(NotificationFilter.UNREAD)
+
+        assertEquals(listOf(enriched), filtered)
     }
 }
+
