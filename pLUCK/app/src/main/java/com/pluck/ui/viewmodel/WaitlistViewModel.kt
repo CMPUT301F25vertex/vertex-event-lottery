@@ -2,9 +2,13 @@ package com.pluck.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.content.Intent
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.repository.UserEventHistory
 import com.pluck.data.repository.WaitlistRepository
+import com.pluck.data.repository.CsvExportRepository
+import com.pluck.ui.model.Event
 import com.pluck.ui.screens.WaitlistEntry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,14 +20,17 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for managing waitlist data and operations
  *
- * Handles:
+ * Provides reactive state for:
  * - Joining/leaving waitlist
  * - Accepting/declining invitations
- * - Running lottery
+ * - Running lottery draws
  * - Viewing waitlist and chosen entries
+ * - Exporting entrant data to CSV (US 02.06.05)
+ * - User waitlist status tracking
  */
 class WaitlistViewModel(
-    private val waitlistRepository: WaitlistRepository = WaitlistRepository()
+    private val waitlistRepository: WaitlistRepository = WaitlistRepository(),
+    private val csvExportRepository: CsvExportRepository = CsvExportRepository()
 ) : ViewModel() {
 
     private val _waitlistEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
@@ -241,12 +248,20 @@ class WaitlistViewModel(
     /**
      * Decline lottery invitation
      */
-    fun declineInvitation(waitlistEntryId: String, onSuccess: () -> Unit = {}) {
+    fun declineInvitation(
+        waitlistEntryId: String,
+        event: Event? = null,
+        onSuccess: () -> Unit = {}
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.declineInvitation(waitlistEntryId)
+            waitlistRepository.declineInvitation(
+                waitlistEntryId = waitlistEntryId,
+                drawReplacement = true,
+                event = event
+            )
                 .onSuccess {
                     _userWaitlistEntryId.value = null
                     _userWaitlistStatus.value = null
@@ -292,14 +307,14 @@ class WaitlistViewModel(
     }
 
     /**
-     * Run lottery to select winners
+     * Run lottery to select winners and notify them
      */
-    fun runLottery(eventId: String, numberOfWinners: Int, onSuccess: (List<String>) -> Unit = {}) {
+    fun runLottery(eventId: String, numberOfWinners: Int, event: Event? = null, onSuccess: (List<String>) -> Unit = {}) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.runLottery(eventId, numberOfWinners)
+            waitlistRepository.runLottery(eventId, numberOfWinners, event)
                 .onSuccess { selectedIds ->
                     onSuccess(selectedIds)
                 }
@@ -308,6 +323,43 @@ class WaitlistViewModel(
                 }
 
             _isLoading.value = false
+        }
+    }
+
+    /**
+     * Notify non-chosen entrants after lottery (US 01.04.02)
+     */
+    fun notifyNonChosenEntrants(event: Event) {
+        viewModelScope.launch {
+            waitlistRepository.notifyNonChosenEntrants(event.id, event)
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to notify non-chosen entrants"
+                }
+        }
+    }
+
+    /**
+     * Export chosen entrants to CSV file for sharing (US 02.06.05)
+     *
+     * @param context Android context for file operations
+     * @param event Event associated with the entrants
+     * @param entrants List of waitlist entries to export
+     * @param onSuccess Callback invoked with shareable Intent on success
+     */
+    fun exportChosenEntrantsToCSV(
+        context: Context,
+        event: Event,
+        entrants: List<WaitlistEntry>,
+        onSuccess: (Intent) -> Unit
+    ) {
+        viewModelScope.launch {
+            csvExportRepository.exportAllEntrants(context, event, entrants)
+                .onSuccess { intent ->
+                    onSuccess(intent)
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to export CSV"
+                }
         }
     }
 

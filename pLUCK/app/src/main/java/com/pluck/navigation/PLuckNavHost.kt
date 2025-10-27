@@ -67,6 +67,9 @@ import com.pluck.ui.screens.WaitlistScreen
 import com.pluck.ui.screens.WelcomeBackScreen
 import com.pluck.ui.screens.CustomThemeCreatorScreen
 import com.pluck.ui.screens.QRScannerScreen
+import com.pluck.ui.screens.ChosenEntrantsScreen
+import com.pluck.ui.screens.AdminDashboardScreen
+import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
 import com.pluck.ui.viewmodel.EventViewModel
@@ -103,6 +106,11 @@ sealed class PLuckDestination(val route: String) {
     object OrganizerDashboard : PLuckDestination("organizer_dashboard")
     object AdminDashboard : PLuckDestination("admin_dashboard")
     object QRScanner : PLuckDestination("qr_scanner")
+    object ChosenEntrants : PLuckDestination("chosen_entrants") {
+        const val EVENT_ID_ARG = "eventId"
+        val routeWithArg = "$route/{$EVENT_ID_ARG}"
+        fun createRoute(eventId: String) = "$route/$eventId"
+    }
 }
 
 @Composable
@@ -134,6 +142,7 @@ fun PLuckNavHost(
     val eventViewModel: EventViewModel = viewModel()
     val waitlistViewModel: WaitlistViewModel = viewModel()
     val notificationsViewModel: NotificationsViewModel = viewModel()
+    val adminViewModel: AdminViewModel = viewModel()
 
     val events by eventViewModel.events.collectAsState()
     val selectedEvent by eventViewModel.selectedEvent.collectAsState()
@@ -148,6 +157,14 @@ fun PLuckNavHost(
     val userWaitlistStatus by waitlistViewModel.userWaitlistStatus.collectAsState()
     val userEventHistory by waitlistViewModel.userEventHistory.collectAsState()
     val notifications by notificationsViewModel.notifications.collectAsState()
+
+    val adminEvents by adminViewModel.events.collectAsState()
+    val adminUsers by adminViewModel.users.collectAsState()
+    val adminOrganizers by adminViewModel.organizers.collectAsState()
+    val adminImages by adminViewModel.images.collectAsState()
+    val adminNotifications by adminViewModel.notifications.collectAsState()
+    val adminStats by adminViewModel.stats.collectAsState()
+    val adminLoading by adminViewModel.isLoading.collectAsState()
     val notificationsLoading by notificationsViewModel.isLoading.collectAsState()
     val processingNotificationIds by notificationsViewModel.processingNotificationIds.collectAsState()
     val notificationError by notificationsViewModel.error.collectAsState()
@@ -622,6 +639,9 @@ fun PLuckNavHost(
                         onOrganizerDashboard = {
                             navigator.toOrganizer()
                         },
+                        onAdminDashboard = {
+                            navController.navigate(PLuckDestination.AdminDashboard.route)
+                        },
                         onSignOut = {
                             currentUser = null
                             loginError = null
@@ -1055,15 +1075,41 @@ fun PLuckNavHost(
                 onEditEvent = { event ->
                     navigator.toEditEvent(event.id)
                 },
-                onViewParticipants = { _ ->
-                    // TODO: Navigate to participants screen
+                onRunDraw = { event ->
+                    // Run the draw for this event
+                    eventViewModel.runDraw(event, waitlistViewModel) {
+                        // Refresh the event after draw
+                        currentUser?.deviceId?.let { orgId ->
+                            eventViewModel.loadEventsByOrganizer(orgId)
+                        }
+                    }
+                },
+                onManageChosenEntrants = { event ->
+                    navigator.toChosenEntrants(event.id)
                 }
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
-            PlaceholderScreen(
-                title = "Admin dashboard",
-                description = "Review organizers, approve events, and moderate the platform."
+            AdminDashboardScreen(
+                stats = adminStats,
+                events = adminEvents,
+                users = adminUsers,
+                organizers = adminOrganizers,
+                images = adminImages,
+                notifications = adminNotifications,
+                isLoading = adminLoading,
+                onRemoveEvent = { eventId ->
+                    adminViewModel.removeEvent(eventId)
+                },
+                onRemoveProfile = { profileId ->
+                    adminViewModel.removeProfile(profileId)
+                },
+                onRemoveImage = { imageId ->
+                    adminViewModel.removeImage(imageId)
+                },
+                onRemoveOrganizer = { organizerId ->
+                    adminViewModel.removeOrganizer(organizerId)
+                }
             )
         }
         composable("theme_picker") {
@@ -1113,6 +1159,50 @@ fun PLuckNavHost(
                 }
             )
         }
+        composable(
+            route = PLuckDestination.ChosenEntrants.routeWithArg,
+            arguments = listOf(navArgument(PLuckDestination.ChosenEntrants.EVENT_ID_ARG) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString(PLuckDestination.ChosenEntrants.EVENT_ID_ARG) ?: return@composable
+
+            // Load the event and chosen entrants
+            LaunchedEffect(eventId) {
+                eventViewModel.loadEvent(eventId)
+                waitlistViewModel.loadChosenEntries(eventId)
+            }
+
+            // Only render if event is loaded
+            selectedEvent?.let { event ->
+                ChosenEntrantsScreen(
+                    event = event,
+                    chosenEntrants = chosenEntries.map { entry ->
+                        com.pluck.ui.screens.ChosenEntrant(
+                            id = entry.id,
+                            userId = entry.userId,
+                            userName = entry.userName,
+                            status = entry.status, // Use actual status from entry
+                            selectedAt = null
+                        )
+                    },
+                    isLoading = waitlistLoading,
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onExportCSV = {
+                        // Export chosen entrants to CSV (US 02.06.05)
+                        waitlistViewModel.exportChosenEntrantsToCSV(
+                            context = context,
+                            event = event,
+                            entrants = chosenEntries
+                        ) { intent ->
+                            context.startActivity(intent)
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -1133,4 +1223,5 @@ class PLuckNavigator(private val navController: NavHostController) {
     fun toOrganizer() = navController.navigate(PLuckDestination.OrganizerDashboard.route)
     fun toAdmin() = navController.navigate(PLuckDestination.AdminDashboard.route)
     fun toQRScanner() = navController.navigate(PLuckDestination.QRScanner.route)
+    fun toChosenEntrants(eventId: String) = navController.navigate(PLuckDestination.ChosenEntrants.createRoute(eventId))
 }

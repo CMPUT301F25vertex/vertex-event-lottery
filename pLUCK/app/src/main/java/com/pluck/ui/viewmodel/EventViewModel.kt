@@ -222,6 +222,46 @@ class EventViewModel(
     }
 
     /**
+     * Run lottery draw for an event
+     * Updates the event draw status to COMPLETED after successful draw
+     */
+    fun runDraw(event: Event, waitlistViewModel: WaitlistViewModel, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            // Run the lottery
+            waitlistViewModel.runLottery(
+                eventId = event.id,
+                numberOfWinners = event.samplingCount,
+                event = event,
+                onSuccess = { selectedIds ->
+                    // Update event draw status to COMPLETED and notify non-chosen entrants
+                    viewModelScope.launch {
+                        eventRepository.updateEvent(
+                            eventId = event.id,
+                            updates = mapOf(
+                                "drawStatus" to "COMPLETED",
+                                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                            )
+                        ).onSuccess {
+                            // FIX: Notify non-chosen entrants (US 01.04.02)
+                            viewModelScope.launch {
+                                waitlistViewModel.notifyNonChosenEntrants(event)
+                            }
+                            _isLoading.value = false
+                            onSuccess()
+                        }.onFailure { exception ->
+                            _isLoading.value = false
+                            _error.value = exception.message ?: "Failed to update draw status"
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    /**
      * Clear error message
      */
     fun clearError() {

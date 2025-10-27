@@ -4,6 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.DrawStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -32,6 +33,9 @@ data class FirebaseEvent(
     val registrationStartTimestamp: Timestamp? = null,
     val registrationEndTimestamp: Timestamp? = null,
     val samplingCount: Int = 0,
+    val drawDateTimestamp: Timestamp? = null,
+    val drawStatus: String = DrawStatus.PENDING.name,
+    val acceptanceDeadline: Int = 24,
     val isActive: Boolean = true,
     @ServerTimestamp
     val createdAt: Timestamp? = null,
@@ -75,7 +79,14 @@ data class FirebaseEvent(
             posterUrl = imageUrl,
             registrationStart = registrationStartTimestamp?.toLocalDate(),
             registrationEnd = registrationEndTimestamp?.toLocalDate(),
-            samplingCount = samplingCount
+            samplingCount = samplingCount,
+            drawDate = drawDateTimestamp?.toLocalDate(),
+            drawStatus = try {
+                DrawStatus.valueOf(drawStatus)
+            } catch (e: Exception) {
+                DrawStatus.PENDING
+            },
+            acceptanceDeadline = acceptanceDeadline
         )
     }
 
@@ -103,7 +114,10 @@ data class FirebaseEvent(
                 imageUrl = event.posterUrl,
                 registrationStartTimestamp = event.registrationStart?.toTimestamp(),
                 registrationEndTimestamp = event.registrationEnd?.toTimestamp(),
-                samplingCount = event.samplingCount
+                samplingCount = event.samplingCount,
+                drawDateTimestamp = event.drawDate?.toTimestamp(),
+                drawStatus = event.drawStatus.name,
+                acceptanceDeadline = event.acceptanceDeadline
             )
         }
     }

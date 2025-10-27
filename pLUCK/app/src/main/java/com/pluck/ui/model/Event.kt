@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
  * @property description Markdown-safe description shown in detail views.
  * @property location Human-readable location string surfaced to entrants.
  * @property date Calendar date on which the event begins.
- * @property capacity Maximum confirmed attendees.
+ * @property capacity Maximum confirmed attendees (seats available).
  * @property enrolled Current confirmed attendee count.
  * @property organizerName Display name of the hosting organization.
  * @property organizerId Optional stable organizer identifier used for filtering.
@@ -31,6 +31,9 @@ import java.time.format.DateTimeFormatter
  * @property registrationStart Optional opening date for registration.
  * @property registrationEnd Optional closing date for registration.
  * @property samplingCount Number of entrants to sample in a lottery draw.
+ * @property drawDate Date when the lottery draw will be executed. Defaults to event date if not specified.
+ * @property drawStatus Current status of the draw (PENDING, COMPLETED, CANCELLED).
+ * @property acceptanceDeadline Deadline for selected entrants to accept their invitation (hours after draw).
  */
 data class Event(
     val id: String,
@@ -48,7 +51,10 @@ data class Event(
     val posterUrl: String? = null,
     val registrationStart: LocalDate? = null,
     val registrationEnd: LocalDate? = null,
-    val samplingCount: Int = 0
+    val samplingCount: Int = 0,
+    val drawDate: LocalDate? = null,
+    val drawStatus: DrawStatus = DrawStatus.PENDING,
+    val acceptanceDeadline: Int = 24
 ) {
     /**
      * @return A preview-friendly description limited to 120 characters.
@@ -103,7 +109,49 @@ data class Event(
     val isPastEvent: Boolean
         get() = date.isBefore(LocalDate.now())
 
+    /**
+     * @return The actual draw date (uses drawDate if specified, otherwise falls back to event date).
+     */
+    val effectiveDrawDate: LocalDate
+        get() = drawDate ?: date
+
+    /**
+     * @return True when the draw date has arrived or passed.
+     */
+    val isDrawDateReached: Boolean
+        get() = !effectiveDrawDate.isAfter(LocalDate.now())
+
+    /**
+     * @return True when the organizer can manually trigger the draw early.
+     */
+    val canRunDrawEarly: Boolean
+        get() = drawStatus == DrawStatus.PENDING && waitlistCount >= samplingCount
+
+    /**
+     * @return True when the draw has been completed.
+     */
+    val isDrawComplete: Boolean
+        get() = drawStatus == DrawStatus.COMPLETED
+
+    /**
+     * @return Formatted draw date string.
+     */
+    val drawDateLabel: String
+        get() = effectiveDrawDate.format(DATE_FORMATTER)
+
     companion object {
         private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy")
     }
+}
+
+/**
+ * Represents the status of the lottery draw for an event.
+ */
+enum class DrawStatus {
+    /** Draw has not been executed yet */
+    PENDING,
+    /** Draw has been completed and winners selected */
+    COMPLETED,
+    /** Draw was cancelled by organizer */
+    CANCELLED
 }

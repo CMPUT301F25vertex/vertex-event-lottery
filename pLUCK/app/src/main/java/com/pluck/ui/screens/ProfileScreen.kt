@@ -61,6 +61,7 @@ fun ProfileScreen(
     onDeleteAccount: () -> Unit,
     onMyEvents: () -> Unit = {},
     onOrganizerDashboard: () -> Unit = {},
+    onAdminDashboard: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -246,6 +247,14 @@ fun ProfileScreen(
                             containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
                             contentColor = PluckPalette.Tertiary,
                             onClick = onOrganizerDashboard
+                        )
+                        ProfileActionButton(
+                            text = "Admin Dashboard",
+                            description = "Manage platform content and users.",
+                            enabled = !isLoading,
+                            containerColor = PluckPalette.Decline.copy(alpha = 0.12f),
+                            contentColor = PluckPalette.Decline,
+                            onClick = onAdminDashboard
                         )
                         ProfileActionButton(
                             text = "Sign Out",

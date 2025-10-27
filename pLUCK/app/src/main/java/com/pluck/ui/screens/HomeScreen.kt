@@ -40,6 +40,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -142,11 +145,15 @@ private fun HomeScreenContent(
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
     var confettiTrigger by remember { mutableStateOf(0) }
-    val filteredEvents = remember(events, selectedCategoryId, userJoinedEventIds) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedDateFilter by remember { mutableStateOf<LocalDate?>(null) }
+
+    val filteredEvents = remember(events, selectedCategoryId, userJoinedEventIds, searchQuery, selectedDateFilter) {
         val today = LocalDate.now()
         val weekFromNow = today.plusDays(7)
 
-        when (selectedCategoryId) {
+        // US 01.01.04 - Filter by interests (search) and availability (date)
+        val categoryFiltered = when (selectedCategoryId) {
             "past" -> events.filter { it.isPastEvent }.sortedByDescending { it.date }
             "all" -> events.filter { !it.isPastEvent }.sortedBy { it.date }
             "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.date }
@@ -163,6 +170,27 @@ private fun HomeScreenContent(
             "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.date }
             "location" -> events.filter { !it.isPastEvent }.sortedBy { it.location }
             else -> events.filter { !it.isPastEvent }
+        }
+
+        // Apply search filter (filter by interests/keywords)
+        val searchFiltered = if (searchQuery.isBlank()) {
+            categoryFiltered
+        } else {
+            categoryFiltered.filter { event ->
+                event.title.contains(searchQuery, ignoreCase = true) ||
+                event.description.contains(searchQuery, ignoreCase = true) ||
+                event.location.contains(searchQuery, ignoreCase = true) ||
+                event.organizerName.contains(searchQuery, ignoreCase = true)
+            }
+        }
+
+        // Apply date filter (filter by availability)
+        if (selectedDateFilter != null) {
+            searchFiltered.filter { event ->
+                event.date == selectedDateFilter
+            }
+        } else {
+            searchFiltered
         }
     }
 
@@ -227,6 +255,11 @@ private fun HomeScreenContent(
                                 },
                                 collapseProgress = 0f
                             )
+                            // US 01.01.04 - Search bar for filtering by interests
+                            EventSearchBar(
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it }
+                            )
                             HomeFilterRow(
                                 categories = homeCategories,
                                 selectedId = selectedCategoryId,
@@ -260,6 +293,14 @@ private fun HomeScreenContent(
                                         onRefresh()
                                     },
                                     collapseProgress = heroCollapseProgress
+                                )
+                            }
+
+                            // US 01.01.04 - Search bar for filtering events
+                            item {
+                                EventSearchBar(
+                                    searchQuery = searchQuery,
+                                    onSearchQueryChange = { searchQuery = it }
                                 )
                             }
 
@@ -818,4 +859,55 @@ private fun HomeScreenPreview() {
         onNavigate = {},
         onCreateEvent = {}
     )
+}
+
+/**
+ * Search bar for filtering events by interests/keywords (US 01.01.04)
+ *
+ * Allows entrants to search events by title, description, location, or organizer name
+ */
+@Composable
+private fun EventSearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 2.dp,
+        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+    ) {
+        TextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = "Search events by title, location, or organizer...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = PluckPalette.Muted
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = "Search",
+                    tint = PluckPalette.Primary
+                )
+            },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = PluckPalette.Surface,
+                unfocusedContainerColor = PluckPalette.Surface,
+                focusedIndicatorColor = PluckPalette.Primary.copy(alpha = 0.3f),
+                unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+            ),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = PluckPalette.Primary
+            )
+        )
+    }
 }

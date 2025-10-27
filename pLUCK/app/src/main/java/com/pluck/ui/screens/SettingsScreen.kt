@@ -32,11 +32,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import com.pluck.data.NotificationPreferences
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -82,9 +85,19 @@ fun SettingsScreen(
     onNavigateToThemePicker: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var emailNotifications by remember { mutableStateOf(false) }
-    var pushNotifications by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val notificationPrefs = remember { NotificationPreferences(context) }
+
+    var notificationsEnabled by remember { mutableStateOf(notificationPrefs.areAllNotificationsEnabled()) }
+    var emailNotifications by remember { mutableStateOf(notificationPrefs.areEmailNotificationsEnabled()) }
+    var pushNotifications by remember { mutableStateOf(notificationPrefs.arePushNotificationsEnabled()) }
+
+    // Load preferences on first composition
+    LaunchedEffect(Unit) {
+        notificationsEnabled = notificationPrefs.areAllNotificationsEnabled()
+        emailNotifications = notificationPrefs.areEmailNotificationsEnabled()
+        pushNotifications = notificationPrefs.arePushNotificationsEnabled()
+    }
 
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
@@ -126,13 +139,19 @@ fun SettingsScreen(
                             label = "All Notifications",
                             description = "Enable or disable all notifications",
                             checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it }
+                            onCheckedChange = {
+                                notificationsEnabled = it
+                                notificationPrefs.setAllNotificationsEnabled(it)
+                            }
                         )
                         SettingsToggleItem(
                             label = "Push Notifications",
                             description = "Receive push notifications for updates",
                             checked = pushNotifications,
-                            onCheckedChange = { pushNotifications = it },
+                            onCheckedChange = {
+                                pushNotifications = it
+                                notificationPrefs.setPushNotificationsEnabled(it)
+                            },
                             enabled = notificationsEnabled
                         )
                         Spacer(modifier = Modifier.height(2.dp))
@@ -140,7 +159,10 @@ fun SettingsScreen(
                             label = "Email Notifications",
                             description = "Receive email summaries",
                             checked = emailNotifications,
-                            onCheckedChange = { emailNotifications = it },
+                            onCheckedChange = {
+                                emailNotifications = it
+                                notificationPrefs.setEmailNotificationsEnabled(it)
+                            },
                             enabled = notificationsEnabled
                         )
                     }

@@ -49,7 +49,8 @@ data class FirebaseWaitlistEntry(
             position = position,
             joinedDate = localDate,
             isCurrentUser = userId == currentUserId,
-            isChosen = status == WaitlistStatus.SELECTED
+            isChosen = status == WaitlistStatus.SELECTED,
+            status = status
         )
     }
 }

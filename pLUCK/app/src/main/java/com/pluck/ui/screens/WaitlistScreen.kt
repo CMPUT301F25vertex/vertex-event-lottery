@@ -79,7 +79,8 @@ data class WaitlistEntry(
     val position: Int,
     val joinedDate: LocalDate,
     val isCurrentUser: Boolean = false,
-    val isChosen: Boolean = false
+    val isChosen: Boolean = false,
+    val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

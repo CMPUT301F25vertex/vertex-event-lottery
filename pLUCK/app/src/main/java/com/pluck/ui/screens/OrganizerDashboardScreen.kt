@@ -24,7 +24,8 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,7 +78,8 @@ fun OrganizerDashboardScreen(
     onCreateEvent: () -> Unit = {},
     onEventClick: (Event) -> Unit = {},
     onEditEvent: (Event) -> Unit = {},
-    onViewParticipants: (Event) -> Unit = {},
+    onRunDraw: (Event) -> Unit = {},
+    onManageChosenEntrants: (Event) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     PluckLayeredBackground(
@@ -115,7 +117,8 @@ fun OrganizerDashboardScreen(
                         events = events,
                         onEventClick = onEventClick,
                         onEditEvent = onEditEvent,
-                        onViewParticipants = onViewParticipants
+                        onRunDraw = onRunDraw,
+                        onManageChosenEntrants = onManageChosenEntrants
                     )
                 }
             }
@@ -155,7 +158,7 @@ private fun OrganizerDashboardHero(
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Black,
                         color = PluckPalette.Primary,
-                        fontSize = 24.sp
+                        fontSize = 18.sp
                     )
                 )
                 Text(
@@ -331,7 +334,8 @@ private fun OrganizerEventsList(
     events: List<Event>,
     onEventClick: (Event) -> Unit,
     onEditEvent: (Event) -> Unit,
-    onViewParticipants: (Event) -> Unit
+    onRunDraw: (Event) -> Unit,
+    onManageChosenEntrants: (Event) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
@@ -352,7 +356,8 @@ private fun OrganizerEventsList(
                 accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
                 onEventClick = { onEventClick(event) },
                 onEditEvent = { onEditEvent(event) },
-                onViewParticipants = { onViewParticipants(event) }
+                onRunDraw = { onRunDraw(event) },
+                onManageChosenEntrants = { onManageChosenEntrants(event) }
             )
         }
     }
@@ -365,7 +370,8 @@ private fun OrganizerEventCard(
     accentColor: Color,
     onEventClick: () -> Unit,
     onEditEvent: () -> Unit,
-    onViewParticipants: () -> Unit
+    onRunDraw: () -> Unit,
+    onManageChosenEntrants: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         PluckAccentCircle(
@@ -460,22 +466,60 @@ private fun OrganizerEventCard(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OrganizerActionButton(
-                        icon = Icons.Outlined.Visibility,
-                        label = "View",
-                        onClick = onViewParticipants,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OrganizerActionButton(
-                        icon = Icons.Outlined.Edit,
-                        label = "Edit",
-                        onClick = onEditEvent,
-                        modifier = Modifier.weight(1f)
-                    )
+                // Draw Management Buttons
+                if (event.isDrawComplete) {
+                    // Show "Manage Chosen" button when draw is complete
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.CheckCircle,
+                            label = "Manage Chosen",
+                            onClick = onManageChosenEntrants,
+                            backgroundColor = PluckPalette.Accept,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.Edit,
+                            label = "Edit",
+                            onClick = onEditEvent,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else if (event.canRunDrawEarly && event.samplingCount > 0) {
+                    // Show "Run Draw" button when organizer can run it early
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.PlayArrow,
+                            label = "Run Draw",
+                            onClick = onRunDraw,
+                            backgroundColor = PluckPalette.Secondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.Edit,
+                            label = "Edit",
+                            onClick = onEditEvent,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else {
+                    // Default: Just show Edit button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.Edit,
+                            label = "Edit Event",
+                            onClick = onEditEvent,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
@@ -487,16 +531,17 @@ private fun OrganizerActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = PluckPalette.Primary
 ) {
-    val onPrimary = autoTextColor(PluckPalette.Primary)
+    val contentColor = autoTextColor(backgroundColor)
     Button(
         onClick = onClick,
         modifier = modifier.height(40.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = PluckPalette.Primary,
-            contentColor = onPrimary
+            containerColor = backgroundColor,
+            contentColor = contentColor
         ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
     ) {
