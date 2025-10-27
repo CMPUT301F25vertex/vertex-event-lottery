@@ -380,7 +380,7 @@ private fun HomeHeroCard(
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = PluckPalette.Primary.copy(alpha = targetAlpha),
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = (18 - collapseProgress * 5).sp
+                        fontSize = (16 - collapseProgress * 5).sp
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

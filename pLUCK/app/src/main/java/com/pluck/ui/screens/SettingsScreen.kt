@@ -135,6 +135,7 @@ fun SettingsScreen(
                             onCheckedChange = { pushNotifications = it },
                             enabled = notificationsEnabled
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         SettingsToggleItem(
                             label = "Email Notifications",
                             description = "Receive email summaries",

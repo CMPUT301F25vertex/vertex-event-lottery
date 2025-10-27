@@ -155,7 +155,7 @@ private fun OrganizerDashboardHero(
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Black,
                         color = PluckPalette.Primary,
-                        fontSize = 28.sp
+                        fontSize = 24.sp
                     )
                 )
                 Text(

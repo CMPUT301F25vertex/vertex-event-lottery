@@ -386,23 +386,29 @@ private fun NotificationFilterRow(
             selected = selected == NotificationFilter.UNREAD,
             onClick = { onSelected(NotificationFilter.UNREAD) },
             modifier = Modifier
+                .weight(1f)
                 .testTag(NotificationsTestTags.TabUnread)
                 .semantics { text = AnnotatedString("Unread") },
             label = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Unread",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                    if (unreadCount > 0) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = " (${unreadCount})",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Medium
+                            text = "Unread",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
                             )
                         )
+                        if (unreadCount > 0) {
+                            Text(
+                                text = " (${unreadCount})",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
                     }
                 }
             },
@@ -418,15 +424,21 @@ private fun NotificationFilterRow(
             selected = selected == NotificationFilter.READ,
             onClick = { onSelected(NotificationFilter.READ) },
             modifier = Modifier
+                .weight(1f)
                 .testTag(NotificationsTestTags.TabRead)
                 .semantics { text = AnnotatedString("Read") },
             label = {
-                Text(
-                    text = "Read",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.SemiBold
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Read",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
-                )
+                }
             },
             colors = FilterChipDefaults.filterChipColors(
                 containerColor = surfaceVariant,
