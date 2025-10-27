@@ -66,6 +66,7 @@ import com.pluck.ui.model.Event
 import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
+import java.time.LocalTime
 import coil.compose.AsyncImage
 
 /**
@@ -560,14 +561,25 @@ private fun EventLotteryInfoCard(
     event: Event,
     modifier: Modifier = Modifier
 ) {
-    val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+    fun formatDateTime(date: LocalDate?, time: LocalTime?): String? {
+        if (date == null) return null
+        val dateText = date.format(dateFormatter)
+        val timeText = time?.format(timeFormatter)
+        return timeText?.let { "$dateText • $it" } ?: dateText
+    }
+
+    val registrationStartText = formatDateTime(event.registrationStart, event.registrationStartTime)
+    val registrationEndText = formatDateTime(event.registrationEnd, event.registrationEndTime)
+
     val registrationLabel = when {
-        event.registrationStart != null && event.registrationEnd != null ->
-            "${event.registrationStart.format(formatter)} - ${event.registrationEnd.format(formatter)}"
-        event.registrationStart != null ->
-            "Opens ${event.registrationStart.format(formatter)}"
-        event.registrationEnd != null ->
-            "Closes ${event.registrationEnd.format(formatter)}"
+        registrationStartText != null && registrationEndText != null ->
+            "$registrationStartText – $registrationEndText"
+        registrationStartText != null ->
+            "Opens $registrationStartText"
+        registrationEndText != null ->
+            "Closes $registrationEndText"
         else -> "Registration open until the organizer closes the waitlist."
     }
     val samplingLabel = if (event.samplingCount > 0) {

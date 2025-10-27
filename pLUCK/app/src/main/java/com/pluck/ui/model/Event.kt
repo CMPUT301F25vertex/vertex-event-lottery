@@ -1,6 +1,8 @@
 package com.pluck.ui.model
 
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -20,6 +22,7 @@ import java.time.format.DateTimeFormatter
  * @property description Markdown-safe description shown in detail views.
  * @property location Human-readable location string surfaced to entrants.
  * @property date Calendar date on which the event begins.
+ * @property eventTime Optional time of day when the event begins.
  * @property capacity Maximum confirmed attendees (seats available).
  * @property enrolled Current confirmed attendee count.
  * @property organizerName Display name of the hosting organization.
@@ -29,7 +32,9 @@ import java.time.format.DateTimeFormatter
  * @property qrCodeData Encoded payload rendered inside QR check-in surfaces.
  * @property posterUrl Optional remote asset associated with the event.
  * @property registrationStart Optional opening date for registration.
+ * @property registrationStartTime Optional opening time for registration.
  * @property registrationEnd Optional closing date for registration.
+ * @property registrationEndTime Optional closing time for registration.
  * @property samplingCount Number of entrants to sample in a lottery draw.
  * @property drawDate Date when the lottery draw will be executed. Defaults to event date if not specified.
  * @property drawStatus Current status of the draw (PENDING, COMPLETED, CANCELLED).
@@ -41,6 +46,7 @@ data class Event(
     val description: String,
     val location: String,
     val date: LocalDate,
+    val eventTime: LocalTime? = null,
     val capacity: Int,
     val enrolled: Int,
     val organizerName: String,
@@ -50,7 +56,9 @@ data class Event(
     val qrCodeData: String = id,
     val posterUrl: String? = null,
     val registrationStart: LocalDate? = null,
+    val registrationStartTime: LocalTime? = null,
     val registrationEnd: LocalDate? = null,
+    val registrationEndTime: LocalTime? = null,
     val samplingCount: Int = 0,
     val drawDate: LocalDate? = null,
     val drawStatus: DrawStatus = DrawStatus.PENDING,
@@ -66,7 +74,15 @@ data class Event(
      * @return Formatted date string suitable for cards and summaries.
      */
     val dateLabel: String
-        get() = date.format(DATE_FORMATTER)
+        get() = eventTime?.let { time ->
+            "${date.format(DATE_FORMATTER)} • ${time.format(TIME_FORMATTER)}"
+        } ?: date.format(DATE_FORMATTER)
+
+    /**
+     * @return Combined date and time for the event start.
+     */
+    val eventDateTime: LocalDateTime
+        get() = LocalDateTime.of(date, eventTime ?: LocalTime.MIDNIGHT)
 
     /**
      * @return Remaining confirmed spots before the event reaches capacity.
@@ -97,9 +113,15 @@ data class Event(
      */
     val isRegistrationOpen: Boolean
         get() {
-            val today = LocalDate.now()
-            val startOk = registrationStart?.let { !today.isBefore(it) } ?: true
-            val endOk = registrationEnd?.let { !today.isAfter(it) } ?: true
+            val now = LocalDateTime.now()
+            val startOk = registrationStart?.let { startDate ->
+                val startDateTime = LocalDateTime.of(startDate, registrationStartTime ?: LocalTime.MIDNIGHT)
+                !now.isBefore(startDateTime)
+            } ?: true
+            val endOk = registrationEnd?.let { endDate ->
+                val endDateTime = LocalDateTime.of(endDate, registrationEndTime ?: LocalTime.MAX)
+                !now.isAfter(endDateTime)
+            } ?: true
             return startOk && endOk
         }
 
@@ -107,7 +129,7 @@ data class Event(
      * @return True when the event date has passed.
      */
     val isPastEvent: Boolean
-        get() = date.isBefore(LocalDate.now())
+        get() = eventDateTime.isBefore(LocalDateTime.now())
 
     /**
      * @return The actual draw date (uses drawDate if specified, otherwise falls back to event date).
@@ -125,7 +147,9 @@ data class Event(
      * @return True when the organizer can manually trigger the draw early.
      */
     val canRunDrawEarly: Boolean
-        get() = drawStatus == DrawStatus.PENDING && waitlistCount >= samplingCount
+        get() = drawStatus == DrawStatus.PENDING &&
+            samplingCount > 0 &&
+            waitlistCount > 0
 
     /**
      * @return True when the draw has been completed.
@@ -141,6 +165,7 @@ data class Event(
 
     companion object {
         private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy")
+        private val TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a")
     }
 }
 

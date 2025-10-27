@@ -1,5 +1,7 @@
 package com.pluck.ui.screens
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -69,6 +71,8 @@ import com.pluck.ui.theme.autoTextColor
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -85,11 +89,14 @@ data class CreateEventRequest(
     val title: String,
     val description: String,
     val location: String,
-    val date: String,
+    val eventDate: LocalDate,
+    val eventTime: LocalTime,
     val capacity: String,
     val posterUrl: String?,
-    val registrationStart: String,
-    val registrationEnd: String,
+    val registrationStartDate: LocalDate,
+    val registrationStartTime: LocalTime,
+    val registrationEndDate: LocalDate,
+    val registrationEndTime: LocalTime,
     val waitlistLimit: String,
     val samplingCount: String
 )
@@ -105,10 +112,13 @@ fun CreateEventScreen(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
+    var eventDate by remember { mutableStateOf<LocalDate?>(null) }
+    var eventTime by remember { mutableStateOf<LocalTime?>(null) }
     var capacity by remember { mutableStateOf("") }
-    var registrationStart by remember { mutableStateOf("") }
-    var registrationEnd by remember { mutableStateOf("") }
+    var registrationStartDate by remember { mutableStateOf<LocalDate?>(null) }
+    var registrationStartTime by remember { mutableStateOf<LocalTime?>(null) }
+    var registrationEndDate by remember { mutableStateOf<LocalDate?>(null) }
+    var registrationEndTime by remember { mutableStateOf<LocalTime?>(null) }
     var waitlistLimit by remember { mutableStateOf("") }
     var samplingCount by remember { mutableStateOf("") }
 
@@ -118,6 +128,8 @@ fun CreateEventScreen(
     var posterUploadError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val storage = remember { runCatching { FirebaseStorage.getInstance() }.getOrNull() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -181,10 +193,13 @@ fun CreateEventScreen(
     val isFormValid = title.isNotBlank() &&
             description.isNotBlank() &&
             location.isNotBlank() &&
-            date.isNotBlank() &&
+            eventDate != null &&
+            eventTime != null &&
             capacity.isNotBlank() &&
-            registrationStart.isNotBlank() &&
-            registrationEnd.isNotBlank() &&
+            registrationStartDate != null &&
+            registrationStartTime != null &&
+            registrationEndDate != null &&
+            registrationEndTime != null &&
             waitlistLimit.isNotBlank() &&
             samplingCount.isNotBlank() &&
             !posterUploadInProgress  // Poster URL is now optional since Firebase Storage isn't configured
@@ -296,12 +311,53 @@ fun CreateEventScreen(
                         placeholder = "e.g., City Pool, 123 Main St"
                     )
 
-                    CreateEventFormField(
-                        value = date,
-                        onValueChange = { date = it },
+                    Text(
+                        text = "Event Schedule",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+
+                    CreateEventPickerField(
                         label = "Event Date",
+                        value = eventDate?.format(dateFormatter),
+                        placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
-                        placeholder = "YYYY-MM-DD"
+                        onClick = {
+                            val initialDate = eventDate ?: LocalDate.now()
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    eventDate = LocalDate.of(year, month + 1, dayOfMonth)
+                                    if (eventTime == null) {
+                                        eventTime = LocalTime.of(9, 0)
+                                    }
+                                },
+                                initialDate.year,
+                                initialDate.monthValue - 1,
+                                initialDate.dayOfMonth
+                            ).show()
+                        }
+                    )
+
+                    CreateEventPickerField(
+                        label = "Event Start Time",
+                        value = eventTime?.format(timeFormatter),
+                        placeholder = "Select time",
+                        icon = Icons.Outlined.Schedule,
+                        onClick = {
+                            val initialTime = eventTime ?: LocalTime.of(9, 0)
+                            TimePickerDialog(
+                                context,
+                                { _, hourOfDay, minute ->
+                                    eventTime = LocalTime.of(hourOfDay, minute)
+                                },
+                                initialTime.hour,
+                                initialTime.minute,
+                                false
+                            ).show()
+                        }
                     )
 
                     CreateEventFormField(
@@ -313,20 +369,97 @@ fun CreateEventScreen(
                         keyboardType = KeyboardType.Number
                     )
 
-                    CreateEventFormField(
-                        value = registrationStart,
-                        onValueChange = { registrationStart = it },
-                        label = "Registration Opens",
-                        icon = Icons.Outlined.Schedule,
-                        placeholder = "YYYY-MM-DD"
+                    Text(
+                        text = "Registration Window",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
                     )
 
-                    CreateEventFormField(
-                        value = registrationEnd,
-                        onValueChange = { registrationEnd = it },
-                        label = "Registration Closes",
+                    CreateEventPickerField(
+                        label = "Registration Opens (Date)",
+                        value = registrationStartDate?.format(dateFormatter),
+                        placeholder = "Select date",
+                        icon = Icons.Outlined.CalendarMonth,
+                        onClick = {
+                            val baseDate = registrationStartDate ?: eventDate ?: LocalDate.now()
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    registrationStartDate = LocalDate.of(year, month + 1, dayOfMonth)
+                                    if (registrationStartTime == null) {
+                                        registrationStartTime = LocalTime.of(8, 0)
+                                    }
+                                },
+                                baseDate.year,
+                                baseDate.monthValue - 1,
+                                baseDate.dayOfMonth
+                            ).show()
+                        }
+                    )
+
+                    CreateEventPickerField(
+                        label = "Registration Opens (Time)",
+                        value = registrationStartTime?.format(timeFormatter),
+                        placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
-                        placeholder = "YYYY-MM-DD"
+                        onClick = {
+                            val initialTime = registrationStartTime ?: LocalTime.of(8, 0)
+                            TimePickerDialog(
+                                context,
+                                { _, hourOfDay, minute ->
+                                    registrationStartTime = LocalTime.of(hourOfDay, minute)
+                                },
+                                initialTime.hour,
+                                initialTime.minute,
+                                false
+                            ).show()
+                        }
+                    )
+
+                    CreateEventPickerField(
+                        label = "Registration Closes (Date)",
+                        value = registrationEndDate?.format(dateFormatter),
+                        placeholder = "Select date",
+                        icon = Icons.Outlined.CalendarMonth,
+                        onClick = {
+                            val baseDate = registrationEndDate
+                                ?: registrationStartDate
+                                ?: eventDate
+                                ?: LocalDate.now()
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    registrationEndDate = LocalDate.of(year, month + 1, dayOfMonth)
+                                    if (registrationEndTime == null) {
+                                        registrationEndTime = LocalTime.of(18, 0)
+                                    }
+                                },
+                                baseDate.year,
+                                baseDate.monthValue - 1,
+                                baseDate.dayOfMonth
+                            ).show()
+                        }
+                    )
+
+                    CreateEventPickerField(
+                        label = "Registration Closes (Time)",
+                        value = registrationEndTime?.format(timeFormatter),
+                        placeholder = "Select time",
+                        icon = Icons.Outlined.Schedule,
+                        onClick = {
+                            val initialTime = registrationEndTime ?: LocalTime.of(18, 0)
+                            TimePickerDialog(
+                                context,
+                                { _, hourOfDay, minute ->
+                                    registrationEndTime = LocalTime.of(hourOfDay, minute)
+                                },
+                                initialTime.hour,
+                                initialTime.minute,
+                                false
+                            ).show()
+                        }
                     )
 
                     CreateEventFormField(
@@ -379,11 +512,14 @@ fun CreateEventScreen(
                                         title = title,
                                         description = description,
                                         location = location,
-                                        date = date,
+                                        eventDate = eventDate!!,
+                                        eventTime = eventTime!!,
                                         capacity = capacity,
                                         posterUrl = posterUrl,
-                                        registrationStart = registrationStart,
-                                        registrationEnd = registrationEnd,
+                                        registrationStartDate = registrationStartDate!!,
+                                        registrationStartTime = registrationStartTime!!,
+                                        registrationEndDate = registrationEndDate!!,
+                                        registrationEndTime = registrationEndTime!!,
                                         waitlistLimit = waitlistLimit,
                                         samplingCount = samplingCount
                                     )
@@ -693,4 +829,67 @@ private fun CreateEventInfoCallout() {
 @Composable
 private fun CreateEventScreenPreview() {
     CreateEventScreen()
+}
+@Composable
+private fun CreateEventPickerField(
+    label: String,
+    value: String?,
+    placeholder: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = PluckPalette.Primary
+            )
+        )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = PluckPalette.Surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f)),
+            onClick = onClick
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = PluckPalette.Primary.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Primary
+                ) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = value ?: placeholder,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = if (value != null) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (value != null) PluckPalette.Primary else PluckPalette.Muted
+                    )
+                )
+            }
+        }
+    }
 }

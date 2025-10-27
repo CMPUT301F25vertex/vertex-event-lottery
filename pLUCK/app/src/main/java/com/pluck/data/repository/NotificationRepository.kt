@@ -287,10 +287,16 @@ class NotificationRepository(
             .getOrElse { NotificationStatus.UNREAD }
         val inviteTypeEnum = inviteType?.let { runCatching { InviteContactType.valueOf(it) }.getOrNull() }
 
+        val actionTakenValue = when (val value = actionTaken) {
+            is String -> value
+            is Boolean -> if (value) "completed" else null
+            else -> null
+        }
+
         val buttons = NotificationButtons(
             showEventDetails = allowEventDetails,
-            showAccept = allowAccept && actionTaken.isNullOrBlank(),
-            showDecline = allowDecline && actionTaken.isNullOrBlank()
+            showAccept = allowAccept && actionTakenValue.isNullOrBlank(),
+            showDecline = allowDecline && actionTakenValue.isNullOrBlank()
         )
 
         return NotificationItem(
@@ -302,8 +308,8 @@ class NotificationRepository(
             status = statusEnum,
             callToActionButtons = buttons,
             eventId = eventId,
-            isAccepted = actionTaken == "accepted",
-            isDeclined = actionTaken == "declined",
+            isAccepted = actionTakenValue == "accepted",
+            isDeclined = actionTakenValue == "declined",
             waitlistEntryId = waitlistEntryId.takeUnless { it.isNullOrBlank() },
             inviteContact = inviteContact,
             inviteType = inviteTypeEnum,
@@ -328,7 +334,7 @@ private data class FirebaseNotification(
     val allowAccept: Boolean = false,
     val allowDecline: Boolean = false,
     val allowEventDetails: Boolean = true,
-    val actionTaken: String? = null,
+    val actionTaken: Any? = null,
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null
 )

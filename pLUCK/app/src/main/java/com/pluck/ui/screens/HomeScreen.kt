@@ -154,22 +154,20 @@ private fun HomeScreenContent(
 
         // US 01.01.04 - Filter by interests (search) and availability (date)
         val categoryFiltered = when (selectedCategoryId) {
-            "past" -> events.filter { it.isPastEvent }.sortedByDescending { it.date }
-            "all" -> events.filter { !it.isPastEvent }.sortedBy { it.date }
-            "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.date }
-            "today" -> events.filter { !it.isPastEvent && it.date == today }
-            "week" -> events.filter { !it.isPastEvent && it.date >= today && it.date <= weekFromNow }.sortedBy { it.date }
+            "past" -> events.filter { it.isPastEvent }.sortedByDescending { it.eventDateTime }
+            "all" -> events.filter { !it.isPastEvent }.sortedBy { it.eventDateTime }
+            "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.eventDateTime }
+            "today" -> events.filter { !it.isPastEvent && it.date == today }.sortedBy { it.eventDateTime }
+            "week" -> events.filter { !it.isPastEvent && it.date >= today && it.date <= weekFromNow }.sortedBy { it.eventDateTime }
             "available" -> events.filter { event ->
                 !event.isPastEvent &&
                 !event.isFull &&
                 !userJoinedEventIds.contains(event.id) &&
-                // Registration must be currently open (started and not ended)
-                (event.registrationStart == null || !event.registrationStart.isAfter(today)) &&
-                (event.registrationEnd == null || !event.registrationEnd.isBefore(today))
-            }.sortedBy { it.date }
-            "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.date }
+                event.isRegistrationOpen
+            }.sortedBy { it.eventDateTime }
+            "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.eventDateTime }
             "location" -> events.filter { !it.isPastEvent }.sortedBy { it.location }
-            else -> events.filter { !it.isPastEvent }
+            else -> events.filter { !it.isPastEvent }.sortedBy { it.eventDateTime }
         }
 
         // Apply search filter (filter by interests/keywords)

@@ -79,6 +79,7 @@ fun OrganizerDashboardScreen(
     onEventClick: (Event) -> Unit = {},
     onEditEvent: (Event) -> Unit = {},
     onRunDraw: (Event) -> Unit = {},
+    onViewWaitlist: (Event) -> Unit = {},
     onManageChosenEntrants: (Event) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -118,6 +119,7 @@ fun OrganizerDashboardScreen(
                         onEventClick = onEventClick,
                         onEditEvent = onEditEvent,
                         onRunDraw = onRunDraw,
+                        onViewWaitlist = onViewWaitlist,
                         onManageChosenEntrants = onManageChosenEntrants
                     )
                 }
@@ -335,6 +337,7 @@ private fun OrganizerEventsList(
     onEventClick: (Event) -> Unit,
     onEditEvent: (Event) -> Unit,
     onRunDraw: (Event) -> Unit,
+    onViewWaitlist: (Event) -> Unit,
     onManageChosenEntrants: (Event) -> Unit
 ) {
     LazyColumn(
@@ -357,6 +360,7 @@ private fun OrganizerEventsList(
                 onEventClick = { onEventClick(event) },
                 onEditEvent = { onEditEvent(event) },
                 onRunDraw = { onRunDraw(event) },
+                onViewWaitlist = { onViewWaitlist(event) },
                 onManageChosenEntrants = { onManageChosenEntrants(event) }
             )
         }
@@ -371,6 +375,7 @@ private fun OrganizerEventCard(
     onEventClick: () -> Unit,
     onEditEvent: () -> Unit,
     onRunDraw: () -> Unit,
+    onViewWaitlist: () -> Unit,
     onManageChosenEntrants: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -466,60 +471,54 @@ private fun OrganizerEventCard(
                     }
                 }
 
-                // Draw Management Buttons
-                if (event.isDrawComplete) {
-                    // Show "Manage Chosen" button when draw is complete
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         OrganizerActionButton(
-                            icon = Icons.Outlined.CheckCircle,
-                            label = "Manage Chosen",
-                            onClick = onManageChosenEntrants,
-                            backgroundColor = PluckPalette.Accept,
+                            icon = Icons.Outlined.People,
+                            label = "Manage Waitlist",
+                            onClick = onViewWaitlist,
+                            backgroundColor = PluckPalette.Tertiary,
                             modifier = Modifier.weight(1f)
                         )
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.Edit,
-                            label = "Edit",
-                            onClick = onEditEvent,
-                            modifier = Modifier.weight(1f)
+                        if (event.isDrawComplete) {
+                            OrganizerActionButton(
+                                icon = Icons.Outlined.CheckCircle,
+                                label = "Chosen Entrants",
+                                onClick = onManageChosenEntrants,
+                                backgroundColor = PluckPalette.Accept,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            OrganizerActionButton(
+                                icon = Icons.Outlined.PlayArrow,
+                                label = "Run Draw",
+                                onClick = onRunDraw,
+                                backgroundColor = PluckPalette.Secondary,
+                                modifier = Modifier.weight(1f),
+                                enabled = event.canRunDrawEarly
+                            )
+                        }
+                    }
+                    if (!event.isDrawComplete && !event.canRunDrawEarly) {
+                        Text(
+                            text = "Add at least one entrant to the waitlist and ensure a sampling count is set to enable the draw.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = PluckPalette.Muted
+                            )
                         )
                     }
-                } else if (event.canRunDrawEarly && event.samplingCount > 0) {
-                    // Show "Run Draw" button when organizer can run it early
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.PlayArrow,
-                            label = "Run Draw",
-                            onClick = onRunDraw,
-                            backgroundColor = PluckPalette.Secondary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.Edit,
-                            label = "Edit",
-                            onClick = onEditEvent,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                } else {
-                    // Default: Just show Edit button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.Edit,
-                            label = "Edit Event",
-                            onClick = onEditEvent,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                    OrganizerActionButton(
+                        icon = Icons.Outlined.Edit,
+                        label = "Edit Event",
+                        onClick = onEditEvent,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -532,12 +531,14 @@ private fun OrganizerActionButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = PluckPalette.Primary
+    backgroundColor: Color = PluckPalette.Primary,
+    enabled: Boolean = true
 ) {
     val contentColor = autoTextColor(backgroundColor)
     Button(
         onClick = onClick,
         modifier = modifier.height(40.dp),
+        enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,

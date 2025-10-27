@@ -77,8 +77,7 @@ import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
+import java.time.LocalDateTime
 
 sealed class PLuckDestination(val route: String) {
     object DeviceLogin : PLuckDestination("device_login")
@@ -297,6 +296,7 @@ fun PLuckNavHost(
                 }
                 // Returning user WITHOUT auto-login - show welcome back
                 !autoLoginEnabled -> {
+                    @Suppress("KotlinConstantConditions")
                     WelcomeBackScreen(
                         userName = user.displayName,
                         deviceId = deviceId,
@@ -640,7 +640,7 @@ fun PLuckNavHost(
                             navigator.toOrganizer()
                         },
                         onAdminDashboard = {
-                            navController.navigate(PLuckDestination.AdminDashboard.route)
+                            navigator.toAdmin()
                         },
                         onSignOut = {
                             currentUser = null
@@ -741,52 +741,41 @@ fun PLuckNavHost(
                         return@CreateEventScreen
                     }
 
-                    val today = LocalDate.now()
+                    val eventDateTime = LocalDateTime.of(request.eventDate, request.eventTime)
+                    val now = LocalDateTime.now()
 
-                    val parsedDate = try {
-                        LocalDate.parse(request.date.trim())
-                    } catch (ex: DateTimeParseException) {
-                        formError = "Enter the event date as YYYY-MM-DD."
+                    if (eventDateTime.isBefore(now)) {
+                        formError = "Event start must be in the future."
                         return@CreateEventScreen
                     }
 
-                    if (parsedDate.isBefore(today)) {
-                        formError = "Event date cannot be in the past. Please choose today or a future date."
+                    val registrationStartDateTime = LocalDateTime.of(
+                        request.registrationStartDate,
+                        request.registrationStartTime
+                    )
+                    val registrationEndDateTime = LocalDateTime.of(
+                        request.registrationEndDate,
+                        request.registrationEndTime
+                    )
+
+                    if (registrationStartDateTime.isAfter(eventDateTime)) {
+                        formError = "Registration cannot open after the event starts."
+                        return@CreateEventScreen
+                    }
+
+                    if (registrationEndDateTime.isBefore(registrationStartDateTime)) {
+                        formError = "Registration must close after it opens."
+                        return@CreateEventScreen
+                    }
+
+                    if (registrationEndDateTime.isAfter(eventDateTime)) {
+                        formError = "Registration must close before the event starts."
                         return@CreateEventScreen
                     }
 
                     val capacityValue = request.capacity.toIntOrNull()
                     if (capacityValue == null || capacityValue <= 0) {
                         formError = "Capacity must be a positive number."
-                        return@CreateEventScreen
-                    }
-
-                    val registrationStartDate = try {
-                        LocalDate.parse(request.registrationStart.trim())
-                    } catch (ex: DateTimeParseException) {
-                        formError = "Enter registration start date as YYYY-MM-DD."
-                        return@CreateEventScreen
-                    }
-
-                    if (registrationStartDate.isAfter(parsedDate)) {
-                        formError = "Registration start cannot be after the event date."
-                        return@CreateEventScreen
-                    }
-
-                    val registrationEndDate = try {
-                        LocalDate.parse(request.registrationEnd.trim())
-                    } catch (ex: DateTimeParseException) {
-                        formError = "Enter registration end date as YYYY-MM-DD."
-                        return@CreateEventScreen
-                    }
-
-                    if (registrationEndDate.isBefore(registrationStartDate)) {
-                        formError = "Registration end date must be on or after the start date."
-                        return@CreateEventScreen
-                    }
-
-                    if (registrationEndDate.isAfter(parsedDate)) {
-                        formError = "Registration must close before or on the event date."
                         return@CreateEventScreen
                     }
 
@@ -807,14 +796,17 @@ fun PLuckNavHost(
                         title = request.title.trim(),
                         description = request.description.trim(),
                         location = request.location.trim(),
-                        date = parsedDate,
+                        date = request.eventDate,
+                        eventTime = request.eventTime,
                         capacity = capacityValue,
                         enrolled = 0,
                         organizerName = organizer.displayName,
                         waitlistCapacity = waitlistCapacity,
                         posterUrl = request.posterUrl,
-                        registrationStart = registrationStartDate,
-                        registrationEnd = registrationEndDate,
+                        registrationStart = request.registrationStartDate,
+                        registrationStartTime = request.registrationStartTime,
+                        registrationEnd = request.registrationEndDate,
+                        registrationEndTime = request.registrationEndTime,
                         samplingCount = samplingCount
                     )
 
@@ -958,7 +950,6 @@ fun PLuckNavHost(
                     currentUser?.deviceId,
                     currentUser?.displayName
                 ) {
-                    val today = LocalDate.now()
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val organizerName = currentUser?.displayName.orEmpty()
                     val activeHistory = userEventHistory.filterNot { history ->
@@ -968,7 +959,7 @@ fun PLuckNavHost(
                     val historyByEventId = activeHistory.associateBy { it.event.id }
 
                     // Only include events that the user has created or joined
-                    val userRelatedEvents = buildMap<String, Event> {
+                    val userRelatedEvents = buildMap {
                         // Add events the user created
                         events.filter { event ->
                             event.organizerId == organizerId ||
@@ -993,7 +984,7 @@ fun PLuckNavHost(
                         val status = when {
                             // If user created this event, status based on date
                             isCreatedByUser -> {
-                                if (event.date.isBefore(today)) EventStatus.PAST else EventStatus.UPCOMING
+                                if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
                             }
                             // If user has waitlist history, use that status
                             history != null -> when (history.status) {
@@ -1001,17 +992,14 @@ fun PLuckNavHost(
                                 WaitlistStatus.SELECTED,
                                 WaitlistStatus.WAITING -> EventStatus.WAITLIST
                                 WaitlistStatus.DECLINED,
-                                WaitlistStatus.CANCELLED -> if (event.date.isBefore(today)) {
+                                WaitlistStatus.CANCELLED -> if (event.isPastEvent) {
                                     EventStatus.PAST
                                 } else {
                                     EventStatus.UPCOMING
                                 }
                             }
                             // Default fallback
-                            else -> when {
-                                event.date.isBefore(today) -> EventStatus.PAST
-                                else -> EventStatus.UPCOMING
-                            }
+                            else -> if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
                         }
 
                         MyEventItem(
@@ -1021,7 +1009,7 @@ fun PLuckNavHost(
                             joinedDate = history?.joinedDate,
                             historyStatus = history?.status
                         )
-                    }.sortedWith(compareBy<MyEventItem> { it.event.date })
+                    }.sortedWith(compareBy { it.event.eventDateTime })
                 }
                 Box(
                     modifier = Modifier
@@ -1083,6 +1071,9 @@ fun PLuckNavHost(
                             eventViewModel.loadEventsByOrganizer(orgId)
                         }
                     }
+                },
+                onViewWaitlist = { event ->
+                    navigator.toWaitlist(event.id)
                 },
                 onManageChosenEntrants = { event ->
                     navigator.toChosenEntrants(event.id)

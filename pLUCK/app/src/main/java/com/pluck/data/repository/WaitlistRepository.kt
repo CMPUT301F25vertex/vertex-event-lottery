@@ -285,7 +285,6 @@ class WaitlistRepository(
                     "showDecline" to true,
                     "isAccepted" to false,
                     "isDeclined" to false,
-                    "actionTaken" to false,
                     "isReplacement" to true,
                     "createdAt" to FieldValue.serverTimestamp(),
                     "updatedAt" to FieldValue.serverTimestamp(),
@@ -488,7 +487,6 @@ class WaitlistRepository(
                         "showDecline" to true,
                         "isAccepted" to false,
                         "isDeclined" to false,
-                        "actionTaken" to false,
                         "createdAt" to FieldValue.serverTimestamp(),
                         "updatedAt" to FieldValue.serverTimestamp(),
                         "deadlineTimestamp" to Timestamp(now.seconds + (event.acceptanceDeadline * 3600), 0)
@@ -548,7 +546,6 @@ class WaitlistRepository(
                         "showDecline" to false,
                         "isAccepted" to false,
                         "isDeclined" to false,
-                        "actionTaken" to false,
                         "createdAt" to FieldValue.serverTimestamp(),
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
@@ -620,7 +617,6 @@ class WaitlistRepository(
                         "showDecline" to false,
                         "isAccepted" to false,
                         "isDeclined" to false,
-                        "actionTaken" to false,
                         "createdAt" to FieldValue.serverTimestamp(),
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
@@ -693,7 +689,6 @@ class WaitlistRepository(
                                 "showDecline" to false,
                                 "isAccepted" to false,
                                 "isDeclined" to false,
-                                "actionTaken" to false,
                                 "createdAt" to FieldValue.serverTimestamp(),
                                 "updatedAt" to FieldValue.serverTimestamp()
                             )
