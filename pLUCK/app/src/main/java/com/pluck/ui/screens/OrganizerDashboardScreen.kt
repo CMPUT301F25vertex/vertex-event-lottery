@@ -206,6 +206,9 @@ private fun OrganizerStatsCards(stats: OrganizerStats) {
     }
 }
 
+/**
+ * Displays a single organizer metric with an icon and supporting label.
+ */
 @Composable
 private fun OrganizerStatCard(
     icon: ImageVector,

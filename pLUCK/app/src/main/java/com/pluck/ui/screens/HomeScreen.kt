@@ -27,11 +27,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.PersonAddAlt1
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.CircularProgressIndicator
@@ -126,6 +123,8 @@ fun HomeScreen(
 
 /**
  * Shared implementation for the home layout so previews, tests, and production share the same rendering path.
+ *
+ * @param onRefresh Invoked when the quick refresh pill is pressed.
  */
 @Composable
 private fun HomeScreenContent(
@@ -325,6 +324,13 @@ private fun HomeScreenContent(
 }
 
 
+/**
+ * Renders the hero card at the top of the home feed, including the greeting and the quick action pills.
+ *
+ * @param onScanQRCode Triggered when the scan shortcut is tapped.
+ * @param onRefreshClick Triggered when the refresh shortcut is tapped.
+ * @param collapseProgress Animated value describing how collapsed the hero currently is.
+ */
 @Composable
 private fun HomeHeroCard(
     userName: String?,
@@ -360,16 +366,17 @@ private fun HomeHeroCard(
                 if (collapseProgress < 0.8f) {
                     Text(
                         text = "Hi, ${userName ?: "Vertex"}",
-                        style = MaterialTheme.typography.bodyMedium.copy(
+                        style = MaterialTheme.typography.bodyLarge.copy(
                             color = PluckPalette.Muted.copy(alpha = targetAlpha),
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Text(
-                    text = "Find your next experience!",
+                    text = "Find your next experience",
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = PluckPalette.Primary.copy(alpha = targetAlpha),
                         fontWeight = FontWeight.SemiBold,
@@ -400,6 +407,13 @@ private fun HomeHeroCard(
     }
 }
 
+/**
+ * Small circular button used within the hero to represent an action.
+ *
+ * @param icon Icon drawn at the centre of the pill.
+ * @param backgroundColor Background tint applied to the pill.
+ * @param onClick Callback invoked when the pill is pressed.
+ */
 @Composable
 private fun HomeHeroAction(
     icon: ImageVector,
@@ -429,6 +443,7 @@ private fun HomeHeroAction(
     }
 }
 
+/** Internal model for a single confetti particle. */
 private data class ConfettiParticle(
     val startX: Float,
     val startY: Float,
@@ -438,6 +453,11 @@ private data class ConfettiParticle(
     val color: Color
 )
 
+/**
+ * Lightweight confetti burst used as a playful confirmation when the refresh pill is triggered.
+ *
+ * @param trigger Increment this value to fire a new animation.
+ */
 @Composable
 private fun ConfettiBurst(
     trigger: Int,
@@ -502,6 +522,9 @@ private fun ConfettiBurst(
     }
 }
 
+/**
+ * Segmented control row for filtering the visible events list.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeFilterRow(

@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,6 +60,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.NotificationButtons
@@ -210,6 +213,9 @@ private fun NotificationsContent(
  * Hero section housing the title, action icons, and filter chips.
  */
 @Composable
+/**
+ * Displays the notification hero card, including summary text, action pills, and the filter chips.
+ */
 private fun NotificationsHero(
     unreadCount: Int,
     selectedFilter: NotificationFilter,
@@ -325,6 +331,7 @@ private fun NotificationsHeaderRow(
  * Small utility component that renders a floating circular icon.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/** Rounded quick-action button used inside the hero card. */
 @Composable
 private fun FloatingIconButton(
     icon: ImageVector,
@@ -357,6 +364,7 @@ private fun FloatingIconButton(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Filter chip row for toggling between unread and read notifications. */
 private fun NotificationFilterRow(
     unreadCount: Int,
     selected: NotificationFilter,
@@ -374,18 +382,29 @@ private fun NotificationFilterRow(
             .alpha(alpha),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val unreadLabel = if (unreadCount > 0) "Unread ($unreadCount)" else "Unread"
         FilterChip(
             selected = selected == NotificationFilter.UNREAD,
             onClick = { onSelected(NotificationFilter.UNREAD) },
-            modifier = Modifier.testTag(NotificationsTestTags.TabUnread),
+            modifier = Modifier
+                .testTag(NotificationsTestTags.TabUnread)
+                .semantics { text = AnnotatedString("Unread") },
             label = {
-                Text(
-                    text = unreadLabel,
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.SemiBold
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Unread",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
-                )
+                    if (unreadCount > 0) {
+                        Text(
+                            text = " (${unreadCount})",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
             },
             colors = FilterChipDefaults.filterChipColors(
                 containerColor = surfaceVariant,
@@ -398,7 +417,9 @@ private fun NotificationFilterRow(
         FilterChip(
             selected = selected == NotificationFilter.READ,
             onClick = { onSelected(NotificationFilter.READ) },
-            modifier = Modifier.testTag(NotificationsTestTags.TabRead),
+            modifier = Modifier
+                .testTag(NotificationsTestTags.TabRead)
+                .semantics { text = AnnotatedString("Read") },
             label = {
                 Text(
                     text = "Read",

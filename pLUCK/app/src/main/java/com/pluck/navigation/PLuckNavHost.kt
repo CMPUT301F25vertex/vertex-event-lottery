@@ -324,6 +324,7 @@ fun PLuckNavHost(
                     navigator.toQRScanner()
                 },
                 onRefreshEvents = {
+                    // Pull the latest events and the user's joined history on demand.
                     eventViewModel.loadEvents()
                     val refreshDeviceId = currentUser?.deviceId.orEmpty()
                     if (refreshDeviceId.isNotBlank()) {
