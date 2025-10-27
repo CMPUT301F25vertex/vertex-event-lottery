@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -110,43 +112,85 @@ fun MyEventsScreen(
             MyEventsFilter.ALL -> events
             MyEventsFilter.UPCOMING -> events.filter { it.status == EventStatus.UPCOMING }
             MyEventsFilter.PAST -> events.filter { it.status == EventStatus.PAST }
-            MyEventsFilter.JOINED -> events.filter { it.historyStatus != null }
+            MyEventsFilter.JOINED -> events.filter { it.historyStatus != null && !it.isCreatedByUser }
             MyEventsFilter.CREATED -> events.filter { it.isCreatedByUser }
+        }
+    }
+
+    val listState = rememberLazyListState()
+    val scrollOffset by remember { derivedStateOf { listState.firstVisibleItemScrollOffset } }
+    val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+
+    // Calculate collapse progress (0f = fully visible, 1f = fully collapsed)
+    val heroCollapseProgress by remember {
+        derivedStateOf {
+            when {
+                firstVisibleIndex > 0 -> 1f
+                else -> (scrollOffset / 250f).coerceIn(0f, 1f)
+            }
         }
     }
 
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
-            MyEventsHero(
-                eventCount = events.size,
-                selectedFilter = selectedFilter,
-                onFilterSelected = { selectedFilter = it }
-            )
+            when {
+                isLoading -> MyEventsLoadingState()
+                filteredEvents.isEmpty() && firstVisibleIndex == 0 -> {
+                    // Static layout for empty state
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        MyEventsHero(
+                            eventCount = events.size,
+                            selectedFilter = selectedFilter,
+                            onFilterSelected = { selectedFilter = it },
+                            collapseProgress = 0f
+                        )
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(1f),
+                            shape = RoundedCornerShape(36.dp),
+                            color = PluckPalette.Surface,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 12.dp,
+                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                        ) {
+                            MyEventsEmptyState(selectedFilter)
+                        }
+                    }
+                }
+                else -> {
+                    // Scrollable list with collapsing hero
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        item {
+                            MyEventsHero(
+                                eventCount = events.size,
+                                selectedFilter = selectedFilter,
+                                onFilterSelected = { selectedFilter = it },
+                                collapseProgress = heroCollapseProgress
+                            )
+                        }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-            ) {
-                when {
-                    isLoading -> MyEventsLoadingState()
-                    filteredEvents.isEmpty() -> MyEventsEmptyState(selectedFilter)
-                    else -> MyEventsList(
-                        events = filteredEvents,
-                        onEventClick = onEventClick
-                    )
+                        itemsIndexed(filteredEvents, key = { _, item -> item.event.id }) { index, item ->
+                            MyEventCard(
+                                item = item,
+                                accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
+                                onClick = { onEventClick(item.event) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -157,24 +201,29 @@ fun MyEventsScreen(
 private fun MyEventsHero(
     eventCount: Int,
     selectedFilter: MyEventsFilter,
-    onFilterSelected: (MyEventsFilter) -> Unit
+    onFilterSelected: (MyEventsFilter) -> Unit,
+    collapseProgress: Float = 0f
 ) {
+    val targetHeight = (1f - collapseProgress * 0.4f)
+    val targetAlpha = (1f - collapseProgress).coerceIn(0f, 1f)
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .widthIn(max = 460.dp)
+            .height((180 * targetHeight).dp)
             .zIndex(1f),
         shape = RoundedCornerShape(36.dp),
-        color = PluckPalette.Surface,
+        color = PluckPalette.Surface.copy(alpha = targetAlpha),
         tonalElevation = 0.dp,
-        shadowElevation = 18.dp,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+        shadowElevation = (18.dp * (1f - collapseProgress * 0.7f)),
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f * targetAlpha))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 24.dp, vertical = (24 * targetHeight).dp),
+            verticalArrangement = Arrangement.spacedBy((24 * targetHeight).dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -183,43 +232,54 @@ private fun MyEventsHero(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy((8 * targetHeight).dp)
                 ) {
                     Text(
                         text = "My Events",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Black,
-                            color = PluckPalette.Primary,
-                            fontSize = 28.sp
-                        )
+                            color = PluckPalette.Primary.copy(alpha = targetAlpha),
+                            fontSize = (28 - collapseProgress * 8).sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = if (eventCount > 0) "$eventCount events in your calendar" else "No events yet",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = PluckPalette.Muted
+                    if (collapseProgress < 0.8f) {
+                        Text(
+                            text = if (eventCount > 0) "$eventCount events in your calendar" else "No events yet",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Muted.copy(alpha = targetAlpha)
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    )
+                    }
                 }
-                Surface(
-                    modifier = Modifier.size(56.dp),
-                    shape = CircleShape,
-                    color = PluckPalette.Tertiary.copy(alpha = 0.16f),
-                    contentColor = PluckPalette.Tertiary
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.CalendarMonth,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp)
-                        )
+                if (collapseProgress < 0.7f) {
+                    Surface(
+                        modifier = Modifier.size((56 * (1f - collapseProgress * 0.5f)).dp),
+                        shape = CircleShape,
+                        color = PluckPalette.Tertiary.copy(alpha = 0.16f * targetAlpha),
+                        contentColor = PluckPalette.Tertiary.copy(alpha = targetAlpha)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            MyEventsFilterRow(
-                selected = selectedFilter,
-                onSelected = onFilterSelected
-            )
+            if (collapseProgress < 0.9f) {
+                MyEventsFilterRow(
+                    selected = selectedFilter,
+                    onSelected = onFilterSelected,
+                    alpha = targetAlpha
+                )
+            }
         }
     }
 }
@@ -228,7 +288,8 @@ private fun MyEventsHero(
 @Composable
 private fun MyEventsFilterRow(
     selected: MyEventsFilter,
-    onSelected: (MyEventsFilter) -> Unit
+    onSelected: (MyEventsFilter) -> Unit,
+    alpha: Float = 1f
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -246,14 +307,14 @@ private fun MyEventsFilterRow(
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selected == filter) PluckPalette.Primary else PluckPalette.Surface,
-                    labelColor = if (selected == filter) MaterialTheme.colorScheme.onPrimary else PluckPalette.Primary,
-                    selectedContainerColor = PluckPalette.Primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = if (selected == filter) PluckPalette.Primary.copy(alpha = alpha) else PluckPalette.Surface.copy(alpha = alpha),
+                    labelColor = if (selected == filter) MaterialTheme.colorScheme.onPrimary.copy(alpha = alpha) else PluckPalette.Primary.copy(alpha = alpha),
+                    selectedContainerColor = PluckPalette.Primary.copy(alpha = alpha),
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = alpha)
                 ),
                 border = FilterChipDefaults.filterChipBorder(
-                    borderColor = if (selected == filter) PluckPalette.Primary else PluckPalette.Primary.copy(alpha = 0.12f),
-                    selectedBorderColor = PluckPalette.Primary,
+                    borderColor = if (selected == filter) PluckPalette.Primary.copy(alpha = alpha) else PluckPalette.Primary.copy(alpha = 0.12f * alpha),
+                    selectedBorderColor = PluckPalette.Primary.copy(alpha = alpha),
                     borderWidth = 1.dp
                 )
             )
@@ -261,24 +322,6 @@ private fun MyEventsFilterRow(
     }
 }
 
-@Composable
-private fun MyEventsList(
-    events: List<MyEventItem>,
-    onEventClick: (Event) -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        itemsIndexed(events, key = { _, item -> item.event.id }) { index, item ->
-            MyEventCard(
-                item = item,
-                accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
-                onClick = { onEventClick(item.event) }
-            )
-        }
-    }
-}
 
 @Composable
 private fun MyEventCard(

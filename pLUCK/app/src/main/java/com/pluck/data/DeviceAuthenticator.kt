@@ -7,6 +7,9 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.pluck.data.repository.EventRepository
+import com.pluck.data.repository.NotificationRepository
+import com.pluck.data.repository.WaitlistRepository
 import com.pluck.ui.model.EntrantProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -136,8 +139,29 @@ class DeviceAuthenticator(private val context: Context) {
         return try {
             withContext(Dispatchers.IO) {
                 ensureFirebaseUser()
+
+                val eventRepository = EventRepository(firestore)
+                val waitlistRepository = WaitlistRepository(firestore, eventRepository)
+                val notificationRepository = NotificationRepository(firestore, waitlistRepository, eventRepository)
+
+                waitlistRepository.purgeEntrant(deviceId).getOrThrow()
+
+                val ownedEvents = eventRepository.deactivateEventsByOrganizer(deviceId).getOrThrow()
+                ownedEvents.forEach { eventId ->
+                    waitlistRepository.purgeEvent(eventId).getOrThrow()
+                    notificationRepository.deleteNotificationsForEvent(eventId).getOrThrow()
+                }
+
+                notificationRepository.deleteNotificationsForUser(deviceId).getOrThrow()
+                notificationRepository.deleteNotificationsForOrganizer(deviceId).getOrThrow()
+
                 firestore.collection("entrants").document(deviceId).delete().await()
             }
+
+            DeviceAuthPreferences(context).setAutoLoginEnabled(false)
+            runCatching { auth.currentUser?.delete()?.await() }
+            auth.signOut()
+
             DeviceAuthResult.Success(
                 EntrantProfile(
                     deviceId = deviceId,

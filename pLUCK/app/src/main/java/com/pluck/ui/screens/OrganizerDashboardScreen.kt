@@ -226,7 +226,8 @@ private fun OrganizerStatCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
                 modifier = Modifier.size(40.dp),
@@ -242,19 +243,24 @@ private fun OrganizerStatCard(
                     )
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.headlineMedium.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Black,
                         color = PluckPalette.Primary
-                    )
+                    ),
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = PluckPalette.Muted
-                    )
+                    ),
+                    textAlign = TextAlign.Center
                 )
             }
         }

@@ -74,8 +74,8 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            contentAlignment = Alignment.TopCenter
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier

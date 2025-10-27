@@ -232,6 +232,54 @@ class NotificationRepository(
         ).await()
     }
 
+    /**
+     * Removes notifications where the current user is the recipient.
+     */
+    suspend fun deleteNotificationsForUser(userId: String): Result<Unit> {
+        if (userId.isBlank()) return Result.success(Unit)
+
+        return runCatching {
+            val snapshot = notificationsCollection.whereEqualTo("userId", userId).get().await()
+            if (!snapshot.isEmpty) {
+                val batch = firestore.batch()
+                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit().await()
+            }
+        }
+    }
+
+    /**
+     * Removes notifications sent by an organiser that is being deleted.
+     */
+    suspend fun deleteNotificationsForOrganizer(organizerId: String): Result<Unit> {
+        if (organizerId.isBlank()) return Result.success(Unit)
+
+        return runCatching {
+            val snapshot = notificationsCollection.whereEqualTo("organizerId", organizerId).get().await()
+            if (!snapshot.isEmpty) {
+                val batch = firestore.batch()
+                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit().await()
+            }
+        }
+    }
+
+    /**
+     * Removes notifications tied to a specific event (e.g., when the event is deleted).
+     */
+    suspend fun deleteNotificationsForEvent(eventId: String): Result<Unit> {
+        if (eventId.isBlank()) return Result.success(Unit)
+
+        return runCatching {
+            val snapshot = notificationsCollection.whereEqualTo("eventId", eventId).get().await()
+            if (!snapshot.isEmpty) {
+                val batch = firestore.batch()
+                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit().await()
+            }
+        }
+    }
+
     private fun FirebaseNotification.toNotificationItem(): NotificationItem {
         val categoryEnum = runCatching { NotificationCategory.valueOf(category) }
             .getOrElse { NotificationCategory.WAITLIST }

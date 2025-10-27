@@ -1,7 +1,6 @@
 package com.pluck.ui.screens
 
 import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -125,76 +124,46 @@ fun CreateEventScreen(
     val posterPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
-        Log.d("CreateEvent_PosterUpload", "=== CREATE EVENT POSTER UPLOAD STARTED ===")
-        Log.d("CreateEvent_PosterUpload", "URI received: $uri")
-
         if (uri == null || storage == null) {
-            if (storage == null) {
-                Log.e("CreateEvent_PosterUpload", "Firebase Storage is null - not configured")
-                posterUploadError = "Poster uploads require Firebase Storage. Paste a direct image URL below."
+            posterUploadError = if (storage == null) {
+                "Poster uploads require Firebase Storage. Paste a direct image URL below."
             } else {
-                Log.e("CreateEvent_PosterUpload", "URI is null - no image selected")
+                "No image selected. Pick an image or paste a direct URL."
             }
             return@rememberLauncherForActivityResult
         }
 
-        Log.d("CreateEvent_PosterUpload", "Storage is available, starting upload coroutine")
         posterUploadError = null
         posterUploadInProgress = true
         coroutineScope.launch {
             var inputStream: java.io.InputStream? = null
             try {
-                val contentResolver = context.contentResolver
-                Log.d("CreateEvent_PosterUpload", "Content resolver obtained: $contentResolver")
-
-                // Read the file into a byte array to avoid URI permission issues
-                Log.d("CreateEvent_PosterUpload", "Attempting to open input stream for URI: $uri")
-                inputStream = contentResolver.openInputStream(uri)
+                inputStream = context.contentResolver.openInputStream(uri)
                 if (inputStream == null) {
-                    Log.e("CreateEvent_PosterUpload", "Failed to open input stream - URI not accessible")
                     posterUploadError = "Cannot read selected image. Please try a different image or use a direct URL."
                     posterUploadInProgress = false
                     return@launch
                 }
-                Log.d("CreateEvent_PosterUpload", "Input stream opened successfully")
 
-                // Copy the entire stream into a byte array buffer
-                Log.d("CreateEvent_PosterUpload", "Reading bytes from input stream...")
                 val byteArray = inputStream.readBytes()
-                Log.d("CreateEvent_PosterUpload", "Bytes read successfully. Size: ${byteArray.size} bytes")
                 inputStream.close()
                 inputStream = null
 
                 if (byteArray.isEmpty()) {
-                    Log.e("CreateEvent_PosterUpload", "Byte array is empty - image has no data")
                     posterUploadError = "Selected image is empty. Please try a different image."
                     posterUploadInProgress = false
                     return@launch
                 }
 
-                // Upload the byte array to Firebase Storage
                 val fileName = "event_posters/${UUID.randomUUID()}.jpg"
-                Log.d("CreateEvent_PosterUpload", "Uploading to Firebase Storage path: $fileName")
                 val ref = storage.reference.child(fileName)
-                Log.d("CreateEvent_PosterUpload", "Storage reference created: ${ref.path}")
 
-                Log.d("CreateEvent_PosterUpload", "Starting putBytes upload...")
                 ref.putBytes(byteArray).await()
-                Log.d("CreateEvent_PosterUpload", "Upload completed successfully!")
-
-                Log.d("CreateEvent_PosterUpload", "Fetching download URL...")
                 val downloadUrl = ref.downloadUrl.await().toString()
-                Log.d("CreateEvent_PosterUpload", "Download URL obtained: $downloadUrl")
 
                 posterUrl = downloadUrl
                 posterUrlInput = downloadUrl
-                Log.d("CreateEvent_PosterUpload", "=== CREATE EVENT POSTER UPLOAD SUCCESS ===")
             } catch (t: Throwable) {
-                Log.e("CreateEvent_PosterUpload", "=== CREATE EVENT POSTER UPLOAD FAILED ===", t)
-                Log.e("CreateEvent_PosterUpload", "Exception type: ${t.javaClass.simpleName}")
-                Log.e("CreateEvent_PosterUpload", "Exception message: ${t.message}")
-                Log.e("CreateEvent_PosterUpload", "Stack trace:", t)
-
                 posterUploadError = when {
                     t.message?.contains("object", ignoreCase = true) == true &&
                         t.message?.contains("doesn't exist", ignoreCase = true) == true ->
@@ -205,7 +174,6 @@ fun CreateEventScreen(
             } finally {
                 inputStream?.close()
                 posterUploadInProgress = false
-                Log.d("CreateEvent_PosterUpload", "Upload process completed, posterUploadInProgress set to false")
             }
         }
     }

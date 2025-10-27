@@ -298,6 +298,9 @@ fun PLuckNavHost(
         }
         composable(PLuckDestination.EventList.route) {
             // Home screen with bottom navigation
+            val userJoinedEventIds = remember(userEventHistory) {
+                userEventHistory.map { it.event.id }.toSet()
+            }
             HomeScreen(
                 userName = currentUser?.displayName,
                 events = events,
@@ -319,7 +322,15 @@ fun PLuckNavHost(
                 },
                 onScanQRCode = {
                     navigator.toQRScanner()
-                }
+                },
+                onRefreshEvents = {
+                    eventViewModel.loadEvents()
+                    val refreshDeviceId = currentUser?.deviceId.orEmpty()
+                    if (refreshDeviceId.isNotBlank()) {
+                        waitlistViewModel.loadUserEventHistory(refreshDeviceId)
+                    }
+                },
+                userJoinedEventIds = userJoinedEventIds
             )
         }
         composable(
@@ -374,7 +385,6 @@ fun PLuckNavHost(
                         isUserOnWaitlist = isUserWaiting,
                         isUserConfirmed = isUserConfirmed,
                         onJoinEvent = join@{ eventToJoin ->
-                            Toast.makeText(context, "Join event button clicked!", Toast.LENGTH_SHORT).show()
                             val profile = currentUser
                             if (profile == null) {
                                 Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
@@ -382,30 +392,25 @@ fun PLuckNavHost(
                             }
 
                             scope.launch {
-                                Toast.makeText(context, "Joining waitlist...", Toast.LENGTH_SHORT).show()
                                 waitlistViewModel.joinWaitlist(
                                     eventId = eventToJoin.id,
                                     userId = profile.deviceId,
                                     userName = profile.displayName
                                 ) {
                                     waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                    Toast.makeText(context, "Successfully joined waitlist!", Toast.LENGTH_SHORT).show()
                                     navigator.toWaitlist(eventToJoin.id)
                                 }
                             }
                         },
                         onLeaveWaitlist = { eventToLeave ->
-                            Toast.makeText(context, "Leave event button clicked!", Toast.LENGTH_SHORT).show()
                             val entryId = userWaitlistEntryId
                             val profile = currentUser
                             if (entryId != null) {
                                 scope.launch {
-                                    Toast.makeText(context, "Leaving waitlist...", Toast.LENGTH_SHORT).show()
                                     waitlistViewModel.leaveWaitlist(entryId) {
                                         if (profile != null) {
                                             waitlistViewModel.checkUserWaitlistStatus(eventToLeave.id, profile.deviceId)
                                         }
-                                        Toast.makeText(context, "Successfully left waitlist!", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             } else {
@@ -499,7 +504,6 @@ fun PLuckNavHost(
                             userWaitlistStatus == WaitlistStatus.SELECTED,
                         isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED,
                         onJoinWaitlist = join@{
-                            Toast.makeText(context, "Join button clicked!", Toast.LENGTH_SHORT).show()
                             val profile = currentUser
                             if (profile == null) {
                                 Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
@@ -507,19 +511,16 @@ fun PLuckNavHost(
                             }
 
                             scope.launch {
-                                Toast.makeText(context, "Joining waitlist...", Toast.LENGTH_SHORT).show()
                                 waitlistViewModel.joinWaitlist(
                                     eventId = resolvedEvent.id,
                                     userId = profile.deviceId,
                                     userName = profile.displayName
                                 ) {
                                     waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
-                                    Toast.makeText(context, "Successfully joined waitlist!", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
                         onLeaveWaitlist = leave@{
-                            Toast.makeText(context, "Leave button clicked!", Toast.LENGTH_SHORT).show()
                             val entryId = userWaitlistEntryId
                             val profile = currentUser
                             if (entryId == null) {
@@ -528,12 +529,10 @@ fun PLuckNavHost(
                             }
 
                             scope.launch {
-                                Toast.makeText(context, "Leaving waitlist...", Toast.LENGTH_SHORT).show()
                                 waitlistViewModel.leaveWaitlist(entryId) {
                                     if (profile != null && eventId != null) {
                                         waitlistViewModel.checkUserWaitlistStatus(eventId, profile.deviceId)
                                     }
-                                    Toast.makeText(context, "Successfully left waitlist!", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
@@ -603,6 +602,10 @@ fun PLuckNavHost(
                                 when (val result = authenticator.updateProfile(name, email, phone)) {
                                     is DeviceAuthResult.Success -> {
                                         currentUser = result.profile
+                                        waitlistViewModel.refreshEntrantDisplayName(
+                                            result.profile.deviceId,
+                                            result.profile.displayName
+                                        )
                                         profileUpdateMessage = "Profile updated successfully."
                                     }
                                     is DeviceAuthResult.Error -> {
@@ -694,6 +697,9 @@ fun PLuckNavHost(
                         },
                         onDecline = { notification ->
                             notificationsViewModel.declineNotification(notification)
+                        },
+                        onProfileClick = {
+                            navigator.toProfile()
                         }
                     )
                 }
@@ -714,10 +720,17 @@ fun PLuckNavHost(
                         return@CreateEventScreen
                     }
 
+                    val today = LocalDate.now()
+
                     val parsedDate = try {
                         LocalDate.parse(request.date.trim())
                     } catch (ex: DateTimeParseException) {
-                        formError = "Enter the date as YYYY-MM-DD."
+                        formError = "Enter the event date as YYYY-MM-DD."
+                        return@CreateEventScreen
+                    }
+
+                    if (parsedDate.isBefore(today)) {
+                        formError = "Event date cannot be in the past. Please choose today or a future date."
                         return@CreateEventScreen
                     }
 
@@ -730,19 +743,29 @@ fun PLuckNavHost(
                     val registrationStartDate = try {
                         LocalDate.parse(request.registrationStart.trim())
                     } catch (ex: DateTimeParseException) {
-                        formError = "Enter registration dates as YYYY-MM-DD."
+                        formError = "Enter registration start date as YYYY-MM-DD."
+                        return@CreateEventScreen
+                    }
+
+                    if (registrationStartDate.isAfter(parsedDate)) {
+                        formError = "Registration start cannot be after the event date."
                         return@CreateEventScreen
                     }
 
                     val registrationEndDate = try {
                         LocalDate.parse(request.registrationEnd.trim())
                     } catch (ex: DateTimeParseException) {
-                        formError = "Enter registration dates as YYYY-MM-DD."
+                        formError = "Enter registration end date as YYYY-MM-DD."
                         return@CreateEventScreen
                     }
 
                     if (registrationEndDate.isBefore(registrationStartDate)) {
-                        formError = "Registration end must be after the start date."
+                        formError = "Registration end date must be on or after the start date."
+                        return@CreateEventScreen
+                    }
+
+                    if (registrationEndDate.isAfter(parsedDate)) {
+                        formError = "Registration must close before or on the event date."
                         return@CreateEventScreen
                     }
 
@@ -917,32 +940,55 @@ fun PLuckNavHost(
                     val today = LocalDate.now()
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val organizerName = currentUser?.displayName.orEmpty()
-                    val historyByEventId = userEventHistory.associateBy { it.event.id }
+                    val activeHistory = userEventHistory.filterNot { history ->
+                        history.status == WaitlistStatus.CANCELLED ||
+                            history.status == WaitlistStatus.DECLINED
+                    }
+                    val historyByEventId = activeHistory.associateBy { it.event.id }
 
-                    val mergedEvents = buildMap<String, Event> {
-                        events.forEach { event ->
+                    // Only include events that the user has created or joined
+                    val userRelatedEvents = buildMap<String, Event> {
+                        // Add events the user created
+                        events.filter { event ->
+                            event.organizerId == organizerId ||
+                                (organizerName.isNotBlank() &&
+                                    event.organizerName.equals(organizerName, ignoreCase = true))
+                        }.forEach { event ->
                             put(event.id, event)
                         }
-                        userEventHistory.forEach { history ->
+
+                        // Add events the user joined (from waitlist history)
+                        activeHistory.forEach { history ->
                             putIfAbsent(history.event.id, history.event)
                         }
                     }.values
 
-                    mergedEvents.map { event ->
+                    userRelatedEvents.map { event ->
                         val history = historyByEventId[event.id]
-                        val status = when (history?.status) {
-                            WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
-                            WaitlistStatus.SELECTED,
-                            WaitlistStatus.WAITING -> EventStatus.WAITLIST
-                            WaitlistStatus.DECLINED,
-                            WaitlistStatus.CANCELLED -> if (event.date.isBefore(today)) {
-                                EventStatus.PAST
-                            } else {
-                                EventStatus.UPCOMING
+                        val isCreatedByUser = event.organizerId == organizerId ||
+                            (organizerName.isNotBlank() &&
+                                event.organizerName.equals(organizerName, ignoreCase = true))
+
+                        val status = when {
+                            // If user created this event, status based on date
+                            isCreatedByUser -> {
+                                if (event.date.isBefore(today)) EventStatus.PAST else EventStatus.UPCOMING
                             }
+                            // If user has waitlist history, use that status
+                            history != null -> when (history.status) {
+                                WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
+                                WaitlistStatus.SELECTED,
+                                WaitlistStatus.WAITING -> EventStatus.WAITLIST
+                                WaitlistStatus.DECLINED,
+                                WaitlistStatus.CANCELLED -> if (event.date.isBefore(today)) {
+                                    EventStatus.PAST
+                                } else {
+                                    EventStatus.UPCOMING
+                                }
+                            }
+                            // Default fallback
                             else -> when {
                                 event.date.isBefore(today) -> EventStatus.PAST
-                                event.isFull -> EventStatus.WAITLIST
                                 else -> EventStatus.UPCOMING
                             }
                         }
@@ -950,9 +996,7 @@ fun PLuckNavHost(
                         MyEventItem(
                             event = event,
                             status = status,
-                            isCreatedByUser = event.organizerId == organizerId ||
-                                (organizerName.isNotBlank() &&
-                                    event.organizerName.equals(organizerName, ignoreCase = true)),
+                            isCreatedByUser = isCreatedByUser,
                             joinedDate = history?.joinedDate,
                             historyStatus = history?.status
                         )
@@ -974,12 +1018,19 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
-            val organizerEvents = remember(events, currentUser?.displayName) {
+            val organizerEvents = remember(events, currentUser?.deviceId, currentUser?.displayName) {
+                val organizerId = currentUser?.deviceId
                 val organizerName = currentUser?.displayName
-                if (organizerName.isNullOrBlank()) {
+
+                if (organizerId.isNullOrBlank() && organizerName.isNullOrBlank()) {
                     emptyList()
                 } else {
-                    events.filter { it.organizerName == organizerName }
+                    // Filter by organizerId first (most reliable), fallback to name comparison
+                    events.filter { event ->
+                        event.organizerId == organizerId ||
+                            (organizerName?.isNotBlank() == true &&
+                                event.organizerName.equals(organizerName, ignoreCase = true))
+                    }
                 }
             }
             val organizerStats = remember(organizerEvents) {

@@ -1,7 +1,5 @@
 package com.pluck.ui.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,31 +60,29 @@ fun BottomNavBar(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(PluckPalette.Surface),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = PluckPalette.Surface,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            tonalElevation = 6.dp,
-            shadowElevation = 12.dp,
-            border = BorderStroke(0.dp, Color.Transparent)
+            shape = RoundedCornerShape(0.dp),
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Left side nav items
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     NavTabs.all.take(2).forEach { tab ->
@@ -98,13 +94,15 @@ fun BottomNavBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.size(80.dp))
+                // Center spacer for FAB
+                Spacer(modifier = Modifier.size(72.dp))
 
+                // Right side nav items
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .wrapContentWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     NavTabs.all.drop(2).forEach { tab ->
@@ -118,24 +116,25 @@ fun BottomNavBar(
             }
         }
 
+        // Floating action button centered and elevated
         FloatingActionButton(
             onClick = onCreateEvent,
             modifier = Modifier
-                .offset(y = (-28).dp)
-                .size(64.dp)
-                .zIndex(1f),
+                .offset(y = (-24).dp)
+                .size(56.dp)
+                .zIndex(2f),
             containerColor = PluckPalette.Secondary,
             contentColor = autoTextColor(PluckPalette.Secondary),
             elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = 8.dp,
-                pressedElevation = 12.dp
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp
             ),
             shape = CircleShape
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Create Event",
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(28.dp)
             )
         }
     }
@@ -151,8 +150,8 @@ private fun NavItem(
 ) {
     val contentColor = if (selected) PluckPalette.Primary else PluckPalette.Muted
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = if (selected) PluckPalette.Primary.copy(alpha = 0.14f) else Color.Transparent,
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) PluckPalette.Primary.copy(alpha = 0.12f) else Color.Transparent,
         contentColor = contentColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -160,19 +159,19 @@ private fun NavItem(
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Icon(
                 imageVector = tab.icon,
                 contentDescription = tab.label,
                 tint = contentColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
             Text(
                 text = tab.label,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 softWrap = false,
                 maxLines = 1,

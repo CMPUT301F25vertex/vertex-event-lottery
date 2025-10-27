@@ -1,6 +1,7 @@
 package com.pluck.data.repository
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pluck.data.firebase.FirebaseWaitlistEntry
@@ -192,6 +193,98 @@ class WaitlistRepository(
                 .update("status", WaitlistStatus.DECLINED.name)
                 .await()
 
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Propagates a new entrant display name across all waitlist entries tied to the user.
+     */
+    suspend fun updateEntrantName(userId: String, displayName: String): Result<Unit> {
+        if (userId.isBlank()) return Result.failure(IllegalArgumentException("User ID required."))
+        val trimmedName = displayName.trim()
+        if (trimmedName.isBlank()) return Result.failure(IllegalArgumentException("Display name required."))
+
+        return try {
+            val documents = waitlistCollection.whereEqualTo("userId", userId).get().await()
+            if (documents.isEmpty) {
+                Result.success(Unit)
+            } else {
+                val batch = firestore.batch()
+                documents.documents.forEach { doc ->
+                    batch.update(
+                        doc.reference,
+                        mapOf(
+                            "userName" to trimmedName,
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                }
+                batch.commit().await()
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Removes every waitlist entry associated with the given user and normalises event counters.
+     */
+    suspend fun purgeEntrant(userId: String): Result<Unit> {
+        if (userId.isBlank()) return Result.success(Unit)
+
+        return try {
+            val snapshot = waitlistCollection.whereEqualTo("userId", userId).get().await()
+            if (snapshot.isEmpty) {
+                return Result.success(Unit)
+            }
+
+            val affectedWaitingEvents = mutableSetOf<String>()
+            val affectedAcceptedEvents = mutableSetOf<String>()
+
+            val batch = firestore.batch()
+            snapshot.documents.forEach { doc ->
+                val entry = doc.toObject(FirebaseWaitlistEntry::class.java) ?: return@forEach
+                when (entry.status) {
+                    WaitlistStatus.WAITING -> affectedWaitingEvents.add(entry.eventId)
+                    WaitlistStatus.ACCEPTED -> affectedAcceptedEvents.add(entry.eventId)
+                    else -> Unit
+                }
+                batch.delete(doc.reference)
+            }
+            batch.commit().await()
+
+            affectedAcceptedEvents.forEach { eventId ->
+                eventRepository.decrementEnrolled(eventId)
+            }
+            affectedWaitingEvents.forEach { eventId ->
+                val waitlistCount = getWaitlistCount(eventId)
+                eventRepository.updateWaitlistCount(eventId, waitlistCount)
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Deletes all waitlist entries for an event and resets its attendance counters.
+     */
+    suspend fun purgeEvent(eventId: String): Result<Unit> {
+        if (eventId.isBlank()) return Result.success(Unit)
+
+        return try {
+            val snapshot = waitlistCollection.whereEqualTo("eventId", eventId).get().await()
+            if (!snapshot.isEmpty) {
+                val batch = firestore.batch()
+                snapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit().await()
+            }
+            eventRepository.resetAttendance(eventId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

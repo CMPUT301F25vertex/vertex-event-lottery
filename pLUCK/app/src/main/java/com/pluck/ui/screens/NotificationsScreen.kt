@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,11 +32,15 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,7 +87,8 @@ fun NotificationsScreen(
     processingNotificationIds: Set<String> = emptySet(),
     onEventDetails: (NotificationItem) -> Unit = {},
     onAccept: (NotificationItem) -> Unit = {},
-    onDecline: (NotificationItem) -> Unit = {}
+    onDecline: (NotificationItem) -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
@@ -97,7 +104,8 @@ fun NotificationsScreen(
         processingNotificationIds = processingNotificationIds,
         onEventDetails = onEventDetails,
         onAccept = onAccept,
-        onDecline = onDecline
+        onDecline = onDecline,
+        onProfileClick = onProfileClick
     )
 }
 
@@ -115,34 +123,84 @@ private fun NotificationsContent(
     processingNotificationIds: Set<String>,
     onEventDetails: (NotificationItem) -> Unit,
     onAccept: (NotificationItem) -> Unit,
-    onDecline: (NotificationItem) -> Unit
+    onDecline: (NotificationItem) -> Unit,
+    onProfileClick: () -> Unit
 ) {
+    val listState = rememberLazyListState()
+    val heroCollapseProgress by remember {
+        derivedStateOf {
+            when {
+                listState.firstVisibleItemIndex > 0 -> 1f
+                else -> (listState.firstVisibleItemScrollOffset / 250f).coerceIn(0f, 1f)
+            }
+        }
+    }
+
     PluckLayeredBackground(
         modifier = modifier
             .fillMaxSize()
             .testTag(NotificationsTestTags.Screen)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Spacer(modifier = Modifier.height(12.dp))
-            NotificationsHero(
-                unreadCount = unreadCount,
-                selectedFilter = selectedFilter,
-                onFilterSelected = onFilterSelected
-            )
-            Box(modifier = Modifier.fillMaxSize()) {
-                NotificationsFeedPanel(
-                    notifications = notifications,
-                    processingNotificationIds = processingNotificationIds,
-                    onEventDetails = onEventDetails,
-                    onAccept = onAccept,
-                    onDecline = onDecline
-                )
-                if (isLoading) {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    NotificationsHero(
+                        unreadCount = unreadCount,
+                        selectedFilter = selectedFilter,
+                        onFilterSelected = onFilterSelected,
+                        collapseProgress = heroCollapseProgress,
+                        onProfileClick = onProfileClick
+                    )
                 }
+                if (notifications.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Nothing to review right now.",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PluckPalette.Primary
+                                )
+                            )
+                            Text(
+                                text = "We'll let you know when something changes.",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = PluckPalette.Muted
+                                ),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(notifications, key = { _, item -> item.id }) { index, item ->
+                        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                            NotificationCard(
+                                index = index,
+                                item = item,
+                                isProcessing = processingNotificationIds.contains(item.id),
+                                onEventDetails = { onEventDetails(item) },
+                                onAccept = { onAccept(item) },
+                                onDecline = { onDecline(item) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
             }
         }
     }
@@ -155,8 +213,13 @@ private fun NotificationsContent(
 private fun NotificationsHero(
     unreadCount: Int,
     selectedFilter: NotificationFilter,
-    onFilterSelected: (NotificationFilter) -> Unit
+    onFilterSelected: (NotificationFilter) -> Unit,
+    collapseProgress: Float,
+    onProfileClick: () -> Unit
 ) {
+    val targetHeightFactor = (1f - collapseProgress * 0.4f)
+    val targetAlpha = (1f - collapseProgress).coerceIn(0f, 1f)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,23 +228,35 @@ private fun NotificationsHero(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .height((150 * targetHeightFactor).dp)
                 .zIndex(1f),
             shape = RoundedCornerShape(32.dp),
-            color = PluckPalette.Surface,
+            color = PluckPalette.Surface.copy(alpha = targetAlpha),
             tonalElevation = 0.dp,
-            shadowElevation = 16.dp,
-            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+            shadowElevation = (16.dp * (1f - collapseProgress * 0.7f)),
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f * targetAlpha))
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                modifier = Modifier.padding(
+                    horizontal = 22.dp,
+                    vertical = (20 * targetHeightFactor).dp
+                ),
+                verticalArrangement = Arrangement.spacedBy((18 * targetHeightFactor).dp)
             ) {
-                NotificationsHeaderRow(unreadCount = unreadCount)
-                NotificationFilterRow(
+                NotificationsHeaderRow(
                     unreadCount = unreadCount,
-                    selected = selectedFilter,
-                    onSelected = onFilterSelected
+                    collapseProgress = collapseProgress,
+                    targetAlpha = targetAlpha,
+                    onProfileClick = onProfileClick
                 )
+                if (collapseProgress < 0.9f) {
+                    NotificationFilterRow(
+                        unreadCount = unreadCount,
+                        selected = selectedFilter,
+                        onSelected = onFilterSelected,
+                        alpha = targetAlpha
+                    )
+                }
             }
         }
     }
@@ -191,45 +266,57 @@ private fun NotificationsHero(
  * Header row inside the hero card showing the title and floating icons.
  */
 @Composable
-private fun NotificationsHeaderRow(unreadCount: Int) {
+private fun NotificationsHeaderRow(
+    unreadCount: Int,
+    collapseProgress: Float,
+    targetAlpha: Float,
+    onProfileClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy((8 * (1f - collapseProgress * 0.5f)).dp),
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = "Notifications",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Black,
-                    color = PluckPalette.Primary,
-                    fontSize = 28.sp
-                )
+                    color = PluckPalette.Primary.copy(alpha = targetAlpha),
+                    fontSize = (28 - collapseProgress * 8).sp
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = if (unreadCount > 0) "$unreadCount new updates" else "You're in the loop",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = PluckPalette.Muted
+            if (collapseProgress < 0.8f) {
+                Text(
+                    text = if (unreadCount > 0) "$unreadCount new updates" else "You're in the loop",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Muted.copy(alpha = targetAlpha)
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            )
+            }
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FloatingIconButton(
-                icon = Icons.Outlined.Person,
-                backgroundColor = PluckPalette.Secondary,
-                contentColor = autoTextColor(PluckPalette.Secondary)
-            )
-            FloatingIconButton(
-                icon = Icons.Outlined.Notifications,
-                backgroundColor = PluckPalette.Surface,
-                contentColor = PluckPalette.Primary,
-                borderColor = PluckPalette.Primary.copy(alpha = 0.08f)
-            )
+        if (collapseProgress < 0.7f) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FloatingIconButton(
+                    icon = Icons.Outlined.Notifications,
+                    backgroundColor = PluckPalette.Surface.copy(alpha = targetAlpha),
+                    contentColor = PluckPalette.Primary.copy(alpha = targetAlpha),
+                    borderColor = PluckPalette.Primary.copy(alpha = 0.08f * targetAlpha)
+                )
+                FloatingIconButton(
+                    icon = Icons.Outlined.Person,
+                    backgroundColor = PluckPalette.Secondary.copy(alpha = targetAlpha),
+                    contentColor = autoTextColor(PluckPalette.Secondary).copy(alpha = targetAlpha),
+                    onClick = onProfileClick
+                )
+            }
         }
     }
 }
@@ -237,12 +324,14 @@ private fun NotificationsHeaderRow(unreadCount: Int) {
 /**
  * Small utility component that renders a floating circular icon.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FloatingIconButton(
     icon: ImageVector,
     backgroundColor: Color,
     contentColor: Color,
-    borderColor: Color = Color.Transparent
+    borderColor: Color = Color.Transparent,
+    onClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.size(56.dp),
@@ -251,7 +340,8 @@ private fun FloatingIconButton(
         contentColor = contentColor,
         tonalElevation = 0.dp,
         shadowElevation = 10.dp,
-        border = if (borderColor == Color.Transparent) null else BorderStroke(1.dp, borderColor)
+        border = if (borderColor == Color.Transparent) null else BorderStroke(1.dp, borderColor),
+        onClick = onClick
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -262,134 +352,71 @@ private fun FloatingIconButton(
         }
     }
 }
-
 /**
  * Segmented control row with the Unread and Read filters.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationFilterRow(
     unreadCount: Int,
     selected: NotificationFilter,
-    onSelected: (NotificationFilter) -> Unit
+    onSelected: (NotificationFilter) -> Unit,
+    alpha: Float = 1f
 ) {
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val primary = MaterialTheme.colorScheme.primary
+    val onPrimary = MaterialTheme.colorScheme.onPrimary
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(alpha),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        NotificationFilterChip(
-            label = "Unread",
-            badgeCount = unreadCount,
+        val unreadLabel = if (unreadCount > 0) "Unread ($unreadCount)" else "Unread"
+        FilterChip(
             selected = selected == NotificationFilter.UNREAD,
             onClick = { onSelected(NotificationFilter.UNREAD) },
-            modifier = Modifier.testTag(NotificationsTestTags.TabUnread)
+            modifier = Modifier.testTag(NotificationsTestTags.TabUnread),
+            label = {
+                Text(
+                    text = unreadLabel,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                containerColor = surfaceVariant,
+                labelColor = onSurfaceVariant,
+                selectedContainerColor = primary,
+                selectedLabelColor = onPrimary
+            )
         )
-        NotificationFilterChip(
-            label = "Read",
-            badgeCount = null,
+
+        FilterChip(
             selected = selected == NotificationFilter.READ,
             onClick = { onSelected(NotificationFilter.READ) },
-            modifier = Modifier.testTag(NotificationsTestTags.TabRead)
-        )
-    }
-}
-
-/**
- * Individual filter chip styled to match the new design system.
- */
-@Composable
-private fun NotificationFilterChip(
-    label: String,
-    badgeCount: Int?,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val background = if (selected) PluckPalette.Primary else PluckPalette.Surface
-    val contentColor = if (selected) PluckPalette.Surface else PluckPalette.Primary
-    Surface(
-        modifier = modifier.height(48.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = background,
-        contentColor = contentColor,
-        tonalElevation = if (selected) 2.dp else 0.dp,
-        shadowElevation = if (selected) 12.dp else 4.dp,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = if (selected) 1f else 0.08f)),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
-            )
-            if (badgeCount != null && badgeCount > 0) {
-                NotificationBadge(count = badgeCount, selected = selected)
-            }
-        }
-    }
-}
-
-/**
- * Numeric badge shown inside the unread filter chip.
- */
-@Composable
-private fun NotificationBadge(count: Int, selected: Boolean) {
-    Surface(
-        shape = CircleShape,
-        color = if (selected) PluckPalette.Surface else PluckPalette.Primary.copy(alpha = 0.1f),
-        contentColor = if (selected) PluckPalette.Primary else PluckPalette.Primary,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = if (selected) BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.16f)) else null
-    ) {
-        Text(
-            text = count.toString(),
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (selected) PluckPalette.Primary else PluckPalette.Primary
-        )
-    }
-}
-
-/**
- * Sheet containing the lazy list of notification cards.
- */
-@Composable
-private fun NotificationsFeedPanel(
-    notifications: List<NotificationItem>,
-    processingNotificationIds: Set<String>,
-    onEventDetails: (NotificationItem) -> Unit,
-    onAccept: (NotificationItem) -> Unit,
-    onDecline: (NotificationItem) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxSize(),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 8.dp
-    ) {
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
-        ) {
-            itemsIndexed(notifications, key = { _, item -> item.id }) { index, item ->
-                NotificationCard(
-                    index = index,
-                    item = item,
-                    isProcessing = processingNotificationIds.contains(item.id),
-                    onEventDetails = { onEventDetails(item) },
-                    onAccept = { onAccept(item) },
-                    onDecline = { onDecline(item) }
+            modifier = Modifier.testTag(NotificationsTestTags.TabRead),
+            label = {
+                Text(
+                    text = "Read",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
                 )
-            }
-        }
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                containerColor = surfaceVariant,
+                labelColor = onSurfaceVariant,
+                selectedContainerColor = primary,
+                selectedLabelColor = onPrimary
+            )
+        )
     }
 }
+
 
 /**
  * Stylised notification card displaying event state and CTAs.
@@ -711,4 +738,3 @@ object NotificationsTestTags {
 private fun NotificationsScreenPreview() {
     NotificationsScreen()
 }
-

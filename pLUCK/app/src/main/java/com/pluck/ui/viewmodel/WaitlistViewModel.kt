@@ -328,6 +328,28 @@ class WaitlistViewModel(
     }
 
     /**
+     * Update all waitlist entries to reflect the latest entrant display name.
+     */
+    fun refreshEntrantDisplayName(userId: String, displayName: String) {
+        val trimmedName = displayName.trim()
+        if (userId.isBlank() || trimmedName.isBlank()) return
+
+        viewModelScope.launch {
+            waitlistRepository.updateEntrantName(userId, trimmedName)
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to refresh waitlist names"
+                }
+
+            _waitlistEntries.value = _waitlistEntries.value.map { entry ->
+                if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
+            }
+            _chosenEntries.value = _chosenEntries.value.map { entry ->
+                if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
+            }
+        }
+    }
+
+    /**
      * Clear error message
      */
     fun clearError() {

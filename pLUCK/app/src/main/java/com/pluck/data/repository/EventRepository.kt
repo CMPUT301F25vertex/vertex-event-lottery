@@ -1,5 +1,6 @@
 package com.pluck.data.repository
 
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pluck.data.firebase.FirebaseEvent
@@ -162,6 +163,41 @@ class EventRepository(
     }
 
     /**
+     * Marks all events owned by the organiser as inactive and returns their identifiers.
+     */
+    suspend fun deactivateEventsByOrganizer(organizerId: String): Result<List<String>> {
+        if (organizerId.isBlank()) return Result.success(emptyList())
+
+        return try {
+            val snapshot = eventsCollection
+                .whereEqualTo("organizerId", organizerId)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) {
+                return Result.success(emptyList())
+            }
+
+            val batch = firestore.batch()
+            val eventIds = mutableListOf<String>()
+            snapshot.documents.forEach { doc ->
+                eventIds.add(doc.id)
+                batch.update(
+                    doc.reference,
+                    mapOf(
+                        "isActive" to false,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+            }
+            batch.commit().await()
+            Result.success(eventIds)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Delete an event (soft delete by setting isActive = false)
      *
      * @param eventId The event ID to delete
@@ -288,6 +324,26 @@ class EventRepository(
         return try {
             eventsCollection.document(eventId)
                 .update("waitlistCount", count)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Resets attendance counters (enrolled and waitlist) for an event.
+     */
+    suspend fun resetAttendance(eventId: String): Result<Unit> {
+        return try {
+            eventsCollection.document(eventId)
+                .update(
+                    mapOf(
+                        "enrolled" to 0,
+                        "waitlistCount" to 0,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {

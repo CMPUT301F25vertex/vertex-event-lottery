@@ -1,6 +1,10 @@
 package com.pluck.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,12 +22,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.PersonAddAlt1
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Schedule
@@ -40,10 +47,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
@@ -58,6 +68,7 @@ import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
+import kotlin.random.Random
 
 /**
  * HomeScreen.kt
@@ -94,6 +105,8 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onCreateEvent: (() -> Unit)? = null,
     onScanQRCode: (() -> Unit)? = null,
+    onRefreshEvents: (() -> Unit)? = null,
+    userJoinedEventIds: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
     HomeScreenContent(
@@ -105,6 +118,8 @@ fun HomeScreen(
         onNavigate = onNavigate,
         onCreateEvent = onCreateEvent ?: {},
         onScanQRCode = onScanQRCode ?: {},
+        onRefresh = onRefreshEvents ?: {},
+        userJoinedEventIds = userJoinedEventIds,
         modifier = modifier
     )
 }
@@ -122,10 +137,13 @@ private fun HomeScreenContent(
     onNavigate: (String) -> Unit,
     onCreateEvent: () -> Unit,
     onScanQRCode: () -> Unit,
+    onRefresh: () -> Unit,
+    userJoinedEventIds: Set<String>,
     modifier: Modifier = Modifier
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
-    val filteredEvents = remember(events, selectedCategoryId) {
+    var confettiTrigger by remember { mutableStateOf(0) }
+    val filteredEvents = remember(events, selectedCategoryId, userJoinedEventIds) {
         val today = LocalDate.now()
         val weekFromNow = today.plusDays(7)
 
@@ -135,10 +153,31 @@ private fun HomeScreenContent(
             "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.date }
             "today" -> events.filter { !it.isPastEvent && it.date == today }
             "week" -> events.filter { !it.isPastEvent && it.date >= today && it.date <= weekFromNow }.sortedBy { it.date }
-            "available" -> events.filter { !it.isPastEvent && (!it.isFull || !it.isWaitlistFull) }.sortedBy { it.date }
+            "available" -> events.filter { event ->
+                !event.isPastEvent &&
+                !event.isFull &&
+                !userJoinedEventIds.contains(event.id) &&
+                // Registration must be currently open (started and not ended)
+                (event.registrationStart == null || !event.registrationStart.isAfter(today)) &&
+                (event.registrationEnd == null || !event.registrationEnd.isBefore(today))
+            }.sortedBy { it.date }
             "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.date }
             "location" -> events.filter { !it.isPastEvent }.sortedBy { it.location }
             else -> events.filter { !it.isPastEvent }
+        }
+    }
+
+    val listState = rememberLazyListState()
+    val scrollOffset by remember { derivedStateOf { listState.firstVisibleItemScrollOffset } }
+    val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
+
+    // Calculate collapse progress (0f = fully visible, 1f = fully collapsed)
+    val heroCollapseProgress by remember {
+        derivedStateOf {
+            when {
+                firstVisibleIndex > 0 -> 1f
+                else -> (scrollOffset / 300f).coerceIn(0f, 1f)
+            }
         }
     }
 
@@ -154,95 +193,207 @@ private fun HomeScreenContent(
         }
     ) { paddingValues ->
         PluckLayeredBackground(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(
+            val horizontalPadding = 20.dp
+            val contentTopPadding = paddingValues.calculateTopPadding() + 20.dp
+            val bottomInset = paddingValues.calculateBottomPadding()
+            val adjustedBottomInset = (bottomInset - 48.dp).coerceAtLeast(12.dp)
+            val contentBottomPadding = adjustedBottomInset + 46.dp
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(
+                        start = horizontalPadding,
+                        end = horizontalPadding,
+                        top = contentTopPadding,
+                        bottom = contentBottomPadding
+                    )
             ) {
-                HomeHeroCard(userName = userName, onScanQRCode = onScanQRCode)
+                when {
+                    isLoading -> HomeLoadingState()
+                    filteredEvents.isEmpty() && firstVisibleIndex <= 1 -> {
+                        // Show hero and filters with empty state
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            HomeHeroCard(
+                                userName = userName,
+                                onScanQRCode = onScanQRCode,
+                                onRefreshClick = {
+                                    confettiTrigger++
+                                    onRefresh()
+                                },
+                                collapseProgress = 0f
+                            )
+                            HomeFilterRow(
+                                categories = homeCategories,
+                                selectedId = selectedCategoryId,
+                                onCategorySelected = { selectedCategoryId = it }
+                            )
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = RoundedCornerShape(32.dp),
+                                color = PluckPalette.Surface,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 12.dp,
+                                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                            ) {
+                                HomeEmptyState()
+                            }
+                        }
+                    }
+                    else -> {
+                        // Scrollable list with collapsing hero
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                HomeHeroCard(
+                                    userName = userName,
+                                    onScanQRCode = onScanQRCode,
+                                    onRefreshClick = {
+                                        confettiTrigger++
+                                        onRefresh()
+                                    },
+                                    collapseProgress = heroCollapseProgress
+                                )
+                            }
 
-                HomeFilterRow(
-                    categories = homeCategories,
-                    selectedId = selectedCategoryId,
-                    onCategorySelected = { selectedCategoryId = it }
-                )
+                            item {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(32.dp),
+                                    color = PluckPalette.Surface,
+                                    tonalElevation = 0.dp,
+                                    shadowElevation = 12.dp,
+                                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        HomeFilterRow(
+                                            categories = homeCategories,
+                                            selectedId = selectedCategoryId,
+                                            onCategorySelected = { selectedCategoryId = it },
+                                            useContainer = false
+                                        )
+                                        Text(
+                                            text = "Discover Events",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = PluckPalette.Primary,
+                                                fontSize = 22.sp
+                                            ),
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(32.dp),
-                    color = PluckPalette.Surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                ) {
-                    when {
-                        isLoading -> HomeLoadingState()
-                        filteredEvents.isEmpty() -> HomeEmptyState()
-                        else -> HomeEventFeed(
-                            events = filteredEvents,
-                            onSelectEvent = onSelectEvent
-                        )
+                            itemsIndexed(filteredEvents, key = { _, event -> event.id }) { index, event ->
+                                val accentPalette = listOf(
+                                    PluckPalette.Secondary,
+                                    PluckPalette.Tertiary,
+                                    PluckPalette.Pink,
+                                    PluckPalette.Magenta
+                                )
+                                HomeEventCard(
+                                    event = event,
+                                    accentColor = accentPalette[index % accentPalette.size],
+                                    onClick = { onSelectEvent(event) }
+                                )
+                            }
+                        }
                     }
                 }
             }
+
+            ConfettiBurst(
+                trigger = confettiTrigger,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .align(Alignment.TopCenter)
+            )
         }
     }
 }
 
 
 @Composable
-private fun HomeHeroCard(userName: String?, onScanQRCode: () -> Unit = {}) {
+private fun HomeHeroCard(
+    userName: String?,
+    onScanQRCode: () -> Unit = {},
+    onRefreshClick: () -> Unit = {},
+    collapseProgress: Float = 0f
+) {
+    val targetHeight = (1f - collapseProgress * 0.4f)
+    val targetAlpha = (1f - collapseProgress).coerceIn(0f, 1f)
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .widthIn(max = 460.dp),
+            .widthIn(max = 460.dp)
+            .height((100 * targetHeight).dp),
         shape = RoundedCornerShape(32.dp),
-        color = PluckPalette.Surface,
+        color = PluckPalette.Surface.copy(alpha = targetAlpha),
         tonalElevation = 0.dp,
-        shadowElevation = 16.dp,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+        shadowElevation = (16.dp * (1f - collapseProgress * 0.7f)),
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f * targetAlpha))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp, vertical = 20.dp),
+                .padding(horizontal = 28.dp, vertical = (20 * targetHeight).dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy((8 * targetHeight).dp)
             ) {
-                Text(
-                    text = "Hi, ${userName ?: "Vertex"}",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = PluckPalette.Muted,
-                        fontWeight = FontWeight.Medium
+                if (collapseProgress < 0.8f) {
+                    Text(
+                        text = "Hi, ${userName ?: "Vertex"}",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Muted.copy(alpha = targetAlpha),
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                )
+                }
                 Text(
-                    text = "Find your next experience",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        color = PluckPalette.Primary,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 24.sp
-                    )
+                    text = "Find your next experience!",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = PluckPalette.Primary.copy(alpha = targetAlpha),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = (18 - collapseProgress * 5).sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 HomeHeroAction(
                     icon = Icons.Outlined.QrCodeScanner,
-                    backgroundColor = PluckPalette.Tertiary,
+                    backgroundColor = PluckPalette.Tertiary.copy(alpha = targetAlpha),
                     onClick = onScanQRCode
                 )
                 HomeHeroAction(
-                    icon = Icons.Outlined.AccountCircle,
-                    backgroundColor = PluckPalette.Secondary
+                    icon = Icons.Outlined.Refresh,
+                    backgroundColor = PluckPalette.Surface.copy(alpha = targetAlpha),
+                    iconTint = PluckPalette.Primary.copy(alpha = targetAlpha),
+                    borderColor = PluckPalette.Primary.copy(alpha = 0.12f * targetAlpha),
+                    onClick = onRefreshClick
                 )
             }
         }
@@ -278,24 +429,95 @@ private fun HomeHeroAction(
     }
 }
 
+private data class ConfettiParticle(
+    val startX: Float,
+    val startY: Float,
+    val velocityX: Float,
+    val velocityY: Float,
+    val radiusPx: Float,
+    val color: Color
+)
+
+@Composable
+private fun ConfettiBurst(
+    trigger: Int,
+    modifier: Modifier = Modifier,
+    particleCount: Int = 28
+) {
+    val density = LocalDensity.current
+    val palette = listOf(
+        PluckPalette.Primary,
+        PluckPalette.Secondary,
+        PluckPalette.Tertiary,
+        PluckPalette.Magenta,
+        PluckPalette.Pink
+    )
+    val particles = remember(trigger, density) {
+        if (trigger == 0) emptyList() else List(particleCount) { index ->
+            val random = Random(trigger * 997 + index * 23)
+            val radiusPx = with(density) { (6 + random.nextInt(6)).dp.toPx() }
+            ConfettiParticle(
+                startX = random.nextFloat(),
+                startY = random.nextFloat() * 0.2f,
+                velocityX = (random.nextFloat() - 0.5f) * 0.7f,
+                velocityY = 0.8f + random.nextFloat(),
+                radiusPx = radiusPx,
+                color = palette[random.nextInt(palette.size)]
+            )
+        }
+    }
+    val progress = remember { Animatable(0f) }
+    var isActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(trigger) {
+        if (trigger == 0 || particles.isEmpty()) return@LaunchedEffect
+        isActive = true
+        progress.snapTo(0f)
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1100, easing = LinearOutSlowInEasing)
+        )
+        isActive = false
+    }
+
+    if (!isActive || particles.isEmpty()) {
+        return
+    }
+
+    val progressValue = progress.value
+    Canvas(modifier = modifier) {
+        particles.forEach { particle ->
+            val xFraction = (particle.startX + particle.velocityX * progressValue).coerceIn(0f, 1f)
+            val fallProgress = progressValue * progressValue
+            val yFraction = (particle.startY + particle.velocityY * fallProgress).coerceIn(0f, 1.2f)
+            drawCircle(
+                color = particle.color.copy(alpha = 1f - progressValue.coerceIn(0f, 0.9f)),
+                radius = particle.radiusPx,
+                center = Offset(
+                    x = xFraction * size.width,
+                    y = yFraction * size.height
+                )
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeFilterRow(
     categories: List<EventCategory>,
     selectedId: String,
-    onCategorySelected: (String) -> Unit
+    onCategorySelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    useContainer: Boolean = true
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .widthIn(max = 460.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-    ) {
+    val baseModifier = modifier
+        .fillMaxWidth()
+        .widthIn(max = 460.dp)
+
+    val chipRow: @Composable () -> Unit = {
         LazyRow(
+            modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -314,54 +536,33 @@ private fun HomeFilterRow(
                     },
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = if (selected) PluckPalette.Primary else PluckPalette.Surface,
-                        labelColor = if (selected) MaterialTheme.colorScheme.onPrimary else PluckPalette.Primary,
+                        labelColor = if (selected) PluckPalette.Surface else PluckPalette.Primary,
                         selectedContainerColor = PluckPalette.Primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        selectedLabelColor = PluckPalette.Surface
                     )
                 )
             }
         }
     }
-}
 
-@Composable
-private fun HomeEventFeed(
-    events: List<Event>,
-    onSelectEvent: (Event) -> Unit
-) {
-    val accentPalette = listOf(
-        PluckPalette.Secondary,
-        PluckPalette.Tertiary,
-        PluckPalette.Pink,
-        PluckPalette.Magenta
-    )
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp)
-    ) {
-        item {
-            Text(
-                text = "Discover Events",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = PluckPalette.Primary,
-                    fontSize = 22.sp
-                ),
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+    if (useContainer) {
+        Surface(
+            modifier = baseModifier,
+            shape = RoundedCornerShape(32.dp),
+            color = PluckPalette.Surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 12.dp,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+        ) {
+            chipRow()
         }
-
-        itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
-            HomeEventCard(
-                event = event,
-                accentColor = accentPalette[index % accentPalette.size],
-                onClick = { onSelectEvent(event) }
-            )
+    } else {
+        Box(modifier = baseModifier) {
+            chipRow()
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -595,4 +796,3 @@ private fun HomeScreenPreview() {
         onCreateEvent = {}
     )
 }
-
