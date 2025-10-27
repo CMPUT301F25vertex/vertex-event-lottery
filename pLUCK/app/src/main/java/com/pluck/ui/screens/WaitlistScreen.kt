@@ -9,6 +9,9 @@
  */
 package com.pluck.ui.screens
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,9 +50,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
@@ -103,6 +110,28 @@ fun WaitlistScreen(
     val derivedUserWaiting = isUserWaiting || waitlistEntries.any { it.isCurrentUser }
     val derivedUserConfirmed = isUserConfirmed || chosenEntries.any { it.isCurrentUser }
 
+    val entriesListState = rememberLazyListState()
+    val rawCollapse by remember(entriesListState) {
+        derivedStateOf {
+            when {
+                entriesListState.firstVisibleItemIndex > 0 -> 1f
+                else -> (entriesListState.firstVisibleItemScrollOffset / 260f).coerceIn(0f, 1f)
+            }
+        }
+    }
+    val collapseProgress by animateFloatAsState(
+        targetValue = rawCollapse,
+        label = "waitlistHeaderCollapse"
+    )
+    val spacerHeight by animateDpAsState(
+        targetValue = if (collapseProgress > 0.05f) 24.dp else 56.dp,
+        label = "waitlistSpacerHeight"
+    )
+
+    LaunchedEffect(selectedTab) {
+        entriesListState.scrollToItem(0)
+    }
+
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Surface(
@@ -133,9 +162,12 @@ fun WaitlistScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Spacer(modifier = Modifier.height(56.dp))
+                Spacer(modifier = Modifier.height(spacerHeight))
 
-                WaitlistHeaderCard(event = event)
+                WaitlistHeaderCard(
+                    event = event,
+                    collapseProgress = collapseProgress
+                )
 
                 WaitlistSummaryCard(
                     event = event,
@@ -146,19 +178,22 @@ fun WaitlistScreen(
                     currentUserPosition = currentUserPosition,
                     waitlistFull = waitlistFull,
                     onJoinWaitlist = onJoinWaitlist,
-                    onLeaveWaitlist = onLeaveWaitlist
+                    onLeaveWaitlist = onLeaveWaitlist,
+                    modifier = Modifier.animateContentSize()
                 )
 
                 WaitlistTabSelector(
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it },
                     waitingCount = waitlistEntries.size,
-                    chosenCount = chosenEntries.size
+                    chosenCount = chosenEntries.size,
+                    modifier = Modifier.animateContentSize()
                 )
 
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
+                        .animateContentSize()
                         .widthIn(max = 460.dp),
                     shape = RoundedCornerShape(36.dp),
                     color = PluckPalette.Surface,
@@ -176,7 +211,8 @@ fun WaitlistScreen(
                             } else {
                                 WaitlistEntriesList(
                                     entries = waitlistEntries,
-                                    title = "Waitlist Queue"
+                                    title = "Waitlist Queue",
+                                    listState = entriesListState
                                 )
                             }
                         }
@@ -189,7 +225,8 @@ fun WaitlistScreen(
                             } else {
                                 WaitlistEntriesList(
                                     entries = chosenEntries,
-                                    title = "Chosen Entrants"
+                                    title = "Chosen Entrants",
+                                    listState = entriesListState
                                 )
                             }
                         }
@@ -201,7 +238,10 @@ fun WaitlistScreen(
 }
 
 @Composable
-private fun WaitlistHeaderCard(event: Event) {
+private fun WaitlistHeaderCard(
+    event: Event,
+    collapseProgress: Float
+) {
     val selectionMessage = if (event.samplingCount > 0) {
         val plural = if (event.samplingCount == 1) "" else "s"
         "Lottery draws randomly select ${event.samplingCount} entrant$plural each time. Everyone else keeps their waitlist spot for the next draw."
@@ -209,28 +249,56 @@ private fun WaitlistHeaderCard(event: Event) {
         "Lottery draws randomly select entrants from the waiting list. If you are not chosen, you remain in line for the next draw."
     }
 
+    val paddingFactor = (1f - 0.35f * collapseProgress).coerceIn(0.65f, 1f)
+    val headerPadding by animateDpAsState(
+        targetValue = 24.dp * paddingFactor,
+        label = "waitlistHeaderPadding"
+    )
+    val columnSpacing by animateDpAsState(
+        targetValue = 16.dp * (1f - 0.3f * collapseProgress).coerceIn(0.6f, 1f),
+        label = "waitlistHeaderSpacing"
+    )
+    val badgeSize by animateDpAsState(
+        targetValue = 56.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
+        label = "waitlistHeaderBadge"
+    )
+    val badgeIconSize by animateDpAsState(
+        targetValue = 40.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
+        label = "waitlistHeaderBadgeIcon"
+    )
+    val titleSize by animateFloatAsState(
+        targetValue = if (collapseProgress > 0.6f) 22f else 24f,
+        label = "waitlistHeaderTitleSize"
+    )
+    val shadowElevation by animateDpAsState(
+        targetValue = 16.dp * (1f - 0.5f * collapseProgress).coerceIn(0.5f, 1f),
+        label = "waitlistHeaderElevation"
+    )
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .widthIn(max = 460.dp),
+            .widthIn(max = 460.dp)
+            .animateContentSize(),
         shape = RoundedCornerShape(36.dp),
         color = PluckPalette.Surface,
         tonalElevation = 0.dp,
-        shadowElevation = 16.dp,
+        shadowElevation = shadowElevation,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+                .padding(horizontal = headerPadding, vertical = headerPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(columnSpacing)
         ) {
             Text(
                 text = event.title,
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Black,
-                    color = PluckPalette.Primary
+                    color = PluckPalette.Primary,
+                    fontSize = titleSize.sp
                 ),
                 textAlign = TextAlign.Center
             )
@@ -244,19 +312,25 @@ private fun WaitlistHeaderCard(event: Event) {
                     icon = Icons.Outlined.Person,
                     value = "${event.enrolled}/${event.capacity}",
                     label = "Enrolled",
-                    accentColor = PluckPalette.Secondary
+                    accentColor = PluckPalette.Secondary,
+                    circleSize = badgeSize,
+                    iconSize = badgeIconSize
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Groups,
                     value = "${event.waitlistCount}",
                     label = "Waitlisted",
-                    accentColor = PluckPalette.Tertiary
+                    accentColor = PluckPalette.Tertiary,
+                    circleSize = badgeSize,
+                    iconSize = badgeIconSize
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Schedule,
                     value = "${event.waitlistAvailable}",
                     label = "Available",
-                    accentColor = PluckPalette.Accept
+                    accentColor = PluckPalette.Accept,
+                    circleSize = badgeSize,
+                    iconSize = badgeIconSize
                 )
             }
 
@@ -276,14 +350,16 @@ private fun WaitlistStatItem(
     icon: ImageVector,
     value: String,
     label: String,
-    accentColor: Color
+    accentColor: Color,
+    circleSize: Dp = 56.dp,
+    iconSize: Dp = 28.dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(circleSize),
             shape = CircleShape,
             color = accentColor.copy(alpha = 0.12f),
             tonalElevation = 0.dp,
@@ -294,7 +370,7 @@ private fun WaitlistStatItem(
                     imageVector = icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
         }
@@ -324,7 +400,8 @@ private fun WaitlistSummaryCard(
     currentUserPosition: Int?,
     waitlistFull: Boolean,
     onJoinWaitlist: () -> Unit,
-    onLeaveWaitlist: () -> Unit
+    onLeaveWaitlist: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val registrationClosed = !event.isRegistrationOpen
     val isPastEvent = event.isPastEvent
@@ -347,7 +424,7 @@ private fun WaitlistSummaryCard(
     }
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .widthIn(max = 460.dp),
         shape = RoundedCornerShape(28.dp),
@@ -422,10 +499,11 @@ private fun WaitlistTabSelector(
     selectedTab: WaitlistTab,
     onTabSelected: (WaitlistTab) -> Unit,
     waitingCount: Int,
-    chosenCount: Int
+    chosenCount: Int,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .widthIn(max = 460.dp),
         shape = RoundedCornerShape(24.dp),
@@ -483,8 +561,11 @@ private fun WaitlistTabSelector(
 }
 
 @Composable
-private fun WaitlistEntriesList(entries: List<WaitlistEntry>, title: String) {
-    val listState = rememberLazyListState()
+private fun WaitlistEntriesList(
+    entries: List<WaitlistEntry>,
+    title: String,
+    listState: LazyListState
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
