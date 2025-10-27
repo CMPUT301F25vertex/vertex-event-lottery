@@ -7,6 +7,7 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.data.repository.EventRepository
 import com.pluck.data.repository.NotificationRepository
 import com.pluck.data.repository.WaitlistRepository
@@ -154,6 +155,9 @@ class DeviceAuthenticator(private val context: Context) {
 
                 notificationRepository.deleteNotificationsForUser(deviceId).getOrThrow()
                 notificationRepository.deleteNotificationsForOrganizer(deviceId).getOrThrow()
+
+                AdminAccessRepository(firestore).removeDevice(deviceId)
+                    .onFailure { Log.w(TAG, "Failed to remove device from admin list", it) }
 
                 firestore.collection("entrants").document(deviceId).delete().await()
             }

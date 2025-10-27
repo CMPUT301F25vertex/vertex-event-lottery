@@ -16,10 +16,21 @@
 package com.pluck.navigation
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,6 +42,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -43,6 +57,7 @@ import com.google.firebase.firestore.FieldValue
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.DeviceAuthPreferences
+import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
@@ -126,6 +141,7 @@ fun PLuckNavHost(
     val authenticator = remember(context) { DeviceAuthenticator(context.applicationContext) }
     val authPreferences = remember(context) { DeviceAuthPreferences(context.applicationContext) }
     val themePrefs = remember(context) { ThemePreferences(context.applicationContext) }
+    val adminAccessRepository = remember { AdminAccessRepository() }
 
     var currentUser by remember { mutableStateOf<EntrantProfile?>(null) }
     var loginInProgress by remember { mutableStateOf(false) }
@@ -137,6 +153,12 @@ fun PLuckNavHost(
     var profileUpdateMessage by remember { mutableStateOf<String?>(null) }
     var profileUpdateError by remember { mutableStateOf<String?>(null) }
     var profileUpdating by remember { mutableStateOf(false) }
+    var isAdminDevice by remember { mutableStateOf(false) }
+    var adminCheckError by remember { mutableStateOf<String?>(null) }
+    var showAdminRegistrationDialog by remember { mutableStateOf(false) }
+    var adminRegistrationPassword by remember { mutableStateOf("") }
+    var adminRegistrationError by remember { mutableStateOf<String?>(null) }
+    var adminRegistrationInProgress by remember { mutableStateOf(false) }
 
     val eventViewModel: EventViewModel = viewModel()
     val waitlistViewModel: WaitlistViewModel = viewModel()
@@ -220,6 +242,26 @@ fun PLuckNavHost(
             waitlistViewModel.resetUserWaitlistEntry()
         }
         notificationsViewModel.observeNotifications(currentUser)
+    }
+
+    LaunchedEffect(deviceId, currentUser) {
+        if (deviceId.isNotBlank()) {
+            adminAccessRepository.isDeviceAdmin(deviceId)
+                .onSuccess { isAdminDevice = it }
+                .onFailure {
+                    isAdminDevice = false
+                    adminCheckError = it.message
+                }
+        } else {
+            isAdminDevice = false
+        }
+    }
+
+    LaunchedEffect(adminCheckError) {
+        adminCheckError?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            adminCheckError = null
+        }
     }
 
     LaunchedEffect(notificationError) {
@@ -610,6 +652,7 @@ fun PLuckNavHost(
                         deviceId = deviceId,
                         isLoading = loginInProgress,
                         isUpdatingProfile = profileUpdating,
+                        isAdmin = isAdminDevice,
                         updateMessage = profileUpdateMessage,
                         updateError = profileUpdateError,
                         onUpdateProfile = { name, email, phone ->
@@ -640,13 +683,24 @@ fun PLuckNavHost(
                             navigator.toOrganizer()
                         },
                         onAdminDashboard = {
-                            navigator.toAdmin()
+                            if (isAdminDevice) {
+                                navigator.toAdmin()
+                            }
+                        },
+                        onRegisterAdmin = {
+                            adminRegistrationError = null
+                            adminRegistrationPassword = ""
+                            showAdminRegistrationDialog = true
                         },
                         onSignOut = {
                             currentUser = null
                             loginError = null
                             profileUpdateMessage = null
                             profileUpdateError = null
+                            isAdminDevice = false
+                            showAdminRegistrationDialog = false
+                            adminRegistrationPassword = ""
+                            adminRegistrationError = null
                             FirebaseAuth.getInstance().signOut()
                             initializingSession = false
                             navController.navigate(PLuckDestination.DeviceLogin.route) {
@@ -662,6 +716,10 @@ fun PLuckNavHost(
                                         loginError = null
                                         profileUpdateMessage = null
                                         profileUpdateError = null
+                                        isAdminDevice = false
+                                        showAdminRegistrationDialog = false
+                                        adminRegistrationPassword = ""
+                                        adminRegistrationError = null
                                         FirebaseAuth.getInstance().signOut()
                                         initializingSession = false
                                         navController.navigate(PLuckDestination.DeviceLogin.route) {
@@ -1081,27 +1139,40 @@ fun PLuckNavHost(
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
-            AdminDashboardScreen(
-                stats = adminStats,
-                events = adminEvents,
-                users = adminUsers,
-                organizers = adminOrganizers,
-                images = adminImages,
-                notifications = adminNotifications,
-                isLoading = adminLoading,
-                onRemoveEvent = { eventId ->
-                    adminViewModel.removeEvent(eventId)
-                },
-                onRemoveProfile = { profileId ->
-                    adminViewModel.removeProfile(profileId)
-                },
-                onRemoveImage = { imageId ->
-                    adminViewModel.removeImage(imageId)
-                },
-                onRemoveOrganizer = { organizerId ->
-                    adminViewModel.removeOrganizer(organizerId)
-                }
-            )
+            if (isAdminDevice) {
+                AdminDashboardScreen(
+                    stats = adminStats,
+                    events = adminEvents,
+                    users = adminUsers,
+                    organizers = adminOrganizers,
+                    images = adminImages,
+                    notifications = adminNotifications,
+                    isLoading = adminLoading,
+                    onRemoveEvent = { eventId ->
+                        adminViewModel.removeEvent(eventId)
+                    },
+                    onRemoveProfile = { profileId ->
+                        adminViewModel.removeProfile(profileId)
+                    },
+                    onRemoveImage = { imageId ->
+                        adminViewModel.removeImage(imageId)
+                    },
+                    onRemoveOrganizer = { organizerId ->
+                        adminViewModel.removeOrganizer(organizerId)
+                    }
+                )
+            } else {
+                PlaceholderScreen(
+                    title = "Admin Access Required",
+                    description = "Only approved admin devices can view this dashboard. Register your device to gain access.",
+                    actionLabel = "Register as Admin",
+                    onAction = {
+                        adminRegistrationError = null
+                        adminRegistrationPassword = ""
+                        showAdminRegistrationDialog = true
+                    }
+                )
+            }
         }
         composable("theme_picker") {
             ThemePickerScreen(
@@ -1194,6 +1265,90 @@ fun PLuckNavHost(
                 )
             }
         }
+    }
+
+    if (showAdminRegistrationDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!adminRegistrationInProgress) {
+                    showAdminRegistrationDialog = false
+                    adminRegistrationPassword = ""
+                    adminRegistrationError = null
+                }
+            },
+            title = { Text("Register as Admin") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Enter the admin password to unlock the admin dashboard.")
+                    OutlinedTextField(
+                        value = adminRegistrationPassword,
+                        onValueChange = { adminRegistrationPassword = it },
+                        label = { Text("Admin Password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (!adminRegistrationError.isNullOrBlank()) {
+                        Text(
+                            text = adminRegistrationError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (adminRegistrationPassword.isBlank() || adminRegistrationInProgress) return@TextButton
+                        adminRegistrationError = null
+                        adminRegistrationInProgress = true
+                        scope.launch {
+                            adminAccessRepository.registerDevice(
+                                password = adminRegistrationPassword.trim(),
+                                deviceId = deviceId,
+                                displayName = currentUser?.displayName
+                            ).onSuccess {
+                                isAdminDevice = true
+                                Toast.makeText(context, "Admin access granted.", Toast.LENGTH_LONG).show()
+                                showAdminRegistrationDialog = false
+                                adminRegistrationPassword = ""
+                                adminRegistrationError = null
+                            }.onFailure { error ->
+                                adminRegistrationError = error.message ?: "Failed to register as admin."
+                            }
+                            adminRegistrationInProgress = false
+                        }
+                    },
+                    enabled = adminRegistrationPassword.isNotBlank() && !adminRegistrationInProgress
+                ) {
+                    if (adminRegistrationInProgress) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Register")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!adminRegistrationInProgress) {
+                            showAdminRegistrationDialog = false
+                            adminRegistrationPassword = ""
+                            adminRegistrationError = null
+                        }
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

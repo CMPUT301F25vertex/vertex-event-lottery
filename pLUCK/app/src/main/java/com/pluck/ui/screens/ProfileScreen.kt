@@ -54,6 +54,7 @@ fun ProfileScreen(
     deviceId: String?,
     isLoading: Boolean,
     isUpdatingProfile: Boolean = false,
+    isAdmin: Boolean = false,
     updateMessage: String? = null,
     updateError: String? = null,
     onUpdateProfile: (displayName: String, email: String?, phone: String?) -> Unit = { _, _, _ -> },
@@ -62,6 +63,7 @@ fun ProfileScreen(
     onMyEvents: () -> Unit = {},
     onOrganizerDashboard: () -> Unit = {},
     onAdminDashboard: () -> Unit = {},
+    onRegisterAdmin: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -248,14 +250,25 @@ fun ProfileScreen(
                             contentColor = PluckPalette.Tertiary,
                             onClick = onOrganizerDashboard
                         )
-                        ProfileActionButton(
-                            text = "Admin Dashboard",
-                            description = "Manage platform content and users.",
-                            enabled = !isLoading,
-                            containerColor = PluckPalette.Decline.copy(alpha = 0.12f),
-                            contentColor = PluckPalette.Decline,
-                            onClick = onAdminDashboard
-                        )
+                        if (isAdmin) {
+                            ProfileActionButton(
+                                text = "Admin Dashboard",
+                                description = "Manage platform content and users.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Decline.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Decline,
+                                onClick = onAdminDashboard
+                            )
+                        } else {
+                            ProfileActionButton(
+                                text = "Register as Admin",
+                                description = "Unlock the admin console with a secure password.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Primary.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Primary,
+                                onClick = onRegisterAdmin
+                            )
+                        }
                         ProfileActionButton(
                             text = "Sign Out",
                             description = "Return to the welcome screen and clear this session.",
@@ -472,13 +485,13 @@ private fun ProfilePreview() {
         deviceId = "38400000-8cf0-11bd-b23e-10b96e40000d",
         isLoading = false,
         isUpdatingProfile = false,
+        isAdmin = true,
         updateMessage = null,
         updateError = null,
         onUpdateProfile = { _, _, _ -> },
         onSignOut = {},
-        onDeleteAccount = {}
+        onDeleteAccount = {},
+        onAdminDashboard = {},
+        onRegisterAdmin = {}
     )
 }
-
-
-
