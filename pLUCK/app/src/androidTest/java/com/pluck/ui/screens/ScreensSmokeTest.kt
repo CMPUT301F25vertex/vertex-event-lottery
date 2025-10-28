@@ -152,6 +152,7 @@ class ScreensSmokeTest {
                     userName = "Caiden Weiss",
                     userEmail = "caiden@example.com",
                     userPhone = "780-555-0100",
+                    profileImageUrl = null,
                     deviceId = "device-1234",
                     isLoading = false,
                     onSignOut = {},
