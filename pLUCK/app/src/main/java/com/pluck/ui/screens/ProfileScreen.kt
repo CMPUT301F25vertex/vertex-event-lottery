@@ -1,28 +1,44 @@
+/**
+ * ProfileScreen.kt
+ *
+ * Purpose: User profile management screen displaying and editing personal information.
+ * Users can update their display name, email, phone, and view their account details.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,33 +46,68 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.pluck.data.repository.CloudinaryUploadRepository
+import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import kotlinx.coroutines.launch
 
+/**
+ * Displays the profile management screen allowing entrants to review and update their information.
+ *
+ * @param userName Current display name for the entrant.
+ * @param userEmail Optional email address tied to the profile.
+ * @param userPhone Optional phone number tied to the profile.
+ * @param profileImageUrl Optional Cloudinary URL for the entrant's profile photo.
+ * @param deviceId Unique device identifier used as the Cloudinary public ID.
+ * @param isLoading Whether the overall profile data is loading.
+ * @param isUpdatingProfile Whether profile details are currently being saved.
+ * @param isAdmin Whether the current device has admin privileges.
+ * @param updateMessage Optional success banner message for profile operations.
+ * @param updateError Optional error banner message for profile operations.
+ * @param onProfileImageUploadStarted Callback invoked when the user selects a photo and upload begins.
+ * @param onProfileImageUploaded Callback invoked when a Cloudinary upload succeeds with the secure URL.
+ * @param onProfileImageUploadFailed Callback invoked when the upload fails with a human-readable message.
+ * @param onUpdateProfile Invoked when profile text fields are saved.
+ * @param onSignOut Invoked when the user taps the sign-out action.
+ * @param onDeleteAccount Invoked when the user confirms account deletion.
+ * @param onMyEvents Navigates to the "My Events" screen.
+ * @param onOrganizerDashboard Navigates to the organizer dashboard.
+ * @param onAdminDashboard Navigates to the admin dashboard (if available).
+ * @param onRegisterAdmin Invoked to open the admin registration dialog.
+ * @param modifier Optional modifier for styling.
+ */
 @Composable
 fun ProfileScreen(
     userName: String,
     userEmail: String?,
     userPhone: String?,
+    profileImageUrl: String?,
     deviceId: String?,
     isLoading: Boolean,
     isUpdatingProfile: Boolean = false,
     isAdmin: Boolean = false,
     updateMessage: String? = null,
     updateError: String? = null,
+    onProfileImageUploadStarted: () -> Unit = {},
+    onProfileImageUploaded: (String) -> Unit = {},
+    onProfileImageUploadFailed: (String) -> Unit = {},
     onUpdateProfile: (displayName: String, email: String?, phone: String?) -> Unit = { _, _, _ -> },
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
@@ -66,6 +117,56 @@ fun ProfileScreen(
     onRegisterAdmin: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val uploadRepository = remember { CloudinaryUploadRepository(context) }
+    val imageRequest = remember { PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly) }
+    var profileImageUploading by remember { mutableStateOf(false) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        if (deviceId.isNullOrBlank()) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@rememberLauncherForActivityResult
+        }
+
+        onProfileImageUploadStarted()
+        profileImageUploading = true
+
+        scope.launch {
+            val result = runCatching {
+                uploadRepository.uploadProfileImage(uri, deviceId)
+            }.getOrElse { throwable ->
+                Log.e(PROFILE_SCREEN_TAG, "Profile photo upload failed", throwable)
+                val message = throwable.message ?: throwable.localizedMessage ?: "Failed to upload profile photo."
+                onProfileImageUploadFailed(message)
+                profileImageUploading = false
+                return@launch
+            }
+
+            when (result) {
+                is CloudinaryUploadResult.Success -> onProfileImageUploaded(result.url)
+                is CloudinaryUploadResult.Error -> {
+                    val message = result.message.ifBlank { "Failed to upload profile photo." }
+                    onProfileImageUploadFailed(message)
+                }
+            }
+
+            profileImageUploading = false
+        }
+    }
+
+    val onChangePhoto = on@{
+        if (isLoading || profileImageUploading) return@on
+        if (deviceId.isNullOrBlank()) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@on
+        }
+        imagePickerLauncher.launch(imageRequest)
+    }
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var editableName by remember(userName) { mutableStateOf(userName) }
     var editableEmail by remember(userEmail) { mutableStateOf(userEmail.orEmpty()) }
@@ -103,6 +204,13 @@ fun ProfileScreen(
                             color = PluckPalette.Primary,
                             fontWeight = FontWeight.Black
                         )
+                    )
+
+                    ProfileAvatarSection(
+                        userName = userName,
+                        profileImageUrl = profileImageUrl,
+                        isUploading = profileImageUploading,
+                        onChangePhoto = onChangePhoto
                     )
 
                     Surface(
@@ -460,6 +568,114 @@ private fun ProfileDestructiveActionButton(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileAvatarSection(
+    /**
+     * User's display name used for the textual fallback when no image is available.
+     */
+    userName: String,
+    /**
+     * Cloudinary URL for the current profile photo.
+     */
+    profileImageUrl: String?,
+    /**
+     * Whether an image upload is in progress to display the loading indicator.
+     */
+    isUploading: Boolean,
+    /**
+     * Callback invoked when the user taps the avatar or change photo action.
+     */
+    onChangePhoto: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(140.dp),
+            contentAlignment = Alignment.BottomEnd
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize(),
+                shape = CircleShape,
+                color = PluckPalette.Primary.copy(alpha = 0.08f),
+                tonalElevation = 0.dp,
+                shadowElevation = 10.dp,
+                onClick = onChangePhoto,
+                enabled = !isUploading
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!profileImageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = profileImageUrl,
+                            contentDescription = "Profile photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = userName.trim()
+                                .takeIf { it.isNotEmpty() }
+                                ?.first()
+                                ?.uppercaseChar()
+                                ?.toString()
+                                ?: "?",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                color = PluckPalette.Primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    if (isUploading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(PluckPalette.Primary.copy(alpha = 0.45f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = PluckPalette.Surface)
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .padding(end = 4.dp, bottom = 4.dp)
+                    .size(40.dp),
+                shape = CircleShape,
+                color = PluckPalette.Primary,
+                shadowElevation = 8.dp,
+                tonalElevation = 0.dp,
+                onClick = onChangePhoto,
+                enabled = !isUploading
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.PhotoCamera,
+                        contentDescription = "Change profile photo",
+                        tint = PluckPalette.Surface
+                    )
+                }
+            }
+        }
+
+        TextButton(
+            onClick = onChangePhoto,
+            enabled = !isUploading
+        ) {
+            Text(if (isUploading) "Uploading…" else "Change Photo")
+        }
+    }
+}
+
 @Composable
 private fun ProfileInputField(
     label: String,
@@ -482,6 +698,7 @@ private fun ProfilePreview() {
         userName = "Caiden Weiss",
         userEmail = "caidenweiss@gmail.com",
         userPhone = "780-123-4567",
+        profileImageUrl = null,
         deviceId = "38400000-8cf0-11bd-b23e-10b96e40000d",
         isLoading = false,
         isUpdatingProfile = false,
@@ -495,3 +712,5 @@ private fun ProfilePreview() {
         onRegisterAdmin = {}
     )
 }
+
+private const val PROFILE_SCREEN_TAG = "ProfileScreen"

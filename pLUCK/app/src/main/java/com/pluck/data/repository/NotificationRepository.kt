@@ -24,6 +24,29 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.time.format.DateTimeFormatter
 
+/**
+ * NotificationRepository.kt
+ *
+ * Purpose: Repository for managing push notifications and event invitations with Firebase Firestore
+ *
+ * Design Pattern: Repository pattern with real-time Flow-based observation
+ *
+ * Features:
+ * - Real-time notification streaming per user (by deviceId, email, or phone)
+ * - Send event invitations via email or phone lookup (US 02.09.01)
+ * - Accept/decline invitation handling with waitlist integration
+ * - Notification lifecycle management (create, read, delete)
+ * - Multi-field user identification (deviceId, email, phone)
+ * - Automatic notification cleanup when users/events are deleted
+ *
+ * Notification Types:
+ * - SELECTION: Lottery draw winner notifications
+ * - REJECTION: Non-selected entrant notifications
+ * - WAITLIST: General waitlist updates
+ * - ORGANIZER_UPDATE: Custom messages from organizers
+ *
+ * Outstanding Issues: None
+ */
 class NotificationRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val waitlistRepository: WaitlistRepository = WaitlistRepository(),

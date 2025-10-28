@@ -1,3 +1,13 @@
+/**
+ * PlaceholderScreen.kt
+ *
+ * Purpose: Generic placeholder screen for displaying temporary or under-construction content.
+ * Provides a consistent UI pattern for incomplete or future features.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

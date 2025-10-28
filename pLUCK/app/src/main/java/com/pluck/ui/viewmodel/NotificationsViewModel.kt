@@ -14,6 +14,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for managing notification data and user interactions
+ *
+ * Design Pattern: MVVM with reactive state management
+ *
+ * Provides reactive state for:
+ * - Real-time notification list (selection, rejection, waitlist updates, organizer messages)
+ * - Notification actions (accept, decline, mark read)
+ * - Event invitation sending (US 02.09.01)
+ * - Per-notification loading states
+ * - Navigation to event details after accepting invitations
+ *
+ * State Management:
+ * - Observes notifications in real-time via Flow from NotificationRepository
+ * - Tracks individual notification processing states to prevent duplicate actions
+ * - Manages invitation sending feedback (success/error messages)
+ * - Handles navigation requests when user accepts invitation
+ *
+ * Outstanding Issues: None
+ */
 class NotificationsViewModel(
     private val notificationRepository: NotificationRepository = NotificationRepository()
 ) : ViewModel() {

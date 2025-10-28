@@ -1,3 +1,13 @@
+/**
+ * WelcomeBackScreen.kt
+ *
+ * Purpose: Returning user welcome screen that greets users and offers auto-login configuration.
+ * Provides a smooth re-entry experience for users with existing accounts.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

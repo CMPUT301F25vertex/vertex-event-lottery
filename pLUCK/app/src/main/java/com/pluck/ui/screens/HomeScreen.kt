@@ -1,3 +1,15 @@
+/**
+ * HomeScreen.kt
+ *
+ * Purpose: Main landing screen displaying browsable events and lottery system.
+ * Users can browse available events, view event details, and join waitlists.
+ * Organizers can navigate to event creation and management features.
+ * Implements event discovery with search, filtering by category/date, and availability status.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.animation.core.Animatable
@@ -70,14 +82,6 @@ import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 import kotlin.random.Random
 
-/**
- * HomeScreen.kt
- *
- * Purpose: Renders the primary discovery surface for entrants, mixing curated hero messaging,
- * category filters, and event listings while delegating global navigation to [BottomNavBar].
- *
- * Outstanding Issues: None.
- */
 data class EventCategory(val id: String, val label: String)
 
 private val homeCategories = listOf(

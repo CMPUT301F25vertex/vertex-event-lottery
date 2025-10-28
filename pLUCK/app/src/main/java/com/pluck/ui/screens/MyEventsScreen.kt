@@ -1,3 +1,13 @@
+/**
+ * MyEventsScreen.kt
+ *
+ * Purpose: Personalized event dashboard showing user's joined events and waitlist status.
+ * Entrants can track their registrations and manage their event participations.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

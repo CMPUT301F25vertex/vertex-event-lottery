@@ -33,6 +33,33 @@ android {
         // Make Maps API key available to manifest
         val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: "YOUR_MAPS_API_KEY_HERE"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+
+        // Cloudinary configuration sourced from local.properties for flexibility per environment
+        val cloudinaryCloudName = localProperties
+            .getProperty("CLOUDINARY_CLOUD_NAME")
+            ?.takeIf { it.isNotBlank() }
+            ?: "pluck"
+
+        val cloudinaryUploadPreset = localProperties
+            .getProperty("CLOUDINARY_UPLOAD_PRESET")
+            ?.takeIf { it.isNotBlank() }
+            ?: "pluck_unsigned"
+
+        val cloudinaryAllowPublicIdOverride = localProperties
+            .getProperty("CLOUDINARY_ALLOW_PUBLIC_ID_OVERRIDE")
+            ?.takeIf { it.isNotBlank() }
+            ?.toBooleanStrictOrNull()
+            ?: false
+
+        val cloudinaryApiKey = localProperties
+            .getProperty("CLOUDINARY_API_KEY")
+            ?.takeIf { it.isNotBlank() }
+            ?: ""
+
+        resValue("string", "cloudinary_cloud_name", cloudinaryCloudName)
+        resValue("string", "cloudinary_upload_preset", cloudinaryUploadPreset)
+        resValue("string", "cloudinary_api_key", cloudinaryApiKey)
+        resValue("bool", "cloudinary_allow_public_id_override", cloudinaryAllowPublicIdOverride.toString())
     }
 
     buildTypes {
@@ -52,6 +79,7 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
+        buildConfig = false
         compose = true
     }
     composeOptions {
@@ -94,6 +122,9 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.zxing:core:3.5.3")
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Cloudinary for image uploads
+    implementation("com.cloudinary:cloudinary-android:2.5.0")
 
     // CameraX
     implementation(libs.camerax.core)

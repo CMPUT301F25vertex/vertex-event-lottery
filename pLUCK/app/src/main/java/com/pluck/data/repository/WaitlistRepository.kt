@@ -304,38 +304,6 @@ class WaitlistRepository(
     }
 
     /**
-     * Get count of accepted entrants for an event
-     */
-    private suspend fun getAcceptedCount(eventId: String): Int {
-        return try {
-            val snapshot = waitlistCollection
-                .whereEqualTo("eventId", eventId)
-                .whereEqualTo("status", WaitlistStatus.ACCEPTED.name)
-                .get()
-                .await()
-            snapshot.size()
-        } catch (e: Exception) {
-            0
-        }
-    }
-
-    /**
-     * Get count of selected (pending) entrants for an event
-     */
-    private suspend fun getSelectedCount(eventId: String): Int {
-        return try {
-            val snapshot = waitlistCollection
-                .whereEqualTo("eventId", eventId)
-                .whereEqualTo("status", WaitlistStatus.SELECTED.name)
-                .get()
-                .await()
-            snapshot.size()
-        } catch (e: Exception) {
-            0
-        }
-    }
-
-    /**
      * Propagates a new entrant display name across all waitlist entries tied to the user.
      */
     suspend fun updateEntrantName(userId: String, displayName: String): Result<Unit> {

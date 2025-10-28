@@ -2,8 +2,10 @@
  * WaitlistScreen.kt
  *
  * Purpose: Displays waitlist details, supporting queue management, chosen entrants, and joining/leave actions.
+ * Entrants can view their position in the waitlist and manage their enrollment status.
+ * Organizers can view all waitlist entries and perform lottery draws.
  *
- * Design Pattern: Composable UI Screen with state hoisting
+ * Design Pattern: Jetpack Compose Screen (MVVM)
  *
  * Outstanding Issues: None
  */

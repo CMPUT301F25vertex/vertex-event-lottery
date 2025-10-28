@@ -1,3 +1,14 @@
+/**
+ * AdminDashboardScreen.kt
+ *
+ * Purpose: Admin dashboard for platform moderation and content management.
+ * Provides a tabbed interface for browsing and removing events, profiles, images, organizers, and viewing notification logs.
+ * Implements user stories US 03.01.01 through US 03.08.01 for administrative functions.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

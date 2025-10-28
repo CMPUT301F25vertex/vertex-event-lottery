@@ -1,3 +1,14 @@
+/**
+ * ChosenEntrantsScreen.kt
+ *
+ * Purpose: Displays the list of entrants selected in the lottery draw.
+ * Organizers can see who was selected, who accepted, declined, or cancelled their invitations.
+ * Provides statistics and CSV export functionality for lottery results.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

@@ -1,3 +1,13 @@
+/**
+ * OrganizerDashboardScreen.kt
+ *
+ * Purpose: Organizer control panel for managing events, waitlists, and lottery draws.
+ * Organizers can view event statistics, manage entrants, and perform lottery operations.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

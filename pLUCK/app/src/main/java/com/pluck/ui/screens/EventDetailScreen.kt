@@ -1,3 +1,14 @@
+/**
+ * EventDetailScreen.kt
+ *
+ * Purpose: Detailed view of a single event showing all event information and registration options.
+ * Entrants can join waitlists, accept/decline invitations, and view event details.
+ * Organizers can view additional management options and waitlist statistics.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

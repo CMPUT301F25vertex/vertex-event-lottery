@@ -2,6 +2,7 @@ package com.pluck.ui.util
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Log
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -67,10 +68,12 @@ object QRCodeGenerator {
                 setPixels(pixels, 0, width, 0, 0, width, height)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to generate QR code", e)
             null
         }
     }
+
+    private const val TAG = "QRCodeGenerator"
 
     /**
      * Generates event-specific QR code data

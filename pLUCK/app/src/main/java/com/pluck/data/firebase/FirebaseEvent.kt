@@ -12,10 +12,45 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * Firebase-compatible event data model
+ * FirebaseEvent.kt
  *
- * This model is used for Firestore serialization/deserialization.
- * Converted to/from UI Event model for display.
+ * Purpose: Firestore-compatible data model for event storage and retrieval. Serves as the
+ * persistence layer representation of events, handling conversion between Firebase Timestamp
+ * objects and Java LocalDate/LocalDateTime for UI consumption.
+ *
+ * Design Pattern: Data Transfer Object (DTO) pattern for Firebase Firestore.
+ * Outstanding Issues: None.
+ */
+
+/**
+ * Firebase-compatible event data model for Firestore serialization/deserialization.
+ * Converted to/from UI Event model for display and business logic.
+ *
+ * @property id Firestore document ID (auto-generated).
+ * @property title Event name displayed to users.
+ * @property description Detailed event description.
+ * @property location Event venue or location description.
+ * @property dateTimestamp Event start date/time as Firebase Timestamp.
+ * @property capacity Maximum number of confirmed attendees.
+ * @property enrolled Current number of confirmed attendees.
+ * @property organizerId Device ID of the event organizer.
+ * @property organizerName Display name of the event organizer.
+ * @property waitlistCount Current number of entrants on the waitlist.
+ * @property waitlistCapacity Maximum waitlist size.
+ * @property qrCodeData QR code payload for event check-in.
+ * @property imageUrl Optional poster image URL from Firebase Storage.
+ * @property registrationStartTimestamp Optional registration opening time.
+ * @property registrationEndTimestamp Optional registration closing time.
+ * @property samplingCount Number of entrants to draw in lottery.
+ * @property drawDateTimestamp Optional lottery draw date.
+ * @property drawStatus Current lottery status (PENDING, COMPLETED, CANCELLED).
+ * @property acceptanceDeadline Hours after draw for entrants to accept invitation.
+ * @property requiresGeolocation Whether joining requires location permission (US 02.02.03).
+ * @property latitude Optional event latitude coordinate.
+ * @property longitude Optional event longitude coordinate.
+ * @property isActive Whether the event is active (soft delete support).
+ * @property createdAt Server-side creation timestamp.
+ * @property updatedAt Server-side last update timestamp.
  */
 data class FirebaseEvent(
     @DocumentId

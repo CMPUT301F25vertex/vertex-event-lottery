@@ -1,3 +1,13 @@
+/**
+ * EditEventPosterScreen.kt
+ *
+ * Purpose: Event poster editor allowing organizers to customize event visual representation.
+ * Provides image upload, cropping, and poster customization tools for event branding.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import android.content.Context
@@ -47,13 +57,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.google.firebase.storage.FirebaseStorage
+import com.pluck.data.repository.CloudinaryUploadRepository
+import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
+/**
+ * Screen for editing event posters.
+ *
+ * Allows organizers to update event posters by uploading a new image to Cloudinary
+ * or providing a direct URL. Supports image preview, upload progress tracking,
+ * and comprehensive error handling.
+ *
+ * @param eventTitle The title of the event being edited
+ * @param currentPosterUrl The current poster URL (if any)
+ * @param isSaving Whether the save operation is in progress
+ * @param errorMessage Any error message from the parent component
+ * @param onBack Callback to navigate back
+ * @param onClearError Callback to clear error messages
+ * @param onSavePoster Callback to save the new poster URL
+ * @param modifier Modifier for this composable
+ */
 @Composable
 fun EditEventPosterScreen(
     eventTitle: String,
@@ -65,97 +91,85 @@ fun EditEventPosterScreen(
     onSavePoster: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // State for poster URL management
     var posterUrl by remember { mutableStateOf(currentPosterUrl) }
     var manualPosterUrl by remember { mutableStateOf(currentPosterUrl.orEmpty()) }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val storage = remember { runCatching { FirebaseStorage.getInstance() }.getOrNull() }
+    val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
+    /**
+     * Image picker launcher for event poster selection.
+     *
+     * When an image is selected, it is automatically uploaded to Cloudinary.
+     * The upload process updates Firestore directly since we're editing an existing event.
+     * Progress and errors are tracked via state variables for user feedback.
+     */
     val posterPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
+        // Validate that an image was actually selected
         if (uri == null) {
-            posterUploadError = "No image selected."
-            return@rememberLauncherForActivityResult
-        }
-        if (storage == null) {
-            posterUploadError = "Firebase Storage not configured. Please use a direct image URL instead."
+            posterUploadError = "No image selected. Pick an image or paste a direct URL."
             return@rememberLauncherForActivityResult
         }
 
+        // Reset error state and show upload progress
+        posterUploadError = null
+        posterUploadInProgress = true
+
+        /**
+         * Upload the selected image to Cloudinary.
+         *
+         * Process:
+         * 1. Generate a unique filename using UUID to avoid conflicts
+         * 2. Call CloudinaryUploadRepository to upload the image
+         * 3. Handle the result (success or error)
+         * 4. Update UI state accordingly
+         *
+         * The upload is performed with updateFirestore = true because
+         * we're editing an existing event and want Firestore to be updated
+         * with the new poster URL immediately.
+         */
         coroutineScope.launch {
-            posterUploadInProgress = true
-            posterUploadError = null
-            var inputStream: java.io.InputStream? = null
             try {
-                // Take persistable URI permission for the selected file
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (e: SecurityException) {
-                    // Permission not available, continue anyway as PickVisualMedia should handle this
+                // Generate unique identifier for this poster
+                val eventId = UUID.randomUUID().toString()
+
+                // Upload to Cloudinary and await the result
+                // updateFirestore = true ensures Firestore is updated with the new URL
+                val result = uploadRepository.uploadEventPoster(
+                    imageUri = uri,
+                    eventId = eventId,
+                    updateFirestore = true  // Update Firestore since we're editing an existing event
+                )
+
+                // Handle upload result
+                when (result) {
+                    is CloudinaryUploadResult.Success -> {
+                        // Successfully uploaded - store the Cloudinary URL
+                        posterUrl = result.url
+                        manualPosterUrl = result.url
+                        posterUploadError = null
+                        android.util.Log.d("EditEventPosterScreen", "Poster uploaded successfully: ${result.url}")
+                    }
+                    is CloudinaryUploadResult.Error -> {
+                        // Upload failed - show user-friendly error message
+                        posterUploadError = "Failed to upload poster: ${result.message}. Please try again or paste a direct image URL."
+                        posterUrl = null
+                        android.util.Log.e("EditEventPosterScreen", "Failed to upload poster: ${result.message}")
+                    }
                 }
-
-                val contentResolver = context.contentResolver
-                inputStream = contentResolver.openInputStream(uri)
-                if (inputStream == null) {
-                    posterUploadError = "Cannot read selected image. Please try a different image or use a direct URL."
-                    posterUploadInProgress = false
-                    return@launch
-                }
-                val byteArray = inputStream.readBytes()
-                inputStream.close()
-                inputStream = null
-
-                if (byteArray.isEmpty()) {
-                    posterUploadError = "Selected image is empty. Please try a different image."
-                    posterUploadInProgress = false
-                    return@launch
-                }
-
-                val fileName = "event_posters/${UUID.randomUUID()}.jpg"
-                val reference = storage.reference.child(fileName)
-
-                val uploadTask = reference.putBytes(byteArray)
-                uploadTask.await()
-
-                val downloadUrl = reference.downloadUrl.await().toString()
-
-                posterUrl = downloadUrl
-                manualPosterUrl = downloadUrl
-                posterUploadError = null
             } catch (t: Throwable) {
-                android.util.Log.e("EditEventPosterScreen", "Failed to upload poster", t)
-                val errorMsg = when {
-                    t is java.io.FileNotFoundException ->
-                        "Cannot access the selected image. Please try a different image or use a direct URL."
-                    t is SecurityException ->
-                        "Permission denied to read the image. Please try a different image or use a direct URL."
-                    t.message?.contains("does not exist", ignoreCase = true) == true ||
-                    t.message?.contains("No such file", ignoreCase = true) == true ||
-                    t.message?.contains("not found", ignoreCase = true) == true ||
-                    t.message?.contains("404", ignoreCase = true) == true ->
-                        "Firebase Storage is not configured for this project.\n\n" +
-                        "Please paste a direct image URL below instead.\n\n" +
-                        "You can upload images to:\n• Imgur (https://imgur.com)\n• PostImages (https://postimages.org)\n• ImgBB (https://imgbb.com)"
-                    t.message?.contains("permission", ignoreCase = true) == true ||
-                    t.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true ->
-                        "Firebase Storage permission denied.\n\n" +
-                        "Please paste a direct image URL below instead."
-                    t.message?.contains("network", ignoreCase = true) == true ->
-                        "Network error. Check your internet connection and try again."
-                    else -> "Upload failed: ${t.message ?: "Unknown error"}\n\n" +
-                        "Please paste a direct image URL below instead."
-                }
-                posterUploadError = errorMsg
+                // Catch any unexpected exceptions
+                android.util.Log.e("EditEventPosterScreen", "Unexpected error during poster upload", t)
+                posterUploadError = "Failed to upload poster: ${t.message ?: "unknown error"}. Paste a direct image URL below."
+                posterUrl = null
             } finally {
-                // Ensure stream is closed
-                inputStream?.close()
+                // Always reset upload progress state
                 posterUploadInProgress = false
             }
         }
@@ -197,7 +211,7 @@ fun EditEventPosterScreen(
                     PosterPreview(
                         posterUrl = posterUrl,
                         isUploading = posterUploadInProgress,
-                        canUploadPoster = storage != null,
+                        canUploadPoster = true,  // Cloudinary is always available
                         onSelectPoster = {
                             posterPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
@@ -212,7 +226,7 @@ fun EditEventPosterScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Use a direct image link if uploads are disabled. A 4:3 JPEG or PNG under 2 MB looks best.",
+                            text = "Uploaded posters are stored on Cloudinary CDN. Recommended ratio 4:3, JPEG or PNG.",
                             style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
                         )
                         OutlinedTextField(
@@ -298,6 +312,14 @@ fun EditEventPosterScreen(
     }
 }
 
+/**
+ * Header section for the poster editor screen.
+ *
+ * Displays a back button and title describing the poster editing task.
+ *
+ * @param eventTitle The title of the event being edited
+ * @param onBack Callback to navigate back to the previous screen
+ */
 @Composable
 private fun PosterEditorHeader(
     eventTitle: String,
@@ -341,6 +363,19 @@ private fun PosterEditorHeader(
     }
 }
 
+/**
+ * Poster preview and upload controls.
+ *
+ * Displays the current poster image (or a placeholder if none is selected),
+ * along with buttons to upload a new poster or remove the current one.
+ * Shows upload progress when an upload is in progress.
+ *
+ * @param posterUrl The current poster URL (or null if none)
+ * @param isUploading Whether a poster upload is currently in progress
+ * @param canUploadPoster Whether poster uploads are available (always true for Cloudinary)
+ * @param onSelectPoster Callback to launch the image picker
+ * @param onRemovePoster Callback to remove the current poster
+ */
 @Composable
 private fun PosterPreview(
     posterUrl: String?,
@@ -431,6 +466,15 @@ private fun PosterPreview(
     }
 }
 
+/**
+ * Error message callout component.
+ *
+ * Displays an error message in a styled surface with optional dismiss button.
+ * Used for showing upload errors or other validation issues.
+ *
+ * @param message The error message to display
+ * @param onDismiss Optional callback to dismiss the error (shows dismiss button if provided)
+ */
 @Composable
 private fun ErrorCallout(
     message: String,

@@ -1,3 +1,14 @@
+/**
+ * EntrantLocationsMapScreen.kt
+ *
+ * Purpose: Geographic visualization of entrant locations on a map for organizers.
+ * Displays where waitlist entrants joined from to help organizers understand participant distribution.
+ * Implements US 02.02.02 for viewing entrant locations on a map.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
@@ -17,11 +28,6 @@ import com.google.maps.android.compose.*
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
-
-/**
- * Screen displaying entrant locations on a map for organizers (US 02.02.02).
- * Shows where waitlist entrants joined from geographically.
- */
 
 @Composable
 fun EntrantLocationsMapScreen(

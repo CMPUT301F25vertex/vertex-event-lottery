@@ -1,3 +1,13 @@
+/**
+ * NotificationsScreen.kt
+ *
+ * Purpose: Notification center displaying system notifications and event updates.
+ * Users can view notification history, manage notification preferences, and stay informed.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

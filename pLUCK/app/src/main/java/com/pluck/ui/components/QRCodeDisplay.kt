@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -294,7 +295,7 @@ private suspend fun saveQRCodeToGallery(
             true
         } ?: false
     } catch (e: Exception) {
-        e.printStackTrace()
+        Log.e("QRCodeDisplay", "Failed to save QR code to media store", e)
         false
     }
 }

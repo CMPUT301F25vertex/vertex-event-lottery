@@ -1,3 +1,13 @@
+/**
+ * SettingsScreen.kt
+ *
+ * Purpose: Application settings and preferences screen for configuring app behavior.
+ * Users can manage notifications, theme preferences, and other application settings.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

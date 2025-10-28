@@ -1,3 +1,25 @@
+/**
+ * BottomNavBar.kt
+ *
+ * Purpose: Bottom navigation bar component with floating action button for event creation
+ *
+ * Design Pattern: Composable UI component with Material Design 3 navigation patterns
+ *
+ * Features:
+ * - 4 navigation tabs: Home, Notifications, Settings, Profile
+ * - Center-aligned floating action button for event creation
+ * - Active tab highlighting with tinted background
+ * - Theme-aware colors via PluckPalette
+ * - Elevated surface with shadow
+ * - Icon + label layout for each tab
+ *
+ * Layout:
+ * - Left: Home, Notifications
+ * - Center: FAB (Create Event)
+ * - Right: Settings, Profile
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +59,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pluck.ui.theme.autoTextColor
 
+/**
+ * Represents a single navigation tab in the bottom bar
+ *
+ * @property id Unique identifier for the tab
+ * @property label Display text shown under the icon
+ * @property icon Material icon to display
+ * @property route Navigation route associated with this tab
+ */
 data class NavTab(
     val id: String,
     val label: String,
@@ -44,6 +74,9 @@ data class NavTab(
     val route: String
 )
 
+/**
+ * Predefined navigation tabs for the bottom navigation bar
+ */
 object NavTabs {
     val Home = NavTab("home", "Home", Icons.Default.Home, "event_list")
     val Notifications = NavTab("notifications", "Notifications", Icons.Default.Notifications, "notifications")
@@ -52,6 +85,17 @@ object NavTabs {
     val all = listOf(Home, Notifications, Settings, Profile)
 }
 
+/**
+ * Bottom navigation bar with centered floating action button
+ *
+ * Displays 4 navigation tabs (Home, Notifications, Settings, Profile) split around
+ * a floating action button for creating events. Active tab is highlighted with theme colors.
+ *
+ * @param currentRoute Current navigation route to determine active tab
+ * @param onNavigate Callback when a tab is clicked, receives route string
+ * @param onCreateEvent Callback when the FAB is clicked
+ * @param modifier Optional modifier for the container
+ */
 @Composable
 fun BottomNavBar(
     currentRoute: String?,

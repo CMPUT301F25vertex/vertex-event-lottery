@@ -1,3 +1,13 @@
+/**
+ * CreateAccountScreen.kt
+ *
+ * Purpose: New user registration screen for creating accounts with display name, email, and phone.
+ * Allows users to set up their profile and configure auto-login preferences.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke

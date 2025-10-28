@@ -1,3 +1,13 @@
+/**
+ * CreateEventScreen.kt
+ *
+ * Purpose: Event creation screen for organizers to set up new lottery events.
+ * Organizers can configure event details, capacity, registration deadlines, and event posters.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import android.app.DatePickerDialog
@@ -70,9 +80,9 @@ import coil.compose.AsyncImage
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
-import com.google.firebase.storage.FirebaseStorage
+import com.pluck.data.repository.CloudinaryUploadRepository
+import com.pluck.data.repository.CloudinaryUploadResult
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -139,77 +149,77 @@ fun CreateEventScreen(
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
-    val storage = remember { runCatching { FirebaseStorage.getInstance() }.getOrNull() }
+    val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
+    /**
+     * Image picker launcher for event poster selection.
+     *
+     * When an image is selected, it is automatically uploaded to Cloudinary.
+     * The upload process is handled asynchronously with proper error handling
+     * and user feedback via state variables (posterUploadInProgress, posterUploadError).
+     */
     val posterPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
+        // Validate that an image was actually selected
         if (uri == null) {
             posterUploadError = "No image selected. Pick an image or paste a direct URL."
             return@rememberLauncherForActivityResult
         }
 
-        if (storage == null) {
-            posterUploadError = "Poster uploads require Firebase Storage. Paste a direct image URL below."
-            return@rememberLauncherForActivityResult
-        }
-
+        // Reset error state and show upload progress
         posterUploadError = null
         posterUploadInProgress = true
+
+        /**
+         * Upload the selected image to Cloudinary.
+         *
+         * Process:
+         * 1. Generate a unique filename using UUID to avoid conflicts
+         * 2. Call CloudinaryUploadRepository to upload the image
+         * 3. Handle the result (success or error)
+         * 4. Update UI state accordingly
+         *
+         * The upload is performed with updateFirestore = false because
+         * we only need the URL at this stage - the full event will be
+         * created later when the form is submitted.
+         */
         coroutineScope.launch {
-            var inputStream: java.io.InputStream? = null
             try {
-                // Take persistable URI permission for the selected file
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (e: SecurityException) {
-                    // Permission not available, continue anyway as PickVisualMedia should handle this
+                // Generate unique identifier for this poster
+                val eventId = UUID.randomUUID().toString()
+
+                // Upload to Cloudinary and await the result
+                val result = uploadRepository.uploadEventPoster(
+                    imageUri = uri,
+                    eventId = eventId,
+                    updateFirestore = false  // Don't update Firestore yet - just get the URL
+                )
+
+                // Handle upload result
+                when (result) {
+                    is CloudinaryUploadResult.Success -> {
+                        // Successfully uploaded - store the Cloudinary URL
+                        posterUrl = result.url
+                        posterUrlInput = result.url
+                        posterUploadError = null
+                        android.util.Log.d("CreateEventScreen", "Poster uploaded successfully: ${result.url}")
+                    }
+                    is CloudinaryUploadResult.Error -> {
+                        // Upload failed - show user-friendly error message
+                        posterUploadError = "Failed to upload poster: ${result.message}. Please try again or paste a direct image URL."
+                        posterUrl = null
+                        android.util.Log.e("CreateEventScreen", "Failed to upload poster: ${result.message}")
+                    }
                 }
-
-                inputStream = context.contentResolver.openInputStream(uri)
-                if (inputStream == null) {
-                    posterUploadError = "Cannot read selected image. Please try a different image or use a direct URL."
-                    posterUploadInProgress = false
-                    return@launch
-                }
-
-                val byteArray = inputStream.readBytes()
-                inputStream.close()
-                inputStream = null
-
-                if (byteArray.isEmpty()) {
-                    posterUploadError = "Selected image is empty. Please try a different image."
-                    posterUploadInProgress = false
-                    return@launch
-                }
-
-                val fileName = "event_posters/${UUID.randomUUID()}.jpg"
-                val ref = storage.reference.child(fileName)
-
-                ref.putBytes(byteArray).await()
-                val downloadUrl = ref.downloadUrl.await().toString()
-
-                posterUrl = downloadUrl
-                posterUrlInput = downloadUrl
             } catch (t: Throwable) {
-                android.util.Log.e("CreateEventScreen", "Failed to upload poster", t)
-                posterUploadError = when {
-                    t is java.io.FileNotFoundException ->
-                        "Cannot access the selected image. Please try a different image or use a direct URL."
-                    t is SecurityException ->
-                        "Permission denied to read the image. Please try a different image or use a direct URL."
-                    t.message?.contains("object", ignoreCase = true) == true &&
-                        t.message?.contains("doesn't exist", ignoreCase = true) == true ->
-                        "Upload failed because the storage object was not found. Double-check your Firebase Storage bucket, or paste a public image URL below."
-                    else -> "Failed to upload poster: ${t.message ?: "unknown error"}. Paste a direct image URL below."
-                }
+                // Catch any unexpected exceptions
+                android.util.Log.e("CreateEventScreen", "Unexpected error during poster upload", t)
+                posterUploadError = "Failed to upload poster: ${t.message ?: "unknown error"}. Paste a direct image URL below."
                 posterUrl = null
             } finally {
-                inputStream?.close()
+                // Always reset upload progress state
                 posterUploadInProgress = false
             }
         }
@@ -227,7 +237,7 @@ fun CreateEventScreen(
             registrationEndTime != null &&
             waitlistLimit.isNotBlank() &&
             samplingCount.isNotBlank() &&
-            !posterUploadInProgress  // Poster URL is now optional since Firebase Storage isn't configured
+            !posterUploadInProgress  // Wait for Cloudinary upload to complete before allowing submission
 
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
@@ -285,7 +295,7 @@ fun CreateEventScreen(
                     PosterUploadSection(
                         posterUrl = posterUrl,
                         isUploading = posterUploadInProgress,
-                        canUploadPoster = storage != null,
+                        canUploadPoster = true,  // Cloudinary is always available
                         manualPosterUrl = posterUrlInput,
                         onManualPosterUrlChange = { value ->
                             posterUrlInput = value
@@ -750,14 +760,14 @@ private fun PosterUploadSection(
         )
 
         Text(
-            text = "Recommended ratio 4:3, JPEG or PNG up to 2MB.",
+            text = "Recommended ratio 4:3, JPEG or PNG. Uploaded to Cloudinary CDN.",
             style = MaterialTheme.typography.bodySmall.copy(
                 color = PluckPalette.Muted
             )
         )
         if (!canUploadPoster) {
             Text(
-                text = "Poster uploads unavailable in this environment. Paste a direct URL instead.",
+                text = "Poster uploads unavailable. Paste a direct URL instead.",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = PluckPalette.Decline
                 )

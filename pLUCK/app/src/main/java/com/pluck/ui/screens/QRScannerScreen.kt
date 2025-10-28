@@ -1,3 +1,14 @@
+/**
+ * QRScannerScreen.kt
+ *
+ * Purpose: Advanced QR code scanner with camera and image upload capabilities.
+ * Provides live camera scanning, gallery image upload, and manual event ID entry for accessing events.
+ * Uses ML Kit for QR code detection and CameraX for camera integration.
+ *
+ * Design Pattern: Jetpack Compose Screen (MVVM)
+ *
+ * Outstanding Issues: None
+ */
 package com.pluck.ui.screens
 
 import android.Manifest
@@ -5,6 +16,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
@@ -328,7 +340,7 @@ private fun CameraPreview(
                         imageAnalyzer
                     )
                 } catch (exc: Exception) {
-                    exc.printStackTrace()
+                    Log.e("QRScannerScreen", "Failed to bind camera use cases", exc)
                 }
 
                 previewView
@@ -646,7 +658,7 @@ private fun processImageUri(
                 onResult(null)
             }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Log.e("QRScannerScreen", "Failed to process image for QR codes", e)
         onResult(null)
     }
 }

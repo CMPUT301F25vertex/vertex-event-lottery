@@ -699,12 +699,26 @@ fun PLuckNavHost(
                         userName = currentUser?.displayName ?: "Anonymous",
                         userEmail = currentUser?.email,
                         userPhone = currentUser?.phoneNumber,
+                        profileImageUrl = currentUser?.profileImageUrl,
                         deviceId = deviceId,
                         isLoading = loginInProgress,
                         isUpdatingProfile = profileUpdating,
                         isAdmin = isAdminDevice,
                         updateMessage = profileUpdateMessage,
                         updateError = profileUpdateError,
+                        onProfileImageUploadStarted = {
+                            profileUpdateMessage = null
+                            profileUpdateError = null
+                        },
+                        onProfileImageUploaded = { url ->
+                            currentUser = currentUser?.copy(profileImageUrl = url)
+                            profileUpdateError = null
+                            profileUpdateMessage = "Profile photo updated successfully."
+                        },
+                        onProfileImageUploadFailed = { message ->
+                            profileUpdateMessage = null
+                            profileUpdateError = message
+                        },
                         onUpdateProfile = { name, email, phone ->
                             scope.launch {
                                 profileUpdating = true
