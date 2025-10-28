@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -194,7 +195,8 @@ fun ProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(scrollState)
-                        .padding(horizontal = 28.dp, vertical = 32.dp),
+                        .padding(horizontal = 28.dp, vertical = 32.dp)
+                        .testTag(ProfileScreenTestTags.ScrollContainer),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
@@ -433,7 +435,9 @@ fun ProfileScreen(
                         showDeleteDialog = false
                         onDeleteAccount()
                     },
-                    modifier = Modifier.widthIn(min = 160.dp),
+                    modifier = Modifier
+                        .widthIn(min = 160.dp)
+                        .testTag(ProfileScreenTestTags.DeleteConfirmButton),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PluckPalette.Decline,
@@ -689,6 +693,11 @@ private fun ProfileInputField(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp)
     )
+}
+
+object ProfileScreenTestTags {
+    const val ScrollContainer = "profile_scroll"
+    const val DeleteConfirmButton = "profile_delete_confirm"
 }
 
 @Preview(showBackground = true, widthDp = 420, heightDp = 820)

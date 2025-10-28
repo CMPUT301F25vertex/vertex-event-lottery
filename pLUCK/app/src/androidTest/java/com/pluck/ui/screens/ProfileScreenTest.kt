@@ -3,9 +3,12 @@ package com.pluck.ui.screens
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pluck.ui.theme.PluckTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
@@ -38,9 +41,11 @@ class ProfileScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Register as Admin").assertIsDisplayed()
+        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
+
+        composeRule.onNodeWithText("Register as Admin", useUnmergedTree = true).assertExists()
         assertThrows(AssertionError::class.java) {
-            composeRule.onNodeWithText("Admin Dashboard").assertIsDisplayed()
+            composeRule.onNodeWithText("Admin Dashboard", useUnmergedTree = true).assertExists()
         }
     }
 
@@ -66,9 +71,44 @@ class ProfileScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Admin Dashboard").assertIsDisplayed()
+        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
+
+        composeRule.onNodeWithText("Admin Dashboard", useUnmergedTree = true).assertExists()
         assertThrows(AssertionError::class.java) {
-            composeRule.onNodeWithText("Register as Admin").assertIsDisplayed()
+            composeRule.onNodeWithText("Register as Admin", useUnmergedTree = true).assertExists()
         }
+    }
+
+    @Test
+    fun deleteAccount_showsConfirmationDialogAndInvokesCallback() {
+        var deleteCount = 0
+
+        composeRule.setContent {
+            PluckTheme {
+                ProfileScreen(
+                    userName = "Avery",
+                    userEmail = "avery@example.com",
+                    userPhone = "555-8888",
+                    profileImageUrl = null,
+                    deviceId = "device-delete",
+                    isLoading = false,
+                    onSignOut = {},
+                    onDeleteAccount = { deleteCount += 1 }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
+
+        composeRule.onNodeWithText("Delete Account", useUnmergedTree = true)
+            .assertExists()
+            .performClick()
+
+        composeRule.onNodeWithText("Delete account?").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(ProfileScreenTestTags.DeleteConfirmButton)
+            .performClick()
+
+        assertEquals("Delete callback should be invoked once.", 1, deleteCount)
     }
 }

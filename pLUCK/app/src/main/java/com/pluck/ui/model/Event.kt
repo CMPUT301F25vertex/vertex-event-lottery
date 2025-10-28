@@ -1,9 +1,10 @@
-package com.pluck.ui.model
+﻿package com.pluck.ui.model
 
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Event.kt
@@ -81,7 +82,7 @@ data class Event(
      */
     val dateLabel: String
         get() = eventTime?.let { time ->
-            "${date.format(DATE_FORMATTER)} • ${time.format(TIME_FORMATTER)}"
+            "${date.format(DATE_FORMATTER)} at ${time.format(TIME_FORMATTER)}"
         } ?: date.format(DATE_FORMATTER)
 
     /**
@@ -170,8 +171,8 @@ data class Event(
         get() = effectiveDrawDate.format(DATE_FORMATTER)
 
     companion object {
-        private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy")
-        private val TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a")
+        private val DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+        private val TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
     }
 }
 
