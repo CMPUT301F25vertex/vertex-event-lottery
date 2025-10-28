@@ -48,7 +48,9 @@ class WaitlistRepository(
     suspend fun joinWaitlist(
         eventId: String,
         userId: String,
-        userName: String
+        userName: String,
+        latitude: Double? = null,
+        longitude: Double? = null
     ): Result<String> {
         return try {
             val existingMembership = getUserWaitlistMembership(eventId, userId).getOrThrow()
@@ -71,7 +73,9 @@ class WaitlistRepository(
                 userName = userName,
                 position = currentSize + 1,
                 joinedTimestamp = Timestamp.now(),
-                status = WaitlistStatus.WAITING
+                status = WaitlistStatus.WAITING,
+                latitude = latitude,
+                longitude = longitude
             )
 
             val docRef = waitlistCollection.document()

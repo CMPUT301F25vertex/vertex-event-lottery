@@ -313,6 +313,8 @@ private fun MyEventsFilterRow(
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = alpha)
                 ),
                 border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = selected == filter,
                     borderColor = if (selected == filter) PluckPalette.Primary.copy(alpha = alpha) else PluckPalette.Primary.copy(alpha = 0.12f * alpha),
                     selectedBorderColor = PluckPalette.Primary.copy(alpha = alpha),
                     borderWidth = 1.dp

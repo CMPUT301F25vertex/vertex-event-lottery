@@ -19,6 +19,8 @@ data class FirebaseWaitlistEntry(
     val position: Int = 0,
     val joinedTimestamp: Timestamp = Timestamp.now(),
     val status: WaitlistStatus = WaitlistStatus.WAITING,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     @ServerTimestamp
     val createdAt: Timestamp? = null,
     @ServerTimestamp
@@ -50,7 +52,9 @@ data class FirebaseWaitlistEntry(
             joinedDate = localDate,
             isCurrentUser = userId == currentUserId,
             isChosen = status == WaitlistStatus.SELECTED,
-            status = status
+            status = status,
+            latitude = latitude,
+            longitude = longitude
         )
     }
 }

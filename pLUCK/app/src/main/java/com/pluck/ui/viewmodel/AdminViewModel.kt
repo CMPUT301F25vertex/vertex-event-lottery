@@ -18,15 +18,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
- * ViewModel for managing admin dashboard operations
+ * ViewModel for admin dashboard operations.
+ * Manages platform-wide data browsing and moderation actions.
  *
- * Provides reactive state for:
- * - Browse and remove events (US 03.04.01, 03.01.01)
- * - Browse and remove profiles (US 03.05.01, 03.02.01)
- * - Browse and remove images (US 03.06.01, 03.03.01)
- * - Remove organizers (US 03.07.01)
- * - Review notification logs (US 03.08.01)
- * - Admin statistics
+ * Handles:
+ * - Loading all events, users, organizers, images, and notifications
+ * - Deleting events, profiles, and images
+ * - Revoking organizer privileges
+ * - Computing admin statistics
  */
 class AdminViewModel(
     private val eventRepository: EventRepository = EventRepository(),
@@ -63,9 +62,7 @@ class AdminViewModel(
         loadAllData()
     }
 
-    /**
-     * Load all admin data
-     */
+    /** Loads all admin data on initialization */
     private fun loadAllData() {
         loadAllEvents()
         loadAllUsers()
@@ -74,9 +71,7 @@ class AdminViewModel(
         loadNotificationLogs()
     }
 
-    /**
-     * Load all events for admin browsing (US 03.04.01)
-     */
+    /** Loads all events from Firestore for browsing (US 03.04.01) */
     fun loadAllEvents() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -95,9 +90,7 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Load all user profiles (US 03.05.01)
-     */
+    /** Loads all user profiles for browsing (US 03.05.01) */
     fun loadAllUsers() {
         viewModelScope.launch {
             userRepository.getAllUsers()
@@ -111,9 +104,7 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Load all organizers (US 03.07.01)
-     */
+    /** Loads all users with organizer role (US 03.07.01) */
     fun loadAllOrganizers() {
         viewModelScope.launch {
             userRepository.getAllOrganizers()
@@ -127,15 +118,14 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Load all uploaded images from Firebase Storage (US 03.06.01)
-     */
+    /** Loads all uploaded images from Firebase Storage (US 03.06.01) */
     fun loadAllImages() {
         viewModelScope.launch {
             try {
                 val eventImagesRef = storage.reference.child("event_images")
                 val listResult = eventImagesRef.listAll().await()
 
+                // Map storage items to metadata objects
                 val imagesList = listResult.items.map { storageRef ->
                     val metadata = storageRef.metadata.await()
                     ImageMetadata(
@@ -157,18 +147,17 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Load notification logs (US 03.08.01)
-     */
+    /** Loads notification history from Firestore (US 03.08.01) */
     fun loadNotificationLogs() {
         viewModelScope.launch {
             try {
                 val snapshot = firestore.collection("notifications")
                     .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                    .limit(100) // Limit to last 100 notifications
+                    .limit(100) // Only load the 100 most recent notifications
                     .get()
                     .await()
 
+                // Parse each document into a notification log entry
                 val logs = snapshot.documents.mapNotNull { doc ->
                     try {
                         NotificationLog(
@@ -182,7 +171,7 @@ class AdminViewModel(
                             createdAt = doc.getLong("createdAtMillis") ?: 0L
                         )
                     } catch (e: Exception) {
-                        null
+                        null // Skip malformed entries
                     }
                 }
 
@@ -194,9 +183,7 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Remove an event (US 03.01.01)
-     */
+    /** Deletes an event from the system (US 03.01.01) */
     fun removeEvent(eventId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -213,9 +200,7 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Remove a user profile (US 03.02.01)
-     */
+    /** Deletes a user profile from the system (US 03.02.01) */
     fun removeProfile(profileId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -232,19 +217,17 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Remove an image from Firebase Storage (US 03.03.01)
-     */
+    /** Deletes an image from Firebase Storage (US 03.03.01) */
     fun removeImage(imageId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             try {
-                // Find the image in our list
+                // Find the image metadata
                 val image = _images.value.find { it.id == imageId }
                 if (image != null) {
-                    // Delete from Firebase Storage
+                    // Delete from Firebase Storage using the URL
                     storage.getReferenceFromUrl(image.url).delete().await()
                     loadAllImages()
                 } else {
@@ -258,9 +241,7 @@ class AdminViewModel(
         }
     }
 
-    /**
-     * Remove organizer role from a user (US 03.07.01)
-     */
+    /** Revokes organizer privileges from a user (US 03.07.01) */
     fun removeOrganizer(organizerId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -278,6 +259,7 @@ class AdminViewModel(
         }
     }
 
+    /** Recalculates admin statistics based on current data */
     private fun updateStats() {
         _stats.value = AdminStats(
             totalEvents = _events.value.size,
@@ -290,7 +272,15 @@ class AdminViewModel(
 }
 
 /**
- * Image metadata for admin dashboard
+ * Metadata for an uploaded image in Firebase Storage.
+ *
+ * @property id Unique identifier (filename)
+ * @property name Display name of the image
+ * @property url Download URL from Firebase Storage
+ * @property path Full path in Firebase Storage
+ * @property sizeBytes File size in bytes
+ * @property contentType MIME type (e.g., "image/jpeg")
+ * @property uploadedAt Timestamp when the image was uploaded
  */
 data class ImageMetadata(
     val id: String,
@@ -303,7 +293,16 @@ data class ImageMetadata(
 )
 
 /**
- * Notification log entry for admin dashboard
+ * Log entry for a notification sent by the system.
+ *
+ * @property id Unique notification ID
+ * @property title Main notification text
+ * @property subtitle Secondary text
+ * @property userId Recipient user ID
+ * @property eventId Associated event ID
+ * @property category Notification category (e.g., "SELECTION", "REJECTION")
+ * @property status Delivery status (e.g., "SENT")
+ * @property createdAt Timestamp when notification was created
  */
 data class NotificationLog(
     val id: String,

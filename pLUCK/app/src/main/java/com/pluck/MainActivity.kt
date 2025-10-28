@@ -16,14 +16,25 @@ import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Main activity for the pLUCK lottery event management app.
+ * Handles theme initialization, navigation setup, and user preference persistence.
+ */
 class MainActivity : ComponentActivity() {
+    /** Tracks dark mode state for reactive theme updates */
     private val darkModeFlow = MutableStateFlow(false)
-    private val selectedThemeIdFlow = MutableStateFlow("blue") // Default theme
 
+    /** Tracks the currently selected theme (default is blue) */
+    private val selectedThemeIdFlow = MutableStateFlow("blue")
+
+    /**
+     * Sets up theme preferences and initializes the navigation host.
+     * Loads saved user preferences and applies them to the UI.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Load preferences
+        // Load saved theme preferences
         val prefs = ThemePreferences(this)
         ThemeManager.setCustomTheme(prefs.getCustomTheme())
         lifecycleScope.launch {

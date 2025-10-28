@@ -39,6 +39,9 @@ import java.time.format.DateTimeFormatter
  * @property drawDate Date when the lottery draw will be executed. Defaults to event date if not specified.
  * @property drawStatus Current status of the draw (PENDING, COMPLETED, CANCELLED).
  * @property acceptanceDeadline Deadline for selected entrants to accept their invitation (hours after draw).
+ * @property requiresGeolocation Whether entrants must provide location when joining waitlist (US 02.02.03).
+ * @property latitude Optional latitude coordinate for event location.
+ * @property longitude Optional longitude coordinate for event location.
  */
 data class Event(
     val id: String,
@@ -62,7 +65,10 @@ data class Event(
     val samplingCount: Int = 0,
     val drawDate: LocalDate? = null,
     val drawStatus: DrawStatus = DrawStatus.PENDING,
-    val acceptanceDeadline: Int = 24
+    val acceptanceDeadline: Int = 24,
+    val requiresGeolocation: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) {
     /**
      * @return A preview-friendly description limited to 120 characters.

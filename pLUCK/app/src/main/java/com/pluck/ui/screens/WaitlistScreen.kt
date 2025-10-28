@@ -79,6 +79,12 @@ private enum class WaitlistTab {
     CHOSEN
 }
 
+/**
+ * Represents a user's entry on an event waitlist.
+ *
+ * @property latitude Optional latitude coordinate where user joined (US 02.02.02)
+ * @property longitude Optional longitude coordinate where user joined (US 02.02.02)
+ */
 data class WaitlistEntry(
     val id: String,
     val userId: String = "",
@@ -87,7 +93,9 @@ data class WaitlistEntry(
     val joinedDate: LocalDate,
     val isCurrentUser: Boolean = false,
     val isChosen: Boolean = false,
-    val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING
+    val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -25,24 +25,25 @@ import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 
 /**
- * AdminDashboardScreen.kt
+ * Admin dashboard for platform moderation and content management.
+ * Provides a tabbed interface for browsing and removing events, profiles, images,
+ * organizers, and viewing notification logs.
  *
- * Purpose: Central admin control panel for platform moderation.
- * Implements US 03.01.01 - 03.08.01 (Browse & Remove Events, Profiles, Images, Organizers, Notification Logs).
- *
- * Design Pattern: Stateful screen following the pLUCK design language with tabbed interface.
- *
- * Outstanding Issues: Profile, Image, Organizer, and Notification features require additional repositories.
+ * Implements user stories US 03.01.01 through US 03.08.01.
  */
 
+/** Available tabs in the admin dashboard */
 enum class AdminTab {
-    EVENTS,      // US 03.04.01, 03.01.01
-    PROFILES,    // US 03.05.01, 03.02.01
-    IMAGES,      // US 03.06.01, 03.03.01
-    ORGANIZERS,  // US 03.07.01
-    NOTIFICATIONS // US 03.08.01
+    EVENTS,         // Browse and remove events
+    PROFILES,       // Browse and remove user profiles
+    IMAGES,         // Browse and remove uploaded images
+    ORGANIZERS,     // Remove organizer privileges from users
+    NOTIFICATIONS   // View notification history
 }
 
+/**
+ * Statistics displayed in the admin dashboard overview.
+ */
 data class AdminStats(
     val totalEvents: Int = 0,
     val totalUsers: Int = 0,
@@ -51,6 +52,21 @@ data class AdminStats(
     val totalNotifications: Int = 0
 )
 
+/**
+ * Admin dashboard screen with tabbed interface for platform moderation.
+ *
+ * @param stats Overview statistics for the platform
+ * @param events All events in the system
+ * @param users All user profiles
+ * @param organizers All users with organizer role
+ * @param images All uploaded image metadata
+ * @param notifications Notification history logs
+ * @param isLoading Whether data is currently being loaded
+ * @param onRemoveEvent Called when an event should be deleted
+ * @param onRemoveProfile Called when a user profile should be deleted
+ * @param onRemoveImage Called when an image should be deleted
+ * @param onRemoveOrganizer Called when organizer role should be revoked
+ */
 @Composable
 fun AdminDashboardScreen(
     stats: AdminStats = AdminStats(),

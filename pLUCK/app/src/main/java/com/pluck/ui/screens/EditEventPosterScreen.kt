@@ -91,8 +91,17 @@ fun EditEventPosterScreen(
             posterUploadError = null
             var inputStream: java.io.InputStream? = null
             try {
-                val contentResolver = context.contentResolver
+                // Take persistable URI permission for the selected file
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    // Permission not available, continue anyway as PickVisualMedia should handle this
+                }
 
+                val contentResolver = context.contentResolver
                 inputStream = contentResolver.openInputStream(uri)
                 if (inputStream == null) {
                     posterUploadError = "Cannot read selected image. Please try a different image or use a direct URL."
@@ -121,7 +130,12 @@ fun EditEventPosterScreen(
                 manualPosterUrl = downloadUrl
                 posterUploadError = null
             } catch (t: Throwable) {
+                android.util.Log.e("EditEventPosterScreen", "Failed to upload poster", t)
                 val errorMsg = when {
+                    t is java.io.FileNotFoundException ->
+                        "Cannot access the selected image. Please try a different image or use a direct URL."
+                    t is SecurityException ->
+                        "Permission denied to read the image. Please try a different image or use a direct URL."
                     t.message?.contains("does not exist", ignoreCase = true) == true ||
                     t.message?.contains("No such file", ignoreCase = true) == true ||
                     t.message?.contains("not found", ignoreCase = true) == true ||

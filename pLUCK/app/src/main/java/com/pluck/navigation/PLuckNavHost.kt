@@ -15,7 +15,14 @@
  */
 package com.pluck.navigation
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.widget.Toast
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,6 +91,7 @@ import com.pluck.ui.screens.CustomThemeCreatorScreen
 import com.pluck.ui.screens.QRScannerScreen
 import com.pluck.ui.screens.ChosenEntrantsScreen
 import com.pluck.ui.screens.AdminDashboardScreen
+import com.pluck.ui.screens.EntrantLocationsMapScreen
 import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
@@ -121,6 +129,11 @@ sealed class PLuckDestination(val route: String) {
     object AdminDashboard : PLuckDestination("admin_dashboard")
     object QRScanner : PLuckDestination("qr_scanner")
     object ChosenEntrants : PLuckDestination("chosen_entrants") {
+        const val EVENT_ID_ARG = "eventId"
+        val routeWithArg = "$route/{$EVENT_ID_ARG}"
+        fun createRoute(eventId: String) = "$route/$eventId"
+    }
+    object EntrantLocationsMap : PLuckDestination("entrant_locations_map") {
         const val EVENT_ID_ARG = "eventId"
         val routeWithArg = "$route/{$EVENT_ID_ARG}"
         fun createRoute(eventId: String) = "$route/$eventId"
@@ -570,13 +583,50 @@ fun PLuckNavHost(
                                 return@join
                             }
 
-                            scope.launch {
-                                waitlistViewModel.joinWaitlist(
-                                    eventId = resolvedEvent.id,
-                                    userId = profile.deviceId,
-                                    userName = profile.displayName
-                                ) {
-                                    waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                            // Capture location if event requires geolocation (US 02.02.03)
+                            if (resolvedEvent.requiresGeolocation) {
+                                scope.launch {
+                                    try {
+                                        @SuppressLint("MissingPermission")
+                                        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                                        val cancellationToken = CancellationTokenSource()
+                                        @SuppressLint("MissingPermission")
+                                        val locationResult = fusedLocationClient.getCurrentLocation(
+                                            Priority.PRIORITY_HIGH_ACCURACY,
+                                            cancellationToken.token
+                                        )
+
+                                        locationResult.addOnSuccessListener { location ->
+                                            scope.launch {
+                                                waitlistViewModel.joinWaitlist(
+                                                    eventId = resolvedEvent.id,
+                                                    userId = profile.deviceId,
+                                                    userName = profile.displayName,
+                                                    latitude = location?.latitude,
+                                                    longitude = location?.longitude
+                                                ) {
+                                                    waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                                                }
+                                            }
+                                        }.addOnFailureListener {
+                                            Toast.makeText(context, "Failed to get location. Please try again.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: SecurityException) {
+                                        Toast.makeText(context, "Location permission denied. Please grant location access in settings.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } else {
+                                // No geolocation required, join directly
+                                scope.launch {
+                                    waitlistViewModel.joinWaitlist(
+                                        eventId = resolvedEvent.id,
+                                        userId = profile.deviceId,
+                                        userName = profile.displayName,
+                                        latitude = null,
+                                        longitude = null
+                                    ) {
+                                        waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                                    }
                                 }
                             }
                         },
@@ -865,7 +915,8 @@ fun PLuckNavHost(
                         registrationStartTime = request.registrationStartTime,
                         registrationEnd = request.registrationEndDate,
                         registrationEndTime = request.registrationEndTime,
-                        samplingCount = samplingCount
+                        samplingCount = samplingCount,
+                        requiresGeolocation = request.requiresGeolocation
                     )
 
                     eventViewModel.createEvent(newEvent, organizer.deviceId) { eventId ->
@@ -1135,6 +1186,9 @@ fun PLuckNavHost(
                 },
                 onManageChosenEntrants = { event ->
                     navigator.toChosenEntrants(event.id)
+                },
+                onViewEntrantLocations = { event ->
+                    navigator.toEntrantLocationsMap(event.id)
                 }
             )
         }
@@ -1265,6 +1319,33 @@ fun PLuckNavHost(
                 )
             }
         }
+
+        // EntrantLocationsMapScreen - Display entrant locations on map (US 02.02.02)
+        composable(
+            route = PLuckDestination.EntrantLocationsMap.routeWithArg,
+            arguments = listOf(navArgument(PLuckDestination.EntrantLocationsMap.EVENT_ID_ARG) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString(PLuckDestination.EntrantLocationsMap.EVENT_ID_ARG) ?: return@composable
+
+            // Load the event and waitlist entries
+            LaunchedEffect(eventId) {
+                eventViewModel.loadEvent(eventId)
+                waitlistViewModel.loadWaitlist(eventId)
+            }
+
+            // Only render if event is loaded
+            selectedEvent?.let { event ->
+                EntrantLocationsMapScreen(
+                    event = event,
+                    entrants = waitlistEntries,
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
     }
 
     if (showAdminRegistrationDialog) {
@@ -1370,4 +1451,5 @@ class PLuckNavigator(private val navController: NavHostController) {
     fun toAdmin() = navController.navigate(PLuckDestination.AdminDashboard.route)
     fun toQRScanner() = navController.navigate(PLuckDestination.QRScanner.route)
     fun toChosenEntrants(eventId: String) = navController.navigate(PLuckDestination.ChosenEntrants.createRoute(eventId))
+    fun toEntrantLocationsMap(eventId: String) = navController.navigate(PLuckDestination.EntrantLocationsMap.createRoute(eventId))
 }

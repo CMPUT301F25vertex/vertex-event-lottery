@@ -146,13 +146,15 @@ class WaitlistViewModel(
         eventId: String,
         userId: String,
         userName: String,
+        latitude: Double? = null,
+        longitude: Double? = null,
         onSuccess: () -> Unit = {}
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.joinWaitlist(eventId, userId, userName)
+            waitlistRepository.joinWaitlist(eventId, userId, userName, latitude, longitude)
                 .onSuccess { entryId ->
                     _userWaitlistEntryId.value = entryId
                     _userWaitlistStatus.value = WaitlistStatus.WAITING

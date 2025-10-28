@@ -43,6 +43,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -85,6 +87,11 @@ import java.util.UUID
  *
  * Outstanding Issues: None.
  */
+/**
+ * Request object for creating a new event.
+ *
+ * @property requiresGeolocation Whether entrants must provide location when joining (US 02.02.03)
+ */
 data class CreateEventRequest(
     val title: String,
     val description: String,
@@ -98,7 +105,8 @@ data class CreateEventRequest(
     val registrationEndDate: LocalDate,
     val registrationEndTime: LocalTime,
     val waitlistLimit: String,
-    val samplingCount: String
+    val samplingCount: String,
+    val requiresGeolocation: Boolean = false
 )
 
 @Composable
@@ -121,6 +129,7 @@ fun CreateEventScreen(
     var registrationEndTime by remember { mutableStateOf<LocalTime?>(null) }
     var waitlistLimit by remember { mutableStateOf("") }
     var samplingCount by remember { mutableStateOf("") }
+    var requiresGeolocation by remember { mutableStateOf(false) }
 
     var posterUrl by remember { mutableStateOf<String?>(null) }
     var posterUrlInput by remember { mutableStateOf("") }
@@ -136,12 +145,13 @@ fun CreateEventScreen(
     val posterPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
-        if (uri == null || storage == null) {
-            posterUploadError = if (storage == null) {
-                "Poster uploads require Firebase Storage. Paste a direct image URL below."
-            } else {
-                "No image selected. Pick an image or paste a direct URL."
-            }
+        if (uri == null) {
+            posterUploadError = "No image selected. Pick an image or paste a direct URL."
+            return@rememberLauncherForActivityResult
+        }
+
+        if (storage == null) {
+            posterUploadError = "Poster uploads require Firebase Storage. Paste a direct image URL below."
             return@rememberLauncherForActivityResult
         }
 
@@ -150,6 +160,16 @@ fun CreateEventScreen(
         coroutineScope.launch {
             var inputStream: java.io.InputStream? = null
             try {
+                // Take persistable URI permission for the selected file
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    // Permission not available, continue anyway as PickVisualMedia should handle this
+                }
+
                 inputStream = context.contentResolver.openInputStream(uri)
                 if (inputStream == null) {
                     posterUploadError = "Cannot read selected image. Please try a different image or use a direct URL."
@@ -176,7 +196,12 @@ fun CreateEventScreen(
                 posterUrl = downloadUrl
                 posterUrlInput = downloadUrl
             } catch (t: Throwable) {
+                android.util.Log.e("CreateEventScreen", "Failed to upload poster", t)
                 posterUploadError = when {
+                    t is java.io.FileNotFoundException ->
+                        "Cannot access the selected image. Please try a different image or use a direct URL."
+                    t is SecurityException ->
+                        "Permission denied to read the image. Please try a different image or use a direct URL."
                     t.message?.contains("object", ignoreCase = true) == true &&
                         t.message?.contains("doesn't exist", ignoreCase = true) == true ->
                         "Upload failed because the storage object was not found. Double-check your Firebase Storage bucket, or paste a public image URL below."
@@ -480,6 +505,51 @@ fun CreateEventScreen(
                         keyboardType = KeyboardType.Number
                     )
 
+                    // Geolocation toggle (US 02.02.03)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = PluckPalette.Secondary.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.2f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Require Geolocation",
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = PluckPalette.Primary
+                                    )
+                                )
+                                Text(
+                                    text = "Entrants must share their location when joining the waitlist",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = PluckPalette.Muted
+                                    )
+                                )
+                            }
+                            Switch(
+                                checked = requiresGeolocation,
+                                onCheckedChange = { requiresGeolocation = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = PluckPalette.Surface,
+                                    checkedTrackColor = PluckPalette.Secondary,
+                                    uncheckedThumbColor = PluckPalette.Surface,
+                                    uncheckedTrackColor = PluckPalette.Muted.copy(alpha = 0.3f)
+                                )
+                            )
+                        }
+                    }
+
                     // Error message
                     if (errorMessage != null) {
                         Surface(
@@ -521,7 +591,8 @@ fun CreateEventScreen(
                                         registrationEndDate = registrationEndDate!!,
                                         registrationEndTime = registrationEndTime!!,
                                         waitlistLimit = waitlistLimit,
-                                        samplingCount = samplingCount
+                                        samplingCount = samplingCount,
+                                        requiresGeolocation = requiresGeolocation
                                     )
                                 )
                             }

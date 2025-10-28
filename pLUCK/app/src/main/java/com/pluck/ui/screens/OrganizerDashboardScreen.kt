@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +82,7 @@ fun OrganizerDashboardScreen(
     onRunDraw: (Event) -> Unit = {},
     onViewWaitlist: (Event) -> Unit = {},
     onManageChosenEntrants: (Event) -> Unit = {},
+    onViewEntrantLocations: (Event) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     PluckLayeredBackground(
@@ -120,7 +122,8 @@ fun OrganizerDashboardScreen(
                         onEditEvent = onEditEvent,
                         onRunDraw = onRunDraw,
                         onViewWaitlist = onViewWaitlist,
-                        onManageChosenEntrants = onManageChosenEntrants
+                        onManageChosenEntrants = onManageChosenEntrants,
+                        onViewEntrantLocations = onViewEntrantLocations
                     )
                 }
             }
@@ -338,7 +341,8 @@ private fun OrganizerEventsList(
     onEditEvent: (Event) -> Unit,
     onRunDraw: (Event) -> Unit,
     onViewWaitlist: (Event) -> Unit,
-    onManageChosenEntrants: (Event) -> Unit
+    onManageChosenEntrants: (Event) -> Unit,
+    onViewEntrantLocations: (Event) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
@@ -361,7 +365,8 @@ private fun OrganizerEventsList(
                 onEditEvent = { onEditEvent(event) },
                 onRunDraw = { onRunDraw(event) },
                 onViewWaitlist = { onViewWaitlist(event) },
-                onManageChosenEntrants = { onManageChosenEntrants(event) }
+                onManageChosenEntrants = { onManageChosenEntrants(event) },
+                onViewEntrantLocations = { onViewEntrantLocations(event) }
             )
         }
     }
@@ -376,7 +381,8 @@ private fun OrganizerEventCard(
     onEditEvent: () -> Unit,
     onRunDraw: () -> Unit,
     onViewWaitlist: () -> Unit,
-    onManageChosenEntrants: () -> Unit
+    onManageChosenEntrants: () -> Unit,
+    onViewEntrantLocations: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         PluckAccentCircle(
@@ -519,6 +525,17 @@ private fun OrganizerEventCard(
                         onClick = onEditEvent,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Show "View Entrant Locations" button if geolocation is required (US 02.02.02)
+                    if (event.requiresGeolocation) {
+                        OrganizerActionButton(
+                            icon = Icons.Outlined.LocationOn,
+                            label = "View Entrant Locations",
+                            onClick = onViewEntrantLocations,
+                            backgroundColor = PluckPalette.Tertiary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }

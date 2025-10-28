@@ -38,6 +38,9 @@ data class FirebaseEvent(
     val drawDateTimestamp: Timestamp? = null,
     val drawStatus: String = DrawStatus.PENDING.name,
     val acceptanceDeadline: Int = 24,
+    val requiresGeolocation: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val isActive: Boolean = true,
     @ServerTimestamp
     val createdAt: Timestamp? = null,
@@ -93,7 +96,10 @@ data class FirebaseEvent(
             } catch (e: Exception) {
                 DrawStatus.PENDING
             },
-            acceptanceDeadline = acceptanceDeadline
+            acceptanceDeadline = acceptanceDeadline,
+            requiresGeolocation = requiresGeolocation,
+            latitude = latitude,
+            longitude = longitude
         )
     }
 
@@ -125,7 +131,10 @@ data class FirebaseEvent(
                 samplingCount = event.samplingCount,
                 drawDateTimestamp = event.drawDate?.toTimestamp(),
                 drawStatus = event.drawStatus.name,
-                acceptanceDeadline = event.acceptanceDeadline
+                acceptanceDeadline = event.acceptanceDeadline,
+                requiresGeolocation = event.requiresGeolocation,
+                latitude = event.latitude,
+                longitude = event.longitude
             )
         }
     }
