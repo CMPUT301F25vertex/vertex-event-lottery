@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Notifications
@@ -93,6 +94,7 @@ fun SettingsScreen(
     darkModeEnabled: Boolean = false,
     onDarkModeChange: (Boolean) -> Unit = {},
     onNavigateToThemePicker: () -> Unit = {},
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -112,12 +114,36 @@ fun SettingsScreen(
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Floating back button
+            Surface(
+                modifier = Modifier
+                    .padding(top = 24.dp, start = 24.dp)
+                    .size(56.dp)
+                    .align(Alignment.TopStart)
+                    .zIndex(10f),
+                shape = CircleShape,
+                color = PluckPalette.Surface,
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp,
+                onClick = onBack
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Go back",
+                        tint = PluckPalette.Primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,6 +246,7 @@ fun SettingsScreen(
                     // About Section
                     SettingsInfoCallout()
                 }
+            }
             }
         }
     }

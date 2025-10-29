@@ -6,7 +6,7 @@ CLOUDINARY_CLOUD_NAME=ds4pt6izy
 CLOUDINARY_UPLOAD_PRESET=pluck_unsigned
 
 
-CLOUDINARY_ALLOW_PUBLIC_ID_OVERRIDE=false  # only if the preset allows overrides
+CLOUDINARY_ALLOW_PUBLIC_ID_OVERRIDE=false  
 
 also, get an api key for maps
 Google Maps API Key (get your own key from https://console.cloud.google.com/)

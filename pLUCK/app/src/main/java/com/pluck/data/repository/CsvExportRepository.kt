@@ -116,7 +116,10 @@ class CsvExportRepository {
         event: Event,
         entrants: List<WaitlistEntry>
     ): Result<Intent> {
-        return exportEntrantsToCSV(context, event, entrants, WaitlistStatus.SELECTED)
+        val invitedOrLegacy = entrants.filter {
+            it.status == WaitlistStatus.INVITED || it.status == WaitlistStatus.SELECTED
+        }
+        return exportEntrantsToCSV(context, event, invitedOrLegacy, null)
     }
 
     /**

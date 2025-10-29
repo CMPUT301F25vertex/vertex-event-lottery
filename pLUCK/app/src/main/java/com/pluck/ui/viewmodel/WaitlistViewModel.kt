@@ -74,7 +74,14 @@ class WaitlistViewModel(
                 }
                 .collect { entries ->
                     _waitlistEntries.value = entries
-                    updateStatusFromEntries(entries, WaitlistStatus.WAITING)
+                    updateStatusFromEntries(
+                        entries,
+                        setOf(
+                            WaitlistStatus.WAITING,
+                            WaitlistStatus.INVITED,
+                            WaitlistStatus.SELECTED
+                        )
+                    )
                     _isLoading.value = false
                 }
         }
@@ -94,7 +101,14 @@ class WaitlistViewModel(
                 }
                 .collect { entries ->
                     _chosenEntries.value = entries
-                    updateStatusFromEntries(entries, WaitlistStatus.SELECTED)
+                    updateStatusFromEntries(
+                        entries,
+                        setOf(
+                            WaitlistStatus.INVITED,
+                            WaitlistStatus.SELECTED,
+                            WaitlistStatus.ACCEPTED
+                        )
+                    )
                 }
         }
     }
@@ -260,9 +274,7 @@ class WaitlistViewModel(
             _error.value = null
 
             waitlistRepository.declineInvitation(
-                waitlistEntryId = waitlistEntryId,
-                drawReplacement = true,
-                event = event
+                waitlistEntryId = waitlistEntryId
             )
                 .onSuccess {
                     _userWaitlistEntryId.value = null
@@ -271,6 +283,35 @@ class WaitlistViewModel(
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to decline invitation"
+                }
+
+            _isLoading.value = false
+        }
+    }
+
+    /**
+     * Organizer removes a chosen entrant to free a spot.
+     */
+    fun removeChosenEntrant(
+        eventId: String,
+        userId: String,
+        currentUserId: String? = null,
+        onSuccess: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            waitlistRepository.removeChosenEntrant(eventId, userId)
+                .onSuccess {
+                    if (!currentUserId.isNullOrEmpty() && currentUserId == userId) {
+                        _userWaitlistEntryId.value = null
+                        _userWaitlistStatus.value = null
+                    }
+                    onSuccess()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to remove entrant"
                 }
 
             _isLoading.value = false
@@ -297,12 +338,15 @@ class WaitlistViewModel(
             }
     }
 
-    private fun updateStatusFromEntries(entries: List<WaitlistEntry>, status: WaitlistStatus) {
+    private fun updateStatusFromEntries(
+        entries: List<WaitlistEntry>,
+        statusesToClear: Set<WaitlistStatus>
+    ) {
         val currentEntry = entries.firstOrNull { it.isCurrentUser }
         if (currentEntry != null) {
             _userWaitlistEntryId.value = currentEntry.id
-            _userWaitlistStatus.value = status
-        } else if (_userWaitlistStatus.value == status) {
+            _userWaitlistStatus.value = currentEntry.status
+        } else if (_userWaitlistStatus.value != null && statusesToClear.contains(_userWaitlistStatus.value)) {
             _userWaitlistEntryId.value = null
             _userWaitlistStatus.value = null
         }
@@ -378,6 +422,15 @@ class WaitlistViewModel(
                 .onFailure { exception ->
                     _error.value = exception.message
                 }
+        }
+    }
+
+    /**
+     * Force a membership refresh for the current user and event.
+     */
+    fun refreshUserMembership(eventId: String, userId: String) {
+        viewModelScope.launch {
+            refreshMembership(eventId, userId)
         }
     }
 

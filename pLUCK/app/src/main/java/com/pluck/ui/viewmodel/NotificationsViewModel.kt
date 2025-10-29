@@ -90,7 +90,11 @@ class NotificationsViewModel(
         }
     }
 
-    fun acceptNotification(notification: NotificationItem, profile: EntrantProfile?) {
+    fun acceptNotification(
+        notification: NotificationItem,
+        profile: EntrantProfile?,
+        onCompleted: (String?) -> Unit = {}
+    ) {
         if (profile == null) {
             _error.value = "Profile required to accept invitations."
             return
@@ -102,6 +106,7 @@ class NotificationsViewModel(
                 if (outcome is AcceptNotificationResult.AlreadyParticipating && notification.eventId.isNotBlank()) {
                     _navigateToEventDetails.value = notification.eventId
                 }
+                onCompleted(notification.eventId.takeIf { it.isNotBlank() })
             }.onFailure {
                 _error.value = it.message ?: "Failed to accept invite."
             }
@@ -109,12 +114,35 @@ class NotificationsViewModel(
         }
     }
 
-    fun declineNotification(notification: NotificationItem) {
+    fun declineNotification(
+        notification: NotificationItem,
+        onCompleted: (String?) -> Unit = {}
+    ) {
         viewModelScope.launch {
             toggleProcessing(notification.id, true)
             val result = notificationRepository.declineNotification(notification)
-            result.exceptionOrNull()?.let { _error.value = it.message ?: "Failed to decline invite." }
+            result.onSuccess {
+                onCompleted(notification.eventId.takeIf { it.isNotBlank() })
+            }.onFailure {
+                _error.value = it.message ?: "Failed to decline invite."
+            }
             toggleProcessing(notification.id, false)
+        }
+    }
+
+    fun clearAllNotifications(profile: EntrantProfile?) {
+        if (profile == null) {
+            _error.value = "Profile required to clear notifications."
+            return
+        }
+        viewModelScope.launch {
+            _isLoading.value = true
+            notificationRepository.deleteNotificationsForUser(profile.deviceId)
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to clear notifications."
+                }
+            _processingNotificationIds.value = emptySet()
+            _isLoading.value = false
         }
     }
 

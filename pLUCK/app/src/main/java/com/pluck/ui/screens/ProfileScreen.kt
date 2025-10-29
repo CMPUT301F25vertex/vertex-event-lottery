@@ -104,6 +104,9 @@ fun ProfileScreen(
     isLoading: Boolean,
     isUpdatingProfile: Boolean = false,
     isAdmin: Boolean = false,
+    isOrganizer: Boolean = false,
+    isOrganizerBanned: Boolean = false,
+    hasOutstandingAppeal: Boolean = false,
     updateMessage: String? = null,
     updateError: String? = null,
     onProfileImageUploadStarted: () -> Unit = {},
@@ -116,6 +119,9 @@ fun ProfileScreen(
     onOrganizerDashboard: () -> Unit = {},
     onAdminDashboard: () -> Unit = {},
     onRegisterAdmin: () -> Unit = {},
+    onBecomeOrganizer: () -> Unit = {},
+    onDowngradeFromOrganizer: () -> Unit = {},
+    onSubmitAppeal: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -169,6 +175,10 @@ fun ProfileScreen(
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showBecomeOrganizerDialog by remember { mutableStateOf(false) }
+    var showDowngradeDialog by remember { mutableStateOf(false) }
+    var showAppealDialog by remember { mutableStateOf(false) }
+    var appealMessage by remember { mutableStateOf("") }
     var editableName by remember(userName) { mutableStateOf(userName) }
     var editableEmail by remember(userEmail) { mutableStateOf(userEmail.orEmpty()) }
     var editablePhone by remember(userPhone) { mutableStateOf(userPhone.orEmpty()) }
@@ -352,14 +362,51 @@ fun ProfileScreen(
                             contentColor = PluckPalette.Secondary,
                             onClick = onMyEvents
                         )
-                        ProfileActionButton(
-                            text = "Organizer Dashboard",
-                            description = "Create and manage your events.",
-                            enabled = !isLoading,
-                            containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
-                            contentColor = PluckPalette.Tertiary,
-                            onClick = onOrganizerDashboard
-                        )
+                        if (isOrganizer) {
+                            ProfileActionButton(
+                                text = "Organizer Dashboard",
+                                description = "Create and manage your events.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Tertiary,
+                                onClick = onOrganizerDashboard
+                            )
+                            ProfileActionButton(
+                                text = "Downgrade to User",
+                                description = "Remove organizer status. All your events will be deleted.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Muted,
+                                onClick = { showDowngradeDialog = true }
+                            )
+                        } else if (!isOrganizerBanned) {
+                            ProfileActionButton(
+                                text = "Become an Organizer",
+                                description = "Create and manage events for the community.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Tertiary,
+                                onClick = { showBecomeOrganizerDialog = true }
+                            )
+                        } else if (hasOutstandingAppeal) {
+                            ProfileActionButton(
+                                text = "Appeal Pending",
+                                description = "Your organizer access appeal is being reviewed by admins.",
+                                enabled = false,
+                                containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Muted,
+                                onClick = {}
+                            )
+                        } else {
+                            ProfileActionButton(
+                                text = "Submit Appeal",
+                                description = "You were removed from organizer access. Submit an appeal to admins.",
+                                enabled = !isLoading,
+                                containerColor = PluckPalette.Accept.copy(alpha = 0.12f),
+                                contentColor = PluckPalette.Accept,
+                                onClick = { showAppealDialog = true }
+                            )
+                        }
                         if (isAdmin) {
                             ProfileActionButton(
                                 text = "Admin Dashboard",
@@ -450,6 +497,159 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Become Organizer Confirmation Dialog
+    if (showBecomeOrganizerDialog) {
+        AlertDialog(
+            onDismissRequest = { showBecomeOrganizerDialog = false },
+            title = {
+                Text(
+                    text = "Become an Organizer?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "As an organizer, you'll be able to create and manage events. You can downgrade back to a regular user at any time.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Primary
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBecomeOrganizerDialog = false
+                        onBecomeOrganizer()
+                    },
+                    modifier = Modifier.widthIn(min = 160.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Tertiary,
+                        contentColor = PluckPalette.Surface
+                    )
+                ) {
+                    Text("Become Organizer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBecomeOrganizerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Downgrade Confirmation Dialog
+    if (showDowngradeDialog) {
+        AlertDialog(
+            onDismissRequest = { showDowngradeDialog = false },
+            title = {
+                Text(
+                    text = "Downgrade to User?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove your organizer status and permanently delete all events you've created. This action cannot be undone. You can become an organizer again later.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Primary
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDowngradeDialog = false
+                        onDowngradeFromOrganizer()
+                    },
+                    modifier = Modifier.widthIn(min = 160.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Decline,
+                        contentColor = PluckPalette.Surface
+                    )
+                ) {
+                    Text("Downgrade")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDowngradeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Appeal Submission Dialog
+    if (showAppealDialog) {
+        AlertDialog(
+            onDismissRequest = { showAppealDialog = false },
+            title = {
+                Text(
+                    text = "Submit Appeal",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Explain why you should be reinstated as an organizer. Your appeal will be reviewed by administrators.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    OutlinedTextField(
+                        value = appealMessage,
+                        onValueChange = { appealMessage = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Appeal Message") },
+                        placeholder = { Text("Enter your appeal message...") },
+                        minLines = 4,
+                        maxLines = 8
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (appealMessage.isNotBlank()) {
+                            showAppealDialog = false
+                            onSubmitAppeal(appealMessage)
+                            appealMessage = ""
+                        }
+                    },
+                    modifier = Modifier.widthIn(min = 160.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    enabled = appealMessage.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Accept,
+                        contentColor = PluckPalette.Surface
+                    )
+                ) {
+                    Text("Submit Appeal")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAppealDialog = false
+                    appealMessage = ""
+                }) {
                     Text("Cancel")
                 }
             }
@@ -715,13 +915,19 @@ private fun ProfilePreview() {
         isLoading = false,
         isUpdatingProfile = false,
         isAdmin = true,
+        isOrganizer = false,
+        isOrganizerBanned = false,
+        hasOutstandingAppeal = false,
         updateMessage = null,
         updateError = null,
         onUpdateProfile = { _, _, _ -> },
         onSignOut = {},
         onDeleteAccount = {},
         onAdminDashboard = {},
-        onRegisterAdmin = {}
+        onRegisterAdmin = {},
+        onBecomeOrganizer = {},
+        onDowngradeFromOrganizer = {},
+        onSubmitAppeal = {}
     )
 }
 

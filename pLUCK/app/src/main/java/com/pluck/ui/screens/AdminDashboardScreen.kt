@@ -11,14 +11,19 @@
  */
 package com.pluck.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,6 +54,7 @@ enum class AdminTab {
     PROFILES,       // Browse and remove user profiles
     IMAGES,         // Browse and remove uploaded images
     ORGANIZERS,     // Remove organizer privileges from users
+    APPEALS,        // Review and manage organizer access appeals
     NOTIFICATIONS   // View notification history
 }
 
@@ -84,6 +90,7 @@ fun AdminDashboardScreen(
     events: List<Event> = emptyList(),
     users: List<com.pluck.data.firebase.FirebaseUser> = emptyList(),
     organizers: List<com.pluck.data.firebase.FirebaseUser> = emptyList(),
+    appeals: List<com.pluck.data.firebase.OrganizerAppeal> = emptyList(),
     images: List<com.pluck.ui.viewmodel.ImageMetadata> = emptyList(),
     notifications: List<com.pluck.ui.viewmodel.NotificationLog> = emptyList(),
     isLoading: Boolean = false,
@@ -91,79 +98,154 @@ fun AdminDashboardScreen(
     onRemoveProfile: (String) -> Unit = {},
     onRemoveImage: (String) -> Unit = {},
     onRemoveOrganizer: (String) -> Unit = {},
+    onApproveAppeal: (String, String?) -> Unit = { _, _ -> },
+    onRejectAppeal: (String, String?) -> Unit = { _, _ -> },
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(AdminTab.EVENTS) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var itemToRemove by remember { mutableStateOf<Pair<String, String>?>(null) }
 
+    val eventsListState = rememberLazyListState()
+    val profilesListState = rememberLazyListState()
+    val imagesListState = rememberLazyListState()
+    val organizersListState = rememberLazyListState()
+    val appealsListState = rememberLazyListState()
+    val notificationsListState = rememberLazyListState()
+
+    val activeListState = when (selectedTab) {
+        AdminTab.EVENTS -> eventsListState
+        AdminTab.PROFILES -> profilesListState
+        AdminTab.IMAGES -> imagesListState
+        AdminTab.ORGANIZERS -> organizersListState
+        AdminTab.APPEALS -> appealsListState
+        AdminTab.NOTIFICATIONS -> notificationsListState
+    }
+
+    val overviewCollapsed by remember(selectedTab) {
+        derivedStateOf {
+            activeListState.firstVisibleItemIndex > 0 ||
+                activeListState.firstVisibleItemScrollOffset > 48
+        }
+    }
+    val overviewSpacing by animateDpAsState(
+        targetValue = if (overviewCollapsed) 12.dp else 24.dp,
+        label = "adminOverviewSpacing"
+    )
+
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Header
-            AdminDashboardHeader()
-
-            // Stats Overview
-            AdminStatsRow(stats = stats)
-
-            // Tab Selector
-            AdminTabSelector(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
-
-            // Content Area
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Floating back button
             Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f),
-                shape = RoundedCornerShape(36.dp),
+                    .padding(top = 24.dp, start = 24.dp)
+                    .size(56.dp)
+                    .align(Alignment.TopStart)
+                    .zIndex(10f),
+                shape = CircleShape,
                 color = PluckPalette.Surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+                onClick = onBack
             ) {
-                when {
-                    isLoading -> LoadingState()
-                    else -> {
-                        when (selectedTab) {
-                            AdminTab.EVENTS -> EventsListContent(
-                                events = events,
-                                onRemove = { eventId ->
-                                    itemToRemove = "Event" to eventId
-                                    showConfirmDialog = true
-                                }
-                            )
-                            AdminTab.PROFILES -> ProfilesListContent(
-                                users = users,
-                                onRemove = { profileId ->
-                                    itemToRemove = "Profile" to profileId
-                                    showConfirmDialog = true
-                                }
-                            )
-                            AdminTab.IMAGES -> ImagesListContent(
-                                images = images,
-                                onRemove = { imageId ->
-                                    itemToRemove = "Image" to imageId
-                                    showConfirmDialog = true
-                                }
-                            )
-                            AdminTab.ORGANIZERS -> OrganizersListContent(
-                                organizers = organizers,
-                                onRemove = { organizerId ->
-                                    itemToRemove = "Organizer" to organizerId
-                                    showConfirmDialog = true
-                                }
-                            )
-                            AdminTab.NOTIFICATIONS -> NotificationLogsContent(
-                                notifications = notifications
-                            )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Go back",
+                        tint = PluckPalette.Primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                AnimatedVisibility(visible = !overviewCollapsed) {
+                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        AdminDashboardHeader()
+                        AdminStatsRow(stats = stats)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(overviewSpacing))
+
+                AdminTabSelector(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .zIndex(1f),
+                    shape = RoundedCornerShape(36.dp),
+                    color = PluckPalette.Surface,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 12.dp,
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+                ) {
+                    when {
+                        isLoading -> LoadingState()
+                        else -> {
+                            when (selectedTab) {
+                                AdminTab.EVENTS -> EventsListContent(
+                                    events = events,
+                                    onRemove = { eventId ->
+                                        itemToRemove = "Event" to eventId
+                                        showConfirmDialog = true
+                                    },
+                                    listState = eventsListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AdminTab.PROFILES -> ProfilesListContent(
+                                    users = users,
+                                    onRemove = { profileId ->
+                                        itemToRemove = "Profile" to profileId
+                                        showConfirmDialog = true
+                                    },
+                                    listState = profilesListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AdminTab.IMAGES -> ImagesListContent(
+                                    images = images,
+                                    onRemove = { imageId ->
+                                        itemToRemove = "Image" to imageId
+                                        showConfirmDialog = true
+                                    },
+                                    listState = imagesListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AdminTab.ORGANIZERS -> OrganizersListContent(
+                                    organizers = organizers,
+                                    onRemove = { organizerId ->
+                                        itemToRemove = "Organizer" to organizerId
+                                        showConfirmDialog = true
+                                    },
+                                    listState = organizersListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AdminTab.APPEALS -> AppealsListContent(
+                                    appeals = appeals,
+                                    onApprove = onApproveAppeal,
+                                    onReject = onRejectAppeal,
+                                    listState = appealsListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                AdminTab.NOTIFICATIONS -> NotificationLogsContent(
+                                    notifications = notifications,
+                                    listState = notificationsListState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
                 }
@@ -336,6 +418,7 @@ private fun AdminTabSelector(
                 AdminTab.PROFILES -> Icons.Outlined.Person to "Profiles"
                 AdminTab.IMAGES -> Icons.Outlined.Image to "Images"
                 AdminTab.ORGANIZERS -> Icons.Outlined.Business to "Organizers"
+                AdminTab.APPEALS -> Icons.Outlined.Gavel to "Appeals"
                 AdminTab.NOTIFICATIONS -> Icons.Outlined.Notifications to "Logs"
             }
 
@@ -379,9 +462,13 @@ private fun AdminTabSelector(
 @Composable
 private fun EventsListContent(
     events: List<Event>,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
+        modifier = modifier,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -415,9 +502,13 @@ private fun EventsListContent(
 @Composable
 private fun ProfilesListContent(
     users: List<com.pluck.data.firebase.FirebaseUser>,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
+        modifier = modifier,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -451,9 +542,13 @@ private fun ProfilesListContent(
 @Composable
 private fun ImagesListContent(
     images: List<com.pluck.ui.viewmodel.ImageMetadata>,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
+        modifier = modifier,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -487,9 +582,13 @@ private fun ImagesListContent(
 @Composable
 private fun OrganizersListContent(
     organizers: List<com.pluck.data.firebase.FirebaseUser>,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
+        modifier = modifier,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -521,10 +620,246 @@ private fun OrganizersListContent(
 }
 
 @Composable
-private fun NotificationLogsContent(
-    notifications: List<com.pluck.ui.viewmodel.NotificationLog>
+private fun AppealsListContent(
+    appeals: List<com.pluck.data.firebase.OrganizerAppeal>,
+    onApprove: (String, String?) -> Unit,
+    onReject: (String, String?) -> Unit,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                text = "Organizer Access Appeals",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
+            )
+        }
+
+        if (appeals.isEmpty()) {
+            item {
+                EmptyStateMessage("No appeals to review")
+            }
+        } else {
+            items(appeals, key = { it.id }) { appeal ->
+                AppealCard(
+                    appeal = appeal,
+                    onApprove = { notes -> onApprove(appeal.id, notes) },
+                    onReject = { notes -> onReject(appeal.id, notes) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppealCard(
+    appeal: com.pluck.data.firebase.OrganizerAppeal,
+    onApprove: (String?) -> Unit,
+    onReject: (String?) -> Unit
+) {
+    var showNotesDialog by remember { mutableStateOf(false) }
+    var action by remember { mutableStateOf<String?>(null) }
+    var adminNotes by remember { mutableStateOf("") }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.15f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = appeal.displayName,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = appeal.email,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = when (appeal.status) {
+                        com.pluck.data.firebase.AppealStatus.PENDING -> PluckPalette.Tertiary
+                        com.pluck.data.firebase.AppealStatus.APPROVED -> PluckPalette.Accept
+                        com.pluck.data.firebase.AppealStatus.REJECTED -> PluckPalette.Decline
+                    }.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        text = appeal.status.name,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = when (appeal.status) {
+                                com.pluck.data.firebase.AppealStatus.PENDING -> PluckPalette.Tertiary
+                                com.pluck.data.firebase.AppealStatus.APPROVED -> PluckPalette.Accept
+                                com.pluck.data.firebase.AppealStatus.REJECTED -> PluckPalette.Decline
+                            }
+                        )
+                    )
+                }
+            }
+
+            Text(
+                text = "Message:",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = PluckPalette.Primary
+                )
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = PluckPalette.Primary.copy(alpha = 0.05f)
+            ) {
+                Text(
+                    text = appeal.message,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Primary
+                    )
+                )
+            }
+
+            if (appeal.status == com.pluck.data.firebase.AppealStatus.PENDING) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            action = "approve"
+                            showNotesDialog = true
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PluckPalette.Accept,
+                            contentColor = PluckPalette.Surface
+                        )
+                    ) {
+                        Text("Approve")
+                    }
+
+                    Button(
+                        onClick = {
+                            action = "reject"
+                            showNotesDialog = true
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PluckPalette.Decline,
+                            contentColor = PluckPalette.Surface
+                        )
+                    ) {
+                        Text("Reject")
+                    }
+                }
+            }
+        }
+    }
+
+    if (showNotesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotesDialog = false },
+            title = {
+                Text(
+                    text = "${action?.replaceFirstChar { it.uppercase() }} Appeal?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Add notes (optional):",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    OutlinedTextField(
+                        value = adminNotes,
+                        onValueChange = { adminNotes = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Admin Notes") },
+                        placeholder = { Text("Optional notes about your decision...") },
+                        minLines = 3,
+                        maxLines = 6
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showNotesDialog = false
+                        when (action) {
+                            "approve" -> onApprove(adminNotes.ifBlank { null })
+                            "reject" -> onReject(adminNotes.ifBlank { null })
+                        }
+                        adminNotes = ""
+                        action = null
+                    },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (action == "approve") PluckPalette.Accept else PluckPalette.Decline,
+                        contentColor = PluckPalette.Surface
+                    )
+                ) {
+                    Text(action?.replaceFirstChar { it.uppercase() } ?: "Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showNotesDialog = false
+                    adminNotes = ""
+                    action = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun NotificationLogsContent(
+    notifications: List<com.pluck.ui.viewmodel.NotificationLog>,
+    listState: LazyListState,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

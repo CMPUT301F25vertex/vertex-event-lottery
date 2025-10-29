@@ -16,6 +16,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,10 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.pluck.ui.components.PluckLayeredBackground
@@ -120,33 +119,16 @@ fun WaitlistScreen(
     val derivedUserWaiting = isUserWaiting || waitlistEntries.any { it.isCurrentUser }
     val derivedUserConfirmed = isUserConfirmed || chosenEntries.any { it.isCurrentUser }
 
-    val entriesListState = rememberLazyListState()
-    val rawCollapse by remember(entriesListState) {
-        derivedStateOf {
-            when {
-                entriesListState.firstVisibleItemIndex > 0 -> 1f
-                else -> (entriesListState.firstVisibleItemScrollOffset / 260f).coerceIn(0f, 1f)
-            }
-        }
-    }
-    val collapseProgress by animateFloatAsState(
-        targetValue = rawCollapse,
-        label = "waitlistHeaderCollapse"
-    )
-    val spacerHeight by animateDpAsState(
-        targetValue = if (collapseProgress > 0.05f) 24.dp else 56.dp,
-        label = "waitlistSpacerHeight"
-    )
-
-    LaunchedEffect(selectedTab) {
-        entriesListState.scrollToItem(0)
-    }
+    val scrollState = rememberScrollState()
+    val collapseProgress = 0f
+    val spacerHeight = 56.dp
 
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Surface(
                 modifier = Modifier
                     .padding(top = 24.dp, start = 24.dp)
+                    .zIndex(10f)
                     .size(56.dp)
                     .align(Alignment.TopStart),
                 shape = CircleShape,
@@ -168,6 +150,7 @@ fun WaitlistScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -202,7 +185,7 @@ fun WaitlistScreen(
 
                 Surface(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .animateContentSize()
                         .widthIn(max = 460.dp),
                     shape = RoundedCornerShape(36.dp),
@@ -221,8 +204,7 @@ fun WaitlistScreen(
                             } else {
                                 WaitlistEntriesList(
                                     entries = waitlistEntries,
-                                    title = "Waitlist Queue",
-                                    listState = entriesListState
+                                    title = "Waitlist Queue"
                                 )
                             }
                         }
@@ -235,8 +217,7 @@ fun WaitlistScreen(
                             } else {
                                 WaitlistEntriesList(
                                     entries = chosenEntries,
-                                    title = "Chosen Entrants",
-                                    listState = entriesListState
+                                    title = "Chosen Entrants"
                                 )
                             }
                         }
@@ -573,12 +554,11 @@ private fun WaitlistTabSelector(
 @Composable
 private fun WaitlistEntriesList(
     entries: List<WaitlistEntry>,
-    title: String,
-    listState: LazyListState
+    title: String
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -590,12 +570,10 @@ private fun WaitlistEntriesList(
             )
         )
 
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            itemsIndexed(entries, key = { _, entry -> entry.id }) { _, entry ->
+            entries.forEach { entry ->
                 WaitlistEntryCard(entry = entry)
             }
         }
@@ -604,10 +582,11 @@ private fun WaitlistEntriesList(
 
 @Composable
 private fun WaitlistEntryCard(entry: WaitlistEntry) {
-    val accentColor = when {
-        entry.isChosen -> PluckPalette.Accept
-        entry.isCurrentUser -> PluckPalette.Secondary
-        else -> PluckPalette.Primary
+    val accentColor = when (entry.status) {
+        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
+        com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
+        com.pluck.data.firebase.WaitlistStatus.DECLINED -> PluckPalette.Decline
+        else -> if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
     }
 
     Surface(
@@ -687,12 +666,15 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {
+                val statusLabel = when (entry.status) {
+                    com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
+                    com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
+                    com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
+                    com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
+                    else -> if (entry.isCurrentUser) "You" else "In Queue"
+                }
                 Text(
-                    text = when {
-                        entry.isChosen -> "Selected"
-                        entry.isCurrentUser -> "You"
-                        else -> "In Queue"
-                    },
+                    text = statusLabel,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,

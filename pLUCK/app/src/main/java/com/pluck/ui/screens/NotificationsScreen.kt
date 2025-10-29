@@ -34,9 +34,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.MoodBad
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
@@ -101,10 +101,12 @@ fun NotificationsScreen(
     onEventDetails: (NotificationItem) -> Unit = {},
     onAccept: (NotificationItem) -> Unit = {},
     onDecline: (NotificationItem) -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onClearAll: () -> Unit = {}
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
+    val hasNotifications = notifications.isNotEmpty()
     val filteredItems = remember(notifications, filter) { notifications.filterBy(filter) }
 
     NotificationsContent(
@@ -118,7 +120,9 @@ fun NotificationsScreen(
         onEventDetails = onEventDetails,
         onAccept = onAccept,
         onDecline = onDecline,
-        onProfileClick = onProfileClick
+        onProfileClick = onProfileClick,
+        hasNotifications = hasNotifications,
+        onClearAll = onClearAll
     )
 }
 
@@ -137,7 +141,9 @@ private fun NotificationsContent(
     onEventDetails: (NotificationItem) -> Unit,
     onAccept: (NotificationItem) -> Unit,
     onDecline: (NotificationItem) -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    hasNotifications: Boolean,
+    onClearAll: () -> Unit
 ) {
     val listState = rememberLazyListState()
     val heroCollapseProgress by remember {
@@ -168,7 +174,9 @@ private fun NotificationsContent(
                         selectedFilter = selectedFilter,
                         onFilterSelected = onFilterSelected,
                         collapseProgress = heroCollapseProgress,
-                        onProfileClick = onProfileClick
+                        onProfileClick = onProfileClick,
+                        hasNotifications = hasNotifications,
+                        onClearAll = onClearAll
                     )
                 }
                 if (notifications.isEmpty()) {
@@ -231,7 +239,9 @@ private fun NotificationsHero(
     selectedFilter: NotificationFilter,
     onFilterSelected: (NotificationFilter) -> Unit,
     collapseProgress: Float,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    hasNotifications: Boolean,
+    onClearAll: () -> Unit
 ) {
     val targetHeightFactor = (1f - collapseProgress * 0.4f)
     val targetAlpha = (1f - collapseProgress).coerceIn(0f, 1f)
@@ -263,7 +273,9 @@ private fun NotificationsHero(
                     unreadCount = unreadCount,
                     collapseProgress = collapseProgress,
                     targetAlpha = targetAlpha,
-                    onProfileClick = onProfileClick
+                    onProfileClick = onProfileClick,
+                    hasNotifications = hasNotifications,
+                    onClearAll = onClearAll
                 )
                 if (collapseProgress < 0.9f) {
                     NotificationFilterRow(
@@ -286,7 +298,9 @@ private fun NotificationsHeaderRow(
     unreadCount: Int,
     collapseProgress: Float,
     targetAlpha: Float,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    hasNotifications: Boolean,
+    onClearAll: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -321,10 +335,15 @@ private fun NotificationsHeaderRow(
         if (collapseProgress < 0.7f) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FloatingIconButton(
-                    icon = Icons.Outlined.Notifications,
+                    icon = Icons.Outlined.Delete,
                     backgroundColor = PluckPalette.Surface.copy(alpha = targetAlpha),
-                    contentColor = PluckPalette.Primary.copy(alpha = targetAlpha),
-                    borderColor = PluckPalette.Primary.copy(alpha = 0.08f * targetAlpha)
+                    contentColor = (if (hasNotifications) PluckPalette.Primary else PluckPalette.Muted).copy(alpha = targetAlpha),
+                    borderColor = PluckPalette.Primary.copy(alpha = 0.08f * targetAlpha),
+                    onClick = {
+                        if (hasNotifications) {
+                            onClearAll()
+                        }
+                    }
                 )
                 FloatingIconButton(
                     icon = Icons.Outlined.Person,

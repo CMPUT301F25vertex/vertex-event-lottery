@@ -225,7 +225,12 @@ class EventViewModel(
      * Run lottery draw for an event
      * Updates the event draw status to COMPLETED after successful draw
      */
-    fun runDraw(event: Event, waitlistViewModel: WaitlistViewModel, onSuccess: () -> Unit = {}) {
+    fun runDraw(
+        event: Event,
+        waitlistViewModel: WaitlistViewModel,
+        drawSize: Int? = null,
+        onSuccess: () -> Unit = {}
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -233,7 +238,7 @@ class EventViewModel(
             // Run the lottery
             waitlistViewModel.runLottery(
                 eventId = event.id,
-                numberOfWinners = event.samplingCount,
+                numberOfWinners = drawSize ?: event.samplingCount,
                 event = event,
                 onSuccess = { selectedIds ->
                     // Update event draw status to COMPLETED and notify non-chosen entrants
