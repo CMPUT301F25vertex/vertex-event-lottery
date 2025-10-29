@@ -170,10 +170,14 @@ class ScreensSmokeTest {
 
         composeRule.onNodeWithText("My Events", useUnmergedTree = true)
             .assertExists()
+
+        composeRule.onNodeWithText("My Events")
             .assertHasClickAction()
 
         composeRule.onNodeWithText("Delete Account", useUnmergedTree = true)
             .assertExists()
+
+        composeRule.onNodeWithText("Delete Account")
             .assertHasClickAction()
     }
 

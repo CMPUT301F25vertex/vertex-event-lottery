@@ -3,6 +3,7 @@ package com.pluck.ui.screens
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -104,7 +105,10 @@ class ProfileScreenTest {
             .assertExists()
             .performClick()
 
-        composeRule.onNodeWithText("Delete account?").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5000) {
+            composeRule.onAllNodesWithText("Delete account?").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Delete account?").assertExists()
 
         composeRule.onNodeWithTag(ProfileScreenTestTags.DeleteConfirmButton)
             .performClick()
