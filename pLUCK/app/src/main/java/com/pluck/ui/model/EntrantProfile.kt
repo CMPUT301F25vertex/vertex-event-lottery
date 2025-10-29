@@ -1,5 +1,6 @@
 package com.pluck.ui.model
 
+import com.pluck.data.firebase.UserRole
 import java.time.Instant
 
 /**
@@ -22,6 +23,9 @@ import java.time.Instant
  * @property phoneNumber Optional phone number for contact and notifications.
  * @property profileImageUrl Optional Cloudinary image URL for the entrant's profile photo.
  * @property firebaseUid Firebase Authentication UID (anonymous auth linked to device).
+ * @property role Current user role (ENTRANT, ORGANIZER, ADMIN).
+ * @property isOrganizerBanned Whether the user is banned from organizer actions.
+ * @property hasOutstandingAppeal Whether the user has a pending organizer appeal.
  * @property createdAt Timestamp when the profile was first created.
  * @property updatedAt Timestamp of the most recent profile modification.
  */
@@ -32,6 +36,9 @@ data class EntrantProfile(
     val phoneNumber: String?,
     val profileImageUrl: String?,
     val firebaseUid: String,
+    val role: UserRole = UserRole.ENTRANT,
+    val isOrganizerBanned: Boolean = false,
+    val hasOutstandingAppeal: Boolean = false,
     val createdAt: Instant?,
     val updatedAt: Instant?
 )

@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Edit
@@ -49,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -93,17 +95,42 @@ fun OrganizerDashboardScreen(
     onViewWaitlist: (Event) -> Unit = {},
     onManageChosenEntrants: (Event) -> Unit = {},
     onViewEntrantLocations: (Event) -> Unit = {},
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Floating back button
+            Surface(
+                modifier = Modifier
+                    .padding(top = 24.dp, start = 24.dp)
+                    .size(56.dp)
+                    .align(Alignment.TopStart)
+                    .zIndex(10f),
+                shape = CircleShape,
+                color = PluckPalette.Surface,
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp,
+                onClick = onBack
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Go back",
+                        tint = PluckPalette.Primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
             OrganizerDashboardHero(
                 organizerName = organizerName,
                 stats = stats
@@ -136,6 +163,7 @@ fun OrganizerDashboardScreen(
                         onViewEntrantLocations = onViewEntrantLocations
                     )
                 }
+            }
             }
         }
     }

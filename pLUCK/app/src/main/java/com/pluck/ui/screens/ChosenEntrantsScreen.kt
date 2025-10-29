@@ -12,6 +12,7 @@
 package com.pluck.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,17 +33,27 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +65,7 @@ import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 import java.time.LocalDate
+import com.pluck.ui.theme.autoTextColor
 
 /**
  * ChosenEntrantsScreen.kt
@@ -76,27 +88,37 @@ data class ChosenEntrant(
 fun ChosenEntrantsScreen(
     event: Event,
     chosenEntrants: List<ChosenEntrant> = emptyList(),
+    waitingCount: Int = 0,
+    availableSpots: Int = 0,
     isLoading: Boolean = false,
     onBackClick: () -> Unit = {},
     onExportCSV: () -> Unit = {},
+    onRunDraw: () -> Unit = {},
+    onRemoveEntrant: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            ChosenEntrantsHeader(
-                eventTitle = event.title,
-                samplingCount = event.samplingCount,
-                capacity = event.capacity,
-                onBackClick = onBackClick,
-                onExportCSV = onExportCSV
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                ChosenEntrantsHeader(
+                    eventTitle = event.title,
+                    samplingCount = event.samplingCount,
+                    capacity = event.capacity,
+                    onBackClick = onBackClick,
+                    onExportCSV = onExportCSV
+                )
+
+                DrawActionsRow(
+                    waitingCount = waitingCount,
+                    availableSpots = availableSpots,
+                    onRunDraw = onRunDraw
+                )
 
             ChosenEntrantsStats(
                 chosenEntrants = chosenEntrants,
@@ -116,7 +138,10 @@ fun ChosenEntrantsScreen(
                 when {
                     isLoading -> ChosenEntrantsLoadingState()
                     chosenEntrants.isEmpty() -> ChosenEntrantsEmptyState()
-                    else -> ChosenEntrantsList(chosenEntrants = chosenEntrants)
+                    else -> ChosenEntrantsList(
+                        chosenEntrants = chosenEntrants,
+                        onRemoveEntrant = onRemoveEntrant
+                    )
                 }
             }
         }
@@ -196,12 +221,129 @@ private fun ChosenEntrantsHeader(
 }
 
 @Composable
+private fun DrawActionsRow(
+    waitingCount: Int,
+    availableSpots: Int,
+    onRunDraw: () -> Unit
+) {
+    val canRunDraw = waitingCount > 0 && availableSpots > 0
+    val helperText = when {
+        availableSpots <= 0 -> "Event is full. Remove entrants or increase capacity to draw again."
+        waitingCount <= 0 -> "No entrants waiting. Invite more entrants to join the waitlist."
+        else -> "Draw again to invite ${minOf(waitingCount, availableSpots)} entrant(s)."
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Lottery Controls",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+
+                Button(
+                    onClick = onRunDraw,
+                    enabled = canRunDraw,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canRunDraw) PluckPalette.Secondary else PluckPalette.Muted.copy(alpha = 0.2f),
+                        contentColor = if (canRunDraw) autoTextColor(PluckPalette.Secondary) else PluckPalette.Muted
+                    )
+                ) {
+                    Text("Run Draw")
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DrawStatChip(
+                    label = "Waiting",
+                    value = waitingCount.toString(),
+                    color = PluckPalette.Secondary
+                )
+                DrawStatChip(
+                    label = "Open Spots",
+                    value = availableSpots.toString(),
+                    color = PluckPalette.Accept
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DrawStatChip(
+    label: String,
+    value: String,
+    color: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = color.copy(alpha = 0.12f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(color)
+            )
+            Text(
+                text = "$value $label",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = color
+                )
+            )
+        }
+    }
+}
+
+@Composable
 private fun ChosenEntrantsStats(
     chosenEntrants: List<ChosenEntrant>,
     capacity: Int
 ) {
     val acceptedCount = chosenEntrants.count { it.status == WaitlistStatus.ACCEPTED }
-    val pendingCount = chosenEntrants.count { it.status == WaitlistStatus.SELECTED }
+    val pendingCount = chosenEntrants.count {
+        it.status == WaitlistStatus.INVITED || it.status == WaitlistStatus.SELECTED
+    }
     val declinedCount = chosenEntrants.count { it.status == WaitlistStatus.DECLINED }
     val cancelledCount = chosenEntrants.count { it.status == WaitlistStatus.CANCELLED }
 
@@ -305,7 +447,10 @@ private fun ChosenEntrantsStatCard(
 }
 
 @Composable
-private fun ChosenEntrantsList(chosenEntrants: List<ChosenEntrant>) {
+private fun ChosenEntrantsList(
+    chosenEntrants: List<ChosenEntrant>,
+    onRemoveEntrant: (String) -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -321,19 +466,32 @@ private fun ChosenEntrantsList(chosenEntrants: List<ChosenEntrant>) {
         }
 
         items(chosenEntrants, key = { it.id }) { entrant ->
-            ChosenEntrantCard(entrant = entrant)
+            ChosenEntrantCard(
+                entrant = entrant,
+                onRemove = { onRemoveEntrant(entrant.userId) }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChosenEntrantCard(entrant: ChosenEntrant) {
+private fun ChosenEntrantCard(
+    entrant: ChosenEntrant,
+    onRemove: () -> Unit = {}
+) {
+    var showRemoveDialog by remember { mutableStateOf(false) }
+
     val (statusColor, statusLabel, statusIcon) = when (entrant.status) {
         WaitlistStatus.ACCEPTED -> Triple(PluckPalette.Accept, "Accepted", Icons.Outlined.CheckCircle)
         WaitlistStatus.DECLINED -> Triple(PluckPalette.Decline, "Declined", Icons.Outlined.Cancel)
         WaitlistStatus.CANCELLED -> Triple(Color(0xFFEF4444), "Cancelled", Icons.Outlined.Cancel)
-        WaitlistStatus.SELECTED -> Triple(PluckPalette.Secondary, "Pending", Icons.Outlined.HourglassEmpty)
+        WaitlistStatus.INVITED,
+        WaitlistStatus.SELECTED -> Triple(
+            PluckPalette.Secondary,
+            "Pending",
+            Icons.Outlined.HourglassEmpty
+        )
         else -> Triple(PluckPalette.Muted, "Unknown", Icons.Outlined.HourglassEmpty)
     }
 
@@ -371,32 +529,99 @@ private fun ChosenEntrantCard(entrant: ChosenEntrant) {
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = statusColor.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, statusColor.copy(alpha = 0.3f))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = statusColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.3f))
                 ) {
-                    Icon(
-                        imageVector = statusIcon,
-                        contentDescription = null,
-                        tint = statusColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = statusLabel,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = statusColor
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(16.dp)
                         )
-                    )
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor
+                            )
+                        )
+                    }
+                }
+
+                // Remove button - only show for ACCEPTED entrants
+                if (entrant.status == WaitlistStatus.ACCEPTED) {
+                    IconButton(
+                        onClick = { showRemoveDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Remove entrant",
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
+    }
+
+    // Remove confirmation dialog
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Remove Entrant?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove ${entrant.userName} from the enrolled list and free up their spot. You can run another draw to fill the gap.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text("Cancel", color = PluckPalette.Muted)
+                }
+            }
+        )
     }
 }
 
@@ -471,7 +696,7 @@ private fun ChosenEntrantsScreenPreview() {
 
     val sampleEntrants = listOf(
         ChosenEntrant("1", "user1", "Alice Johnson", WaitlistStatus.ACCEPTED),
-        ChosenEntrant("2", "user2", "Bob Smith", WaitlistStatus.SELECTED),
+        ChosenEntrant("2", "user2", "Bob Smith", WaitlistStatus.INVITED),
         ChosenEntrant("3", "user3", "Carol Davis", WaitlistStatus.DECLINED),
         ChosenEntrant("4", "user4", "David Wilson", WaitlistStatus.ACCEPTED),
         ChosenEntrant("5", "user5", "Eve Martinez", WaitlistStatus.SELECTED)
@@ -479,6 +704,8 @@ private fun ChosenEntrantsScreenPreview() {
 
     ChosenEntrantsScreen(
         event = sampleEvent,
-        chosenEntrants = sampleEntrants
+        chosenEntrants = sampleEntrants,
+        waitingCount = 12,
+        availableSpots = 25
     )
 }

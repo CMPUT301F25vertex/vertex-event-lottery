@@ -1,9 +1,13 @@
 package com.pluck.data.repository
 
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.UserRole
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -101,7 +105,7 @@ class UserRepository(
     }
 
     /**
-     * Remove organizer role from a user (US 03.07.01)
+     * Remove organizer role from a user and ban them from re-registering (US 03.07.01)
      *
      * @param userId The user ID
      * @return Result with success or error
@@ -109,7 +113,14 @@ class UserRepository(
     suspend fun removeOrganizerRole(userId: String): Result<Unit> {
         return try {
             usersCollection.document(userId)
-                .update("role", UserRole.ENTRANT.name)
+                .update(
+                    mapOf(
+                        "role" to UserRole.ENTRANT.name,
+                        "isOrganizerBanned" to true,
+                        "hasOutstandingAppeal" to false,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -124,5 +135,30 @@ class UserRepository(
      */
     suspend fun getAllOrganizers(): Result<List<FirebaseUser>> {
         return getUsersByRole(UserRole.ORGANIZER)
+    }
+
+    /**
+     * Observes organizers in real time for admin dashboard updates.
+     *
+     * @return Flow emitting organizer lists whenever Firestore changes.
+     */
+    fun observeOrganizers(): Flow<List<FirebaseUser>> = callbackFlow {
+        val listenerRegistration = usersCollection
+            .whereEqualTo("role", UserRole.ORGANIZER.name)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val organizers = snapshot?.documents
+                    ?.mapNotNull { doc -> doc.toObject(FirebaseUser::class.java) }
+                    ?: emptyList()
+
+                trySend(organizers)
+            }
+
+        awaitClose { listenerRegistration.remove() }
     }
 }

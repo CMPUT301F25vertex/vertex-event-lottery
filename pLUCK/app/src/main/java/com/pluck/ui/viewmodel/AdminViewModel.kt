@@ -5,15 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.firebase.OrganizerAppeal
+import com.pluck.data.repository.AppealRepository
 import com.pluck.data.repository.EventRepository
 import com.pluck.data.repository.NotificationRepository
 import com.pluck.data.repository.UserRepository
 import com.pluck.ui.model.Event
-import com.pluck.ui.model.NotificationItem
 import com.pluck.ui.screens.AdminStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -30,6 +32,8 @@ import kotlinx.coroutines.tasks.await
 class AdminViewModel(
     private val eventRepository: EventRepository = EventRepository(),
     private val userRepository: UserRepository = UserRepository(),
+    private val appealRepository: AppealRepository = AppealRepository(),
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) : ViewModel() {
@@ -49,6 +53,9 @@ class AdminViewModel(
     private val _notifications = MutableStateFlow<List<NotificationLog>>(emptyList())
     val notifications: StateFlow<List<NotificationLog>> = _notifications.asStateFlow()
 
+    private val _appeals = MutableStateFlow<List<OrganizerAppeal>>(emptyList())
+    val appeals: StateFlow<List<OrganizerAppeal>> = _appeals.asStateFlow()
+
     private val _stats = MutableStateFlow(AdminStats())
     val stats: StateFlow<AdminStats> = _stats.asStateFlow()
 
@@ -59,6 +66,8 @@ class AdminViewModel(
     val error: StateFlow<String?> = _error.asStateFlow()
 
     init {
+        observeOrganizersRealtime()
+        observeAppealsRealtime()
         loadAllData()
     }
 
@@ -114,6 +123,31 @@ class AdminViewModel(
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to load organizers"
+                }
+        }
+    }
+
+    private fun observeOrganizersRealtime() {
+        viewModelScope.launch {
+            userRepository.observeOrganizers()
+                .catch { exception ->
+                    _error.value = exception.message ?: "Failed to observe organizers"
+                }
+                .collect { organizersList ->
+                    _organizers.value = organizersList
+                    updateStats()
+                }
+        }
+    }
+
+    private fun observeAppealsRealtime() {
+        viewModelScope.launch {
+            appealRepository.getAllAppeals()
+                .catch { exception ->
+                    _error.value = exception.message ?: "Failed to observe appeals"
+                }
+                .collect { appealsList ->
+                    _appeals.value = appealsList
                 }
         }
     }
@@ -249,13 +283,60 @@ class AdminViewModel(
 
             userRepository.removeOrganizerRole(organizerId)
                 .onSuccess {
+                    eventRepository.deactivateEventsByOrganizer(organizerId)
+                        .onFailure { exception ->
+                            _error.value = exception.message ?: "Organizer removed, but failed to close events."
+                        }
+
+                    notificationRepository.deleteNotificationsForOrganizer(organizerId)
+                        .onFailure { exception ->
+                            _error.value = exception.message ?: "Organizer removed, but failed to clean notifications."
+                        }
+
+                    loadAllEvents()
                     loadAllOrganizers()
                     loadAllUsers()
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to remove organizer"
-                    _isLoading.value = false
                 }
+
+            _isLoading.value = false
+        }
+    }
+
+    fun approveAppeal(appealId: String, adminId: String, adminNotes: String?) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            appealRepository.approveAppeal(appealId, adminId, adminNotes)
+                .onSuccess {
+                    loadAllOrganizers()
+                    loadAllUsers()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to approve appeal"
+                }
+
+            _isLoading.value = false
+        }
+    }
+
+    fun rejectAppeal(appealId: String, adminId: String, adminNotes: String?) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            appealRepository.rejectAppeal(appealId, adminId, adminNotes)
+                .onSuccess {
+                    loadAllUsers()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to reject appeal"
+                }
+
+            _isLoading.value = false
         }
     }
 

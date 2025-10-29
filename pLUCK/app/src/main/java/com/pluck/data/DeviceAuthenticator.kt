@@ -12,7 +12,11 @@ import com.pluck.data.repository.EventRepository
 import com.pluck.data.repository.NotificationRepository
 import com.pluck.data.repository.WaitlistRepository
 import com.pluck.ui.model.EntrantProfile
+import com.pluck.data.firebase.UserRole
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -254,6 +258,37 @@ class DeviceAuthenticator(private val context: Context) {
     }
 
     /**
+     * Observes the current user's profile for real-time updates.
+     *
+     * @param deviceId Device ID of the signed-in user.
+     * @return Flow emitting the latest [EntrantProfile] or null if the profile is deleted.
+     */
+    fun observeProfile(deviceId: String): Flow<EntrantProfile?> = callbackFlow {
+        if (deviceId.isBlank()) {
+            trySend(null)
+            close()
+            return@callbackFlow
+        }
+
+        val listenerRegistration = firestore.collection("entrants")
+            .document(deviceId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    trySend(snapshot.toEntrantProfile())
+                } else {
+                    trySend(null)
+                }
+            }
+
+        awaitClose { listenerRegistration.remove() }
+    }
+
+    /**
      * Converts a Firestore DocumentSnapshot to an EntrantProfile domain object.
      * @receiver DocumentSnapshot from the "entrants" collection.
      * @return Populated [EntrantProfile] with data from Firestore.
@@ -265,6 +300,11 @@ class DeviceAuthenticator(private val context: Context) {
         val email = getString("email").orEmpty().ifBlank { null }
         val phoneNumber = getString("phoneNumber").orEmpty().ifBlank { null }
         val profileImageUrl = getString("profileImageUrl").orEmpty().ifBlank { null }
+        val roleString = getString("role")
+        val role = UserRole.values().firstOrNull { it.name.equals(roleString, ignoreCase = true) }
+            ?: UserRole.ENTRANT
+        val isOrganizerBanned = getBoolean("isOrganizerBanned") ?: false
+        val hasOutstandingAppeal = getBoolean("hasOutstandingAppeal") ?: false
         val createdAt = getTimestamp("createdAt")?.toDate()?.toInstant()
         val updatedAt = getTimestamp("updatedAt")?.toDate()?.toInstant()
         return EntrantProfile(
@@ -274,6 +314,9 @@ class DeviceAuthenticator(private val context: Context) {
             phoneNumber = phoneNumber,
             profileImageUrl = profileImageUrl,
             firebaseUid = firebaseUid,
+            role = role,
+            isOrganizerBanned = isOrganizerBanned,
+            hasOutstandingAppeal = hasOutstandingAppeal,
             createdAt = createdAt,
             updatedAt = updatedAt ?: createdAt
         )

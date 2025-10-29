@@ -368,4 +368,7 @@ sealed class AcceptNotificationResult {
 }
 
 private fun WaitlistStatus?.isActiveMembership(): Boolean =
-    this == WaitlistStatus.WAITING || this == WaitlistStatus.SELECTED || this == WaitlistStatus.ACCEPTED
+    this == WaitlistStatus.WAITING ||
+        this == WaitlistStatus.INVITED ||
+        this == WaitlistStatus.SELECTED ||
+        this == WaitlistStatus.ACCEPTED

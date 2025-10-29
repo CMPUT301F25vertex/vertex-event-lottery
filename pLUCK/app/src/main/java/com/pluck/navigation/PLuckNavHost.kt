@@ -65,6 +65,9 @@ import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.repository.AdminAccessRepository
+import com.pluck.data.repository.OrganizerAccessRepository
+import com.pluck.data.repository.AppealRepository
+import com.pluck.data.firebase.UserRole
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
@@ -90,6 +93,7 @@ import com.pluck.ui.screens.WelcomeBackScreen
 import com.pluck.ui.screens.CustomThemeCreatorScreen
 import com.pluck.ui.screens.QRScannerScreen
 import com.pluck.ui.screens.ChosenEntrantsScreen
+import com.pluck.ui.screens.RunDrawDialog
 import com.pluck.ui.screens.AdminDashboardScreen
 import com.pluck.ui.screens.EntrantLocationsMapScreen
 import com.pluck.ui.viewmodel.AdminViewModel
@@ -155,6 +159,8 @@ fun PLuckNavHost(
     val authPreferences = remember(context) { DeviceAuthPreferences(context.applicationContext) }
     val themePrefs = remember(context) { ThemePreferences(context.applicationContext) }
     val adminAccessRepository = remember { AdminAccessRepository() }
+    val organizerAccessRepository = remember { OrganizerAccessRepository() }
+    val appealRepository = remember { AppealRepository() }
 
     var currentUser by remember { mutableStateOf<EntrantProfile?>(null) }
     var loginInProgress by remember { mutableStateOf(false) }
@@ -199,12 +205,45 @@ fun PLuckNavHost(
     val adminNotifications by adminViewModel.notifications.collectAsState()
     val adminStats by adminViewModel.stats.collectAsState()
     val adminLoading by adminViewModel.isLoading.collectAsState()
+    val adminAppeals by adminViewModel.appeals.collectAsState()
     val notificationsLoading by notificationsViewModel.isLoading.collectAsState()
     val processingNotificationIds by notificationsViewModel.processingNotificationIds.collectAsState()
     val notificationError by notificationsViewModel.error.collectAsState()
     val inviteFeedback by notificationsViewModel.inviteFeedback.collectAsState()
     val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
     val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
+
+    LaunchedEffect(deviceId) {
+        if (deviceId.isBlank()) return@LaunchedEffect
+
+        authenticator.observeProfile(deviceId).collect { profile ->
+            val previousProfile = currentUser
+            if (profile != null) {
+                val lostOrganizer = previousProfile?.role == UserRole.ORGANIZER && profile.role != UserRole.ORGANIZER
+                val newlyBanned = profile.isOrganizerBanned && previousProfile?.isOrganizerBanned != true
+
+                currentUser = profile
+
+                if (lostOrganizer || newlyBanned) {
+                    profileUpdateError = null
+                    profileUpdateMessage =
+                        "Organizer access revoked. Your events have been closed. Submit an appeal if this was a mistake."
+                    eventViewModel.loadEvents()
+                    Toast.makeText(
+                        context,
+                        "Organizer access revoked. Your events have been closed.",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    if (navController.currentBackStackEntry?.destination?.route == PLuckDestination.OrganizerDashboard.route) {
+                        navController.popBackStack()
+                    }
+                }
+            } else {
+                currentUser = null
+            }
+        }
+    }
 
     LaunchedEffect(currentUser) {
         if (currentUser == null) {
@@ -440,7 +479,8 @@ fun PLuckNavHost(
             when {
                 resolvedEvent != null -> {
                     val isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                        userWaitlistStatus == WaitlistStatus.SELECTED
+                        userWaitlistStatus == WaitlistStatus.SELECTED ||
+                        userWaitlistStatus == WaitlistStatus.INVITED
                     val isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val canEditPoster = currentUser?.let { profile ->
@@ -482,8 +522,11 @@ fun PLuckNavHost(
                                 scope.launch {
                                     waitlistViewModel.leaveWaitlist(entryId) {
                                         if (profile != null) {
-                                            waitlistViewModel.checkUserWaitlistStatus(eventToLeave.id, profile.deviceId)
+                                            val deviceId = profile.deviceId
+                                            waitlistViewModel.checkUserWaitlistStatus(eventToLeave.id, deviceId)
+                                            waitlistViewModel.loadUserEventHistory(deviceId)
                                         }
+                                        eventViewModel.loadEvent(eventToLeave.id)
                                     }
                                 }
                             } else {
@@ -574,8 +617,10 @@ fun PLuckNavHost(
                         waitlistEntries = waitlistEntries,
                         chosenEntries = chosenEntries,
                         isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                            userWaitlistStatus == WaitlistStatus.SELECTED,
+                            userWaitlistStatus == WaitlistStatus.SELECTED ||
+                            userWaitlistStatus == WaitlistStatus.INVITED,
                         isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED,
+                        onBack = { navController.popBackStack() },
                         onJoinWaitlist = join@{
                             val profile = currentUser
                             if (profile == null) {
@@ -641,13 +686,13 @@ fun PLuckNavHost(
                             scope.launch {
                                 waitlistViewModel.leaveWaitlist(entryId) {
                                     if (profile != null && eventId != null) {
-                                        waitlistViewModel.checkUserWaitlistStatus(eventId, profile.deviceId)
+                                        val deviceId = profile.deviceId
+                                        waitlistViewModel.checkUserWaitlistStatus(eventId, deviceId)
+                                        waitlistViewModel.loadUserEventHistory(deviceId)
                                     }
+                                    eventId?.let { eventViewModel.loadEvent(it) }
                                 }
                             }
-                        },
-                        onBack = {
-                            navController.popBackStack()
                         }
                     )
                 }
@@ -704,6 +749,9 @@ fun PLuckNavHost(
                         isLoading = loginInProgress,
                         isUpdatingProfile = profileUpdating,
                         isAdmin = isAdminDevice,
+                        isOrganizer = currentUser?.role == UserRole.ORGANIZER,
+                        isOrganizerBanned = currentUser?.isOrganizerBanned == true,
+                        hasOutstandingAppeal = currentUser?.hasOutstandingAppeal == true,
                         updateMessage = profileUpdateMessage,
                         updateError = profileUpdateError,
                         onProfileImageUploadStarted = {
@@ -755,6 +803,85 @@ fun PLuckNavHost(
                             adminRegistrationError = null
                             adminRegistrationPassword = ""
                             showAdminRegistrationDialog = true
+                        },
+                        onBecomeOrganizer = {
+                            scope.launch {
+                                profileUpdateMessage = null
+                                profileUpdateError = null
+                                if (deviceId.isBlank()) {
+                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    return@launch
+                                }
+                                val profile = currentUser
+                                if (profile == null) {
+                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    return@launch
+                                }
+                                organizerAccessRepository.registerAsOrganizer(deviceId)
+                                    .onSuccess {
+                                        currentUser = profile.copy(
+                                            role = UserRole.ORGANIZER,
+                                            isOrganizerBanned = false
+                                        )
+                                        profileUpdateMessage = "Organizer tools unlocked."
+                                    }
+                                    .onFailure { error ->
+                                        profileUpdateError = error.message
+                                            ?: "Failed to register as organizer."
+                                    }
+                            }
+                        },
+                        onDowngradeFromOrganizer = {
+                            scope.launch {
+                                profileUpdateMessage = null
+                                profileUpdateError = null
+                                if (deviceId.isBlank()) {
+                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    return@launch
+                                }
+                                val profile = currentUser
+                                if (profile == null) {
+                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    return@launch
+                                }
+                                organizerAccessRepository.downgradeToEntrant(deviceId)
+                                    .onSuccess {
+                                        currentUser = profile.copy(role = UserRole.ENTRANT)
+                                        profileUpdateMessage =
+                                            "Organizer access removed. Existing events deleted."
+                                    }
+                                    .onFailure { error ->
+                                        profileUpdateError = error.message
+                                            ?: "Failed to downgrade organizer access."
+                                    }
+                            }
+                        },
+                        onSubmitAppeal = { message ->
+                            scope.launch {
+                                profileUpdateMessage = null
+                                profileUpdateError = null
+                                if (deviceId.isBlank()) {
+                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    return@launch
+                                }
+                                val profile = currentUser
+                                if (profile == null) {
+                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    return@launch
+                                }
+                                appealRepository.submitAppeal(
+                                    userId = deviceId,
+                                    displayName = profile.displayName,
+                                    email = profile.email ?: "",
+                                    message = message
+                                ).onSuccess { _ ->
+                                    currentUser = profile.copy(hasOutstandingAppeal = true)
+                                    profileUpdateMessage = "Appeal submitted successfully."
+                                }.onFailure { error ->
+                                    profileUpdateError = error.message
+                                        ?: "Failed to submit appeal."
+                                }
+                            }
                         },
                         onSignOut = {
                             currentUser = null
@@ -836,13 +963,32 @@ fun PLuckNavHost(
                             }
                         },
                         onAccept = { notification ->
-                            notificationsViewModel.acceptNotification(notification, currentUser)
+                            notificationsViewModel.acceptNotification(notification, currentUser) { eventId ->
+                                val profile = currentUser
+                                if (eventId != null && profile != null) {
+                                    val deviceId = profile.deviceId
+                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                                    waitlistViewModel.loadUserEventHistory(deviceId)
+                                    eventViewModel.loadEvent(eventId)
+                                }
+                            }
                         },
                         onDecline = { notification ->
-                            notificationsViewModel.declineNotification(notification)
+                            notificationsViewModel.declineNotification(notification) { eventId ->
+                                val profile = currentUser
+                                if (eventId != null && profile != null) {
+                                    val deviceId = profile.deviceId
+                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                                    waitlistViewModel.loadUserEventHistory(deviceId)
+                                    eventViewModel.loadEvent(eventId)
+                                }
+                            }
                         },
                         onProfileClick = {
                             navigator.toProfile()
+                        },
+                        onClearAll = {
+                            notificationsViewModel.clearAllNotifications(currentUser)
                         }
                     )
                 }
@@ -1112,6 +1258,7 @@ fun PLuckNavHost(
                             // If user has waitlist history, use that status
                             history != null -> when (history.status) {
                                 WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
+                                WaitlistStatus.INVITED,
                                 WaitlistStatus.SELECTED,
                                 WaitlistStatus.WAITING -> EventStatus.WAITLIST
                                 WaitlistStatus.DECLINED,
@@ -1188,12 +1335,12 @@ fun PLuckNavHost(
                 },
                 onRunDraw = { event ->
                     // Run the draw for this event
-                    eventViewModel.runDraw(event, waitlistViewModel) {
+                    eventViewModel.runDraw(event, waitlistViewModel, onSuccess = {
                         // Refresh the event after draw
                         currentUser?.deviceId?.let { orgId ->
                             eventViewModel.loadEventsByOrganizer(orgId)
                         }
-                    }
+                    })
                 },
                 onViewWaitlist = { event ->
                     navigator.toWaitlist(event.id)
@@ -1203,6 +1350,9 @@ fun PLuckNavHost(
                 },
                 onViewEntrantLocations = { event ->
                     navigator.toEntrantLocationsMap(event.id)
+                },
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -1213,6 +1363,7 @@ fun PLuckNavHost(
                     events = adminEvents,
                     users = adminUsers,
                     organizers = adminOrganizers,
+                    appeals = adminAppeals,
                     images = adminImages,
                     notifications = adminNotifications,
                     isLoading = adminLoading,
@@ -1227,6 +1378,17 @@ fun PLuckNavHost(
                     },
                     onRemoveOrganizer = { organizerId ->
                         adminViewModel.removeOrganizer(organizerId)
+                    },
+                    onApproveAppeal = { appealId, notes ->
+                        val adminActorId = currentUser?.deviceId?.takeIf { it.isNotBlank() } ?: deviceId
+                        adminViewModel.approveAppeal(appealId, adminActorId, notes)
+                    },
+                    onRejectAppeal = { appealId, notes ->
+                        val adminActorId = currentUser?.deviceId?.takeIf { it.isNotBlank() } ?: deviceId
+                        adminViewModel.rejectAppeal(appealId, adminActorId, notes)
+                    },
+                    onBack = {
+                        navController.popBackStack()
                     }
                 )
             } else {
@@ -1300,11 +1462,58 @@ fun PLuckNavHost(
             // Load the event and chosen entrants
             LaunchedEffect(eventId) {
                 eventViewModel.loadEvent(eventId)
+                waitlistViewModel.loadWaitlist(eventId)
                 waitlistViewModel.loadChosenEntries(eventId)
             }
 
             // Only render if event is loaded
             selectedEvent?.let { event ->
+                val currentUserIdForChosen = currentUser?.deviceId.orEmpty()
+                LaunchedEffect(eventId, currentUserIdForChosen) {
+                    if (eventId.isNotBlank()) {
+                        waitlistViewModel.observeWaitlist(eventId, currentUserIdForChosen)
+                        waitlistViewModel.observeChosenEntries(eventId, currentUserIdForChosen)
+                    }
+                }
+
+                val waitingCount = waitlistEntries.count {
+                    it.status == WaitlistStatus.WAITING ||
+                        it.status == WaitlistStatus.INVITED ||
+                        it.status == WaitlistStatus.SELECTED
+                }
+                val availableSpots = (event.capacity - event.enrolled).coerceAtLeast(0)
+                val currentWave = if (event.samplingCount > 0) {
+                    (chosenEntries.size / event.samplingCount) + 1
+                } else {
+                    1
+                }
+                var showRunDrawDialog by remember { mutableStateOf(false) }
+
+                if (showRunDrawDialog) {
+                    RunDrawDialog(
+                        eventTitle = event.title,
+                        waitingCount = waitingCount,
+                        capacity = event.capacity,
+                        enrolled = event.enrolled,
+                        currentWave = currentWave,
+                        samplingCount = event.samplingCount,
+                        onConfirm = { drawSize ->
+                            showRunDrawDialog = false
+                            scope.launch {
+                                eventViewModel.runDraw(
+                                    event = event,
+                                    waitlistViewModel = waitlistViewModel,
+                                    drawSize = drawSize,
+                                    onSuccess = {
+                                        eventViewModel.loadEvent(event.id)
+                                    }
+                                )
+                            }
+                        },
+                        onDismiss = { showRunDrawDialog = false }
+                    )
+                }
+
                 ChosenEntrantsScreen(
                     event = event,
                     chosenEntrants = chosenEntries.map { entry ->
@@ -1312,22 +1521,35 @@ fun PLuckNavHost(
                             id = entry.id,
                             userId = entry.userId,
                             userName = entry.userName,
-                            status = entry.status, // Use actual status from entry
+                            status = entry.status,
                             selectedAt = null
                         )
                     },
-                    isLoading = waitlistLoading,
+                    waitingCount = waitingCount,
+                    availableSpots = availableSpots,
+                    isLoading = waitlistLoading || eventsLoading,
                     onBackClick = {
                         navController.popBackStack()
                     },
                     onExportCSV = {
-                        // Export chosen entrants to CSV (US 02.06.05)
                         waitlistViewModel.exportChosenEntrantsToCSV(
                             context = context,
                             event = event,
                             entrants = chosenEntries
                         ) { intent ->
                             context.startActivity(intent)
+                        }
+                    },
+                    onRunDraw = { showRunDrawDialog = true },
+                    onRemoveEntrant = { userId ->
+                        scope.launch {
+                            waitlistViewModel.removeChosenEntrant(
+                                eventId = event.id,
+                                userId = userId,
+                                currentUserId = currentUserIdForChosen
+                            ) {
+                                eventViewModel.loadEvent(event.id)
+                            }
                         }
                     }
                 )

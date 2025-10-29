@@ -25,6 +25,8 @@ import com.google.firebase.firestore.ServerTimestamp
  * @property profileImageUrl Optional profile picture URL from Firebase Storage.
  * @property role User role determining permissions (ENTRANT, ORGANIZER, ADMIN).
  * @property isActive Whether the account is active (soft delete support).
+ * @property isOrganizerBanned Whether this user is banned from organizer role.
+ * @property hasOutstandingAppeal Whether user has a pending organizer appeal.
  * @property createdAt Server-side creation timestamp.
  * @property updatedAt Server-side last update timestamp.
  */
@@ -37,6 +39,8 @@ data class FirebaseUser(
     val profileImageUrl: String? = null,
     val role: UserRole = UserRole.ENTRANT,
     val isActive: Boolean = true,
+    val isOrganizerBanned: Boolean = false,
+    val hasOutstandingAppeal: Boolean = false,
     @ServerTimestamp
     val createdAt: Timestamp? = null,
     @ServerTimestamp
@@ -46,7 +50,9 @@ data class FirebaseUser(
         id = "",
         email = "",
         displayName = "",
-        role = UserRole.ENTRANT
+        role = UserRole.ENTRANT,
+        isOrganizerBanned = false,
+        hasOutstandingAppeal = false
     )
 }
 

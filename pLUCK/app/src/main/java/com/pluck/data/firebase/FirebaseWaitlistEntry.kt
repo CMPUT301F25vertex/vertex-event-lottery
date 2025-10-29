@@ -74,7 +74,9 @@ data class FirebaseWaitlistEntry(
             position = position,
             joinedDate = localDate,
             isCurrentUser = userId == currentUserId,
-            isChosen = status == WaitlistStatus.SELECTED,
+            isChosen = status == WaitlistStatus.ACCEPTED ||
+                status == WaitlistStatus.INVITED ||
+                status == WaitlistStatus.SELECTED,
             status = status,
             latitude = latitude,
             longitude = longitude
@@ -87,8 +89,9 @@ data class FirebaseWaitlistEntry(
  */
 enum class WaitlistStatus {
     WAITING,      // On waitlist, not yet selected
-    SELECTED,     // Chosen in lottery
-    ACCEPTED,     // User accepted the invitation
-    DECLINED,     // User declined the invitation
+    INVITED,      // Has pending invitation from lottery draw
+    SELECTED,     // Chosen in lottery (legacy - use INVITED instead)
+    ACCEPTED,     // User accepted the invitation (now enrolled)
+    DECLINED,     // User declined the invitation (back to WAITING)
     CANCELLED     // User left the waitlist
 }
