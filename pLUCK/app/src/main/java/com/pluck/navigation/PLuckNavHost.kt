@@ -1291,6 +1291,12 @@ fun PLuckNavHost(
                         isLoading = eventsLoading,
                         onEventClick = { event ->
                             navigator.toEventDetail(event.id)
+                        },
+                        onBack = {
+                            val popped = navController.popBackStack()
+                            if (!popped) {
+                                navigator.toProfile()
+                            }
                         }
                     )
                 }
