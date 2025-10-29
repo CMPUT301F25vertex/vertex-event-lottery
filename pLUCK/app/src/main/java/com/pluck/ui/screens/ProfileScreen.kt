@@ -392,7 +392,8 @@ fun ProfileScreen(
                             text = "Delete Account",
                             description = "Permanently remove your profile and history.",
                             enabled = !isLoading,
-                            onClick = { showDeleteDialog = true }
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.testTag(ProfileScreenTestTags.DeleteAccountButton)
                         )
                     }
 
@@ -512,10 +513,11 @@ private fun ProfileDestructiveActionButton(
     text: String,
     description: String,
     enabled: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 96.dp),
         shape = RoundedCornerShape(20.dp),
@@ -697,6 +699,7 @@ private fun ProfileInputField(
 
 object ProfileScreenTestTags {
     const val ScrollContainer = "profile_scroll"
+    const val DeleteAccountButton = "profile_delete_account_button"
     const val DeleteConfirmButton = "profile_delete_confirm"
 }
 
