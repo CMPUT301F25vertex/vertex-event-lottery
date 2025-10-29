@@ -101,7 +101,7 @@ class ProfileScreenTest {
 
         composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
 
-        composeRule.onNodeWithText("Delete Account", useUnmergedTree = true)
+        composeRule.onNodeWithTag(ProfileScreenTestTags.DeleteAccountButton)
             .assertExists()
             .performClick()
 
