@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pluck.ui.theme.PluckTheme
 import org.junit.Assert.assertEquals
@@ -103,6 +104,7 @@ class ProfileScreenTest {
 
         composeRule.onNodeWithTag(ProfileScreenTestTags.DeleteAccountButton)
             .assertExists()
+            .performScrollTo()
             .performClick()
 
         composeRule.waitUntil(timeoutMillis = 5000) {
