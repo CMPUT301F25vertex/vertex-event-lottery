@@ -3,7 +3,6 @@ package com.pluck.data.repository
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.pluck.data.firebase.FirebaseEvent
 import com.pluck.ui.model.Event
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -34,9 +33,8 @@ class EventRepository(
      */
     suspend fun createEvent(event: Event): Result<String> {
         return try {
-            val firebaseEvent = FirebaseEvent.fromEvent(event)
             val docRef = eventsCollection.document()
-            val eventWithId = firebaseEvent.copy(
+            val eventWithId = event.copy(
                 id = docRef.id,
                 qrCodeData = event.qrCodeData.ifEmpty { docRef.id }
             )
@@ -57,10 +55,10 @@ class EventRepository(
     suspend fun getEvent(eventId: String): Result<Event> {
         return try {
             val snapshot = eventsCollection.document(eventId).get().await()
-            val firebaseEvent = snapshot.toObject(FirebaseEvent::class.java)
+            val firebaseEvent = snapshot.toObject(Event::class.java)
 
             if (firebaseEvent != null) {
-                Result.success(firebaseEvent.toEvent())
+                Result.success(firebaseEvent)
             } else {
                 Result.failure(Exception("Event not found"))
             }
@@ -82,9 +80,8 @@ class EventRepository(
                 .await()
 
             val events = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(FirebaseEvent::class.java)
+                doc.toObject(Event::class.java)
                     ?.takeIf { it.isActive }
-                    ?.toEvent()
             }
 
             Result.success(events)
@@ -108,9 +105,8 @@ class EventRepository(
                 .await()
 
             val events = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(FirebaseEvent::class.java)
+                doc.toObject(Event::class.java)
                     ?.takeIf { it.isActive }
-                    ?.toEvent()
             }
 
             Result.success(events)
@@ -132,9 +128,8 @@ class EventRepository(
                 .await()
 
             val events = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(FirebaseEvent::class.java)
+                doc.toObject(Event::class.java)
                     ?.takeIf { it.isActive }
-                    ?.toEvent()
             }.filter { event ->
                 // Filter for events that aren't full or have waitlist space
                 !event.isFull || !event.isWaitlistFull
@@ -228,9 +223,8 @@ class EventRepository(
 
                 if (snapshot != null) {
                     val events = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(FirebaseEvent::class.java)
+                        doc.toObject(Event::class.java)
                             ?.takeIf { it.isActive }
-                            ?.toEvent()
                     }
                     trySend(events)
                 }
@@ -256,7 +250,7 @@ class EventRepository(
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    val event = snapshot.toObject(FirebaseEvent::class.java)?.toEvent()
+                    val event = snapshot.toObject(Event::class.java)
                     trySend(event)
                 }
             }

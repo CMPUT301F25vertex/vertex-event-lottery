@@ -83,20 +83,20 @@ data class FirebaseEvent(
     @ServerTimestamp
     val updatedAt: Timestamp? = null
 ) {
-    constructor() : this(
-        id = "",
-        title = "",
-        description = "",
-        location = "",
-        dateTimestamp = Timestamp.now(),
-        capacity = 0,
-        enrolled = 0,
-        organizerId = "",
-        organizerName = "",
-        waitlistCount = 0,
-        waitlistCapacity = 0,
-        qrCodeData = ""
-    )
+//    constructor() : this(
+//        id = "",
+//        title = "",
+//        description = "",
+//        location = "",
+//        dateTimestamp = Timestamp.now(),
+//        capacity = 0,
+//        enrolled = 0,
+//        organizerId = "",
+//        organizerName = "",
+//        waitlistCount = 0,
+//        waitlistCapacity = 0,
+//        qrCodeData = ""
+//    )
 
     /**
      * Convert Firebase event to UI Event model
@@ -111,8 +111,10 @@ data class FirebaseEvent(
             title = title,
             description = description,
             location = location,
-            date = eventDateTime.toLocalDate(),
-            eventTime = eventDateTime.toLocalTime(),
+//            date = eventDateTime.toLocalDate(),
+//            eventTime = eventDateTime.toLocalTime(),
+            date = Timestamp.now(),
+            eventTime = Timestamp.now(),
             capacity = capacity,
             enrolled = enrolled,
             organizerName = organizerName,
@@ -121,12 +123,17 @@ data class FirebaseEvent(
             waitlistCapacity = waitlistCapacity,
             qrCodeData = qrCodeData.ifEmpty { id },
             posterUrl = imageUrl,
-            registrationStart = registrationStartDateTime?.toLocalDate(),
-            registrationStartTime = registrationStartDateTime?.toLocalTime(),
-            registrationEnd = registrationEndDateTime?.toLocalDate(),
-            registrationEndTime = registrationEndDateTime?.toLocalTime(),
+//            registrationStart = registrationStartDateTime?.toLocalDate(), // TODO fix
+//            registrationStartTime = registrationStartDateTime?.toLocalTime(),
+//            registrationEnd = registrationEndDateTime?.toLocalDate(),
+//            registrationEndTime = registrationEndDateTime?.toLocalTime(),
+            registrationStart = Timestamp.now(),
+            registrationStartTime = Timestamp.now(),
+            registrationEnd = Timestamp.now(),
+            registrationEndTime = Timestamp.now(),
             samplingCount = samplingCount,
-            drawDate = drawDateTimestamp?.toLocalDate(),
+//            drawDate = drawDateTimestamp?.toLocalDate(), // TODO fix
+            drawDate = Timestamp.now(),
             drawStatus = try {
                 DrawStatus.valueOf(drawStatus)
             } catch (e: Exception) {
@@ -137,42 +144,6 @@ data class FirebaseEvent(
             latitude = latitude,
             longitude = longitude
         )
-    }
-
-    companion object {
-        /**
-         * Convert UI Event model to Firebase event
-         */
-        fun fromEvent(event: Event): FirebaseEvent {
-            return FirebaseEvent(
-                id = event.id,
-                title = event.title,
-                description = event.description,
-                location = event.location,
-                dateTimestamp = toTimestamp(event.date, event.eventTime),
-                capacity = event.capacity,
-                enrolled = event.enrolled,
-                organizerId = event.organizerId,
-                organizerName = event.organizerName,
-                waitlistCount = event.waitlistCount,
-                waitlistCapacity = event.waitlistCapacity,
-                qrCodeData = event.qrCodeData,
-                imageUrl = event.posterUrl,
-                registrationStartTimestamp = event.registrationStart?.let {
-                    toTimestamp(it, event.registrationStartTime)
-                },
-                registrationEndTimestamp = event.registrationEnd?.let {
-                    toTimestamp(it, event.registrationEndTime)
-                },
-                samplingCount = event.samplingCount,
-                drawDateTimestamp = event.drawDate?.toTimestamp(),
-                drawStatus = event.drawStatus.name,
-                acceptanceDeadline = event.acceptanceDeadline,
-                requiresGeolocation = event.requiresGeolocation,
-                latitude = event.latitude,
-                longitude = event.longitude
-            )
-        }
     }
 }
 

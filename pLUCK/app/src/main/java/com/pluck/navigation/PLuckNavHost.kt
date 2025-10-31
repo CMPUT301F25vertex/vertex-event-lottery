@@ -17,6 +17,7 @@ package com.pluck.navigation
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.util.Log
 import android.widget.Toast
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -316,6 +317,8 @@ fun PLuckNavHost(
         adminCheckError?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             adminCheckError = null
+
+            Log.e("ADMIN CHECK ERROR:",  message)
         }
     }
 
@@ -323,6 +326,8 @@ fun PLuckNavHost(
         notificationError?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             notificationsViewModel.clearError()
+
+            Log.e("NOTIFICATION ERROR:",  message)
         }
     }
 
@@ -330,6 +335,8 @@ fun PLuckNavHost(
         waitlistError?.let { message ->
             Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
             waitlistViewModel.clearError()
+
+            Log.e("WAITLIST ERROR:",  message)
         }
     }
 
@@ -337,6 +344,8 @@ fun PLuckNavHost(
         eventError?.let { message ->
             Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
             eventViewModel.clearError()
+
+            Log.e("EVENT ERROR", message)
         }
     }
 

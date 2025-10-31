@@ -1,5 +1,7 @@
 ﻿package com.pluck.ui.model
 
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.ServerTimestamp
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -45,32 +47,38 @@ import java.util.Locale
  * @property longitude Optional longitude coordinate for event location.
  */
 data class Event(
-    val id: String,
-    val title: String,
-    val description: String,
-    val location: String,
-    val date: LocalDate,
-    val eventTime: LocalTime? = null,
-    val capacity: Int,
-    val enrolled: Int,
-    val organizerName: String,
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    val date: Timestamp = Timestamp.now(),
+    val eventTime: Timestamp? = null,
+    val capacity: Int = 100,
+    val enrolled: Int = 0,
+    val organizerName: String = "",
     val organizerId: String = "",
     val waitlistCount: Int = 0,
     val waitlistCapacity: Int = capacity * 2,
     val qrCodeData: String = id,
     val posterUrl: String? = null,
-    val registrationStart: LocalDate? = null,
-    val registrationStartTime: LocalTime? = null,
-    val registrationEnd: LocalDate? = null,
-    val registrationEndTime: LocalTime? = null,
+    val registrationStart: Timestamp? = null,
+    val registrationStartTime: Timestamp? = null,
+    val registrationEnd: Timestamp? = null,
+    val registrationEndTime: Timestamp? = null,
     val samplingCount: Int = 0,
-    val drawDate: LocalDate? = null,
+    val drawDate: Timestamp? = null,
     val drawStatus: DrawStatus = DrawStatus.PENDING,
     val acceptanceDeadline: Int = 24,
     val requiresGeolocation: Boolean = false,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val isActive: Boolean = true,
+    @ServerTimestamp
+    val createdAt: Timestamp? = null,
+    @ServerTimestamp
+    val updatedAt: Timestamp? = null
 ) {
+
     /**
      * @return A preview-friendly description limited to 120 characters.
      */
@@ -81,15 +89,17 @@ data class Event(
      * @return Formatted date string suitable for cards and summaries.
      */
     val dateLabel: String
-        get() = eventTime?.let { time ->
-            "${date.format(DATE_FORMATTER)} at ${time.format(TIME_FORMATTER)}"
-        } ?: date.format(DATE_FORMATTER)
+        get() = "TODO convert date into prefered format"
+//            eventTime?.let { time ->
+//            "${date.format(DATE_FORMATTER)} at ${time.format(TIME_FORMATTER)}"
+//        } ?: date.format(DATE_FORMATTER)
 
     /**
      * @return Combined date and time for the event start.
      */
     val eventDateTime: LocalDateTime
-        get() = LocalDateTime.of(date, eventTime ?: LocalTime.MIDNIGHT)
+        get() = LocalDateTime.now() // TODO return the correct format
+//        get() = LocalDateTime.of(date.toDate().time, eventTime ?: LocalTime.MIDNIGHT)
 
     /**
      * @return Remaining confirmed spots before the event reaches capacity.
@@ -122,11 +132,13 @@ data class Event(
         get() {
             val now = LocalDateTime.now()
             val startOk = registrationStart?.let { startDate ->
-                val startDateTime = LocalDateTime.of(startDate, registrationStartTime ?: LocalTime.MIDNIGHT)
+//                val startDateTime = LocalDateTime.of(startDate, registrationStartTime ?: LocalTime.MIDNIGHT)
+                val startDateTime = LocalDateTime.now() // TODO use real date
                 !now.isBefore(startDateTime)
             } ?: true
             val endOk = registrationEnd?.let { endDate ->
-                val endDateTime = LocalDateTime.of(endDate, registrationEndTime ?: LocalTime.MAX)
+//                val endDateTime = LocalDateTime.of(endDate, registrationEndTime ?: LocalTime.MAX)
+                val endDateTime = LocalDateTime.now() // TODO use real date
                 !now.isAfter(endDateTime)
             } ?: true
             return startOk && endOk
@@ -142,7 +154,8 @@ data class Event(
      * @return The actual draw date (uses drawDate if specified, otherwise falls back to event date).
      */
     val effectiveDrawDate: LocalDate
-        get() = drawDate ?: date
+//        get() = drawDate ?: date // TODO fix
+        get() = LocalDate.now()
 
     /**
      * @return True when the draw date has arrived or passed.
