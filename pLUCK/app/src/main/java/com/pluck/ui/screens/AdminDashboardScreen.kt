@@ -29,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -36,9 +37,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import coil.compose.AsyncImage
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
+import com.pluck.ui.viewmodel.ImageSource
 
 /**
  * Admin dashboard for platform moderation and content management.
@@ -546,6 +549,8 @@ private fun ImagesListContent(
     listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
+    var previewImage by remember { mutableStateOf<com.pluck.ui.viewmodel.ImageMetadata?>(null) }
+
     LazyColumn(
         state = listState,
         modifier = modifier,
@@ -568,14 +573,108 @@ private fun ImagesListContent(
             }
         } else {
             items(images, key = { it.id }) { image ->
+                val sourceLabel = when (image.source) {
+                    ImageSource.STORAGE -> "Firebase Storage"
+                    ImageSource.EVENT_LINK -> "External Link"
+                    ImageSource.PROFILE -> "Profile Photo"
+                }
+                val sizeLabel = if (image.sizeBytes > 0) {
+                    "${image.sizeBytes / 1024} KB"
+                } else {
+                    "N/A"
+                }
+                val detailParts = mutableListOf<String>()
+                detailParts += "Size: $sizeLabel"
+                detailParts += "Path: ${image.path}"
+                image.eventTitle?.let { detailParts += "Event: $it" }
+                image.userName?.let { detailParts += "User: $it" }
+                if (image.userName == null && image.userId != null) {
+                    detailParts += "User ID: ${image.userId}"
+                }
+
                 AdminItemCard(
                     title = image.name,
-                    subtitle = "Type: ${image.contentType}",
-                    detail = "Size: ${image.sizeBytes / 1024} KB • Path: ${image.path}",
+                    subtitle = "Type: ${image.contentType} • Source: $sourceLabel",
+                    detail = detailParts.joinToString(" • "),
+                    onView = { previewImage = image },
                     onRemove = { onRemove(image.id) }
                 )
             }
         }
+    }
+
+    previewImage?.let { image ->
+        AlertDialog(
+            onDismissRequest = { previewImage = null },
+            title = {
+                Text(
+                    text = image.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AsyncImage(
+                        model = image.url,
+                        contentDescription = image.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                    )
+                    image.eventTitle?.let { title ->
+                        Text(
+                            text = "Event: $title",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                    image.userName?.let { user ->
+                        Text(
+                            text = "Profile: $user",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    } ?: image.userId?.let { id ->
+                        Text(
+                            text = "Profile ID: $id",
+                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+                        )
+                    }
+                    Text(
+                        text = "Source: ${when (image.source) {
+                            ImageSource.STORAGE -> "Firebase Storage"
+                            ImageSource.EVENT_LINK -> "External Link"
+                            ImageSource.PROFILE -> "Profile Photo"
+                        }}",
+                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+                    )
+                    if (image.sizeBytes > 0) {
+                        Text(
+                            text = "Size: ${image.sizeBytes / 1024} KB",
+                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+                        )
+                    }
+                    Text(
+                        text = "URL: ${image.url}",
+                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Secondary)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { previewImage = null }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 
@@ -931,7 +1030,8 @@ private fun AdminItemCard(
     title: String,
     subtitle: String,
     detail: String,
-    onRemove: () -> Unit
+    onView: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -974,12 +1074,21 @@ private fun AdminItemCard(
                 )
             }
 
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Remove",
-                    tint = PluckPalette.Decline
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                onView?.let {
+                    TextButton(onClick = it) {
+                        Text("View")
+                    }
+                }
+                onRemove?.let {
+                    IconButton(onClick = it) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Remove",
+                            tint = PluckPalette.Decline
+                        )
+                    }
+                }
             }
         }
     }
