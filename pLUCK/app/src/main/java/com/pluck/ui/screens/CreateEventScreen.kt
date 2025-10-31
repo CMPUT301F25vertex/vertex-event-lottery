@@ -599,6 +599,27 @@ fun CreateEventScreen(
                     // Info callout
                     CreateEventInfoCallout()
 
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "*",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = PluckPalette.Decline
+                            )
+                        )
+
+                        Text(
+                            text = "Indicates Required Fields.",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = PluckPalette.Primary
+                            )
+                        )
+                    }
+
                     // Create button
                     Button(
                         onClick = {
