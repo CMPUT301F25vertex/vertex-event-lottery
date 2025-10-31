@@ -130,7 +130,7 @@ class NotificationRepository(
 
         val userId = inviteeDocument.id
         val docRef = notificationsCollection.document()
-        val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+//        val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
 
         val payload = hashMapOf(
             "id" to docRef.id,

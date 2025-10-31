@@ -164,12 +164,12 @@ class EventViewModel(
     /**
      * Create a new event
      */
-    fun createEvent(event: Event, organizerId: String, onSuccess: (String) -> Unit) {
+    fun createEvent(event: Event, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            eventRepository.createEvent(event, organizerId)
+            eventRepository.createEvent(event)
                 .onSuccess { eventId ->
                     onSuccess(eventId)
                 }
