@@ -154,25 +154,6 @@ fun WelcomeBackScreen(
                         }
                     }
 
-                    if (!deviceId.isNullOrBlank()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(24.dp),
-                            color = PluckPalette.Primary.copy(alpha = 0.04f)
-                        ) {
-                            Text(
-                                text = "Device ID: $deviceId",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = PluckPalette.Primary
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
                     Button(
                         onClick = onContinue,
                         enabled = !isLoading,
