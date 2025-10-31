@@ -2,6 +2,7 @@ package com.pluck.data.firebase
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 import com.google.firebase.firestore.ServerTimestamp
 import com.pluck.ui.model.DrawStatus
 import com.pluck.ui.model.Event

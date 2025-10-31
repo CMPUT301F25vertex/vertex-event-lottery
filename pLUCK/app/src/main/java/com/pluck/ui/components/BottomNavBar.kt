@@ -90,10 +90,12 @@ object NavTabs {
  *
  * Displays 4 navigation tabs (Home, Notifications, Settings, Profile) split around
  * a floating action button for creating events. Active tab is highlighted with theme colors.
+ * The FAB is only visible for users with organizer role.
  *
  * @param currentRoute Current navigation route to determine active tab
  * @param onNavigate Callback when a tab is clicked, receives route string
  * @param onCreateEvent Callback when the FAB is clicked
+ * @param showCreateButton Whether to show the create event FAB (only for organizers)
  * @param modifier Optional modifier for the container
  */
 @Composable
@@ -101,6 +103,7 @@ fun BottomNavBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     onCreateEvent: () -> Unit = {},
+    showCreateButton: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -138,8 +141,8 @@ fun BottomNavBar(
                     }
                 }
 
-                // Center spacer for FAB
-                Spacer(modifier = Modifier.size(72.dp))
+                // Center spacer for FAB (only if button is shown)
+                Spacer(modifier = Modifier.size(if (showCreateButton) 72.dp else 0.dp))
 
                 // Right side nav items
                 Row(
@@ -160,26 +163,28 @@ fun BottomNavBar(
             }
         }
 
-        // Floating action button centered and elevated
-        FloatingActionButton(
-            onClick = onCreateEvent,
-            modifier = Modifier
-                .offset(y = (-24).dp)
-                .size(56.dp)
-                .zIndex(2f),
-            containerColor = PluckPalette.Secondary,
-            contentColor = autoTextColor(PluckPalette.Secondary),
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = 6.dp,
-                pressedElevation = 8.dp
-            ),
-            shape = CircleShape
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Create Event",
-                modifier = Modifier.size(28.dp)
-            )
+        // Floating action button centered and elevated (only show for organizers)
+        if (showCreateButton) {
+            FloatingActionButton(
+                onClick = onCreateEvent,
+                modifier = Modifier
+                    .offset(y = (-24).dp)
+                    .size(56.dp)
+                    .zIndex(2f),
+                containerColor = PluckPalette.Secondary,
+                contentColor = autoTextColor(PluckPalette.Secondary),
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp
+                ),
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Create Event",
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }

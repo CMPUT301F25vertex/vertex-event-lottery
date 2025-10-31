@@ -55,13 +55,13 @@ class UserRepository(
         return try {
             val snapshot = usersCollection
                 .whereEqualTo("role", role.name)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
-            val users = snapshot.documents.mapNotNull { doc ->
-                doc.toObject(FirebaseUser::class.java)
-            }
+            val users = snapshot.documents
+                .mapNotNull { doc -> doc.toObject(FirebaseUser::class.java) }
+                .sortedByDescending { it.createdAt }
+
             Result.success(users)
         } catch (e: Exception) {
             Result.failure(e)
@@ -145,15 +145,17 @@ class UserRepository(
     fun observeOrganizers(): Flow<List<FirebaseUser>> = callbackFlow {
         val listenerRegistration = usersCollection
             .whereEqualTo("role", UserRole.ORGANIZER.name)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully (e.g., when user loses admin access)
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
 
                 val organizers = snapshot?.documents
                     ?.mapNotNull { doc -> doc.toObject(FirebaseUser::class.java) }
+                    ?.sortedByDescending { it.createdAt }
                     ?: emptyList()
 
                 trySend(organizers)

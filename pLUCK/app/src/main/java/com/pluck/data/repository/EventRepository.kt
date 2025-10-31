@@ -163,7 +163,8 @@ class EventRepository(
     }
 
     /**
-     * Marks all events owned by the organiser as inactive and returns their identifiers.
+     * Deletes all events owned by the organizer and returns their identifiers.
+     * Used when a user deletes their account - completely removes their events from the database.
      */
     suspend fun deactivateEventsByOrganizer(organizerId: String): Result<List<String>> {
         if (organizerId.isBlank()) return Result.success(emptyList())
@@ -182,13 +183,8 @@ class EventRepository(
             val eventIds = mutableListOf<String>()
             snapshot.documents.forEach { doc ->
                 eventIds.add(doc.id)
-                batch.update(
-                    doc.reference,
-                    mapOf(
-                        "isActive" to false,
-                        "updatedAt" to FieldValue.serverTimestamp()
-                    )
-                )
+                // Actually DELETE the event instead of just marking as inactive
+                batch.delete(doc.reference)
             }
             batch.commit().await()
             Result.success(eventIds)
@@ -224,7 +220,9 @@ class EventRepository(
             .orderBy("dateTimestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
 
@@ -251,7 +249,9 @@ class EventRepository(
         val listener = eventsCollection.document(eventId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully
+                    trySend(null)
+                    close()
                     return@addSnapshotListener
                 }
 

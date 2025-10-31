@@ -83,7 +83,9 @@ class NotificationRepository(
             .whereEqualTo(field, value)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

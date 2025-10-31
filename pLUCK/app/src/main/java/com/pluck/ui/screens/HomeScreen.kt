@@ -105,6 +105,7 @@ fun HomeScreen(
     events: List<Event>,
     isLoading: Boolean,
     currentRoute: String?,
+    isOrganizer: Boolean = false,
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
     onCreateEvent: (() -> Unit)? = null,
@@ -118,6 +119,7 @@ fun HomeScreen(
         events = events,
         isLoading = isLoading,
         currentRoute = currentRoute,
+        isOrganizer = isOrganizer,
         onSelectEvent = onSelectEvent,
         onNavigate = onNavigate,
         onCreateEvent = onCreateEvent ?: {},
@@ -139,6 +141,7 @@ private fun HomeScreenContent(
     events: List<Event>,
     isLoading: Boolean,
     currentRoute: String?,
+    isOrganizer: Boolean,
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
     onCreateEvent: () -> Unit,
@@ -217,7 +220,8 @@ private fun HomeScreenContent(
             BottomNavBar(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
-                onCreateEvent = onCreateEvent
+                onCreateEvent = onCreateEvent,
+                showCreateButton = isOrganizer
             )
         }
     ) { paddingValues ->

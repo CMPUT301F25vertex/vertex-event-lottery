@@ -25,7 +25,7 @@ class InvitationRepository(
 ) {
     private val invitationsCollection = firestore.collection("eventInvitations")
     private val eventsCollection = firestore.collection("events")
-    private val waitlistCollection = firestore.collection("waitlists")
+    private val waitlistCollection = firestore.collection("waitlist")  // Fixed: was "waitlists" (plural)
 
     /**
      * Run a lottery draw: randomly select from waitlist, create invitations.
@@ -325,7 +325,9 @@ class InvitationRepository(
             .whereEqualTo("status", InvitationStatus.PENDING.name)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -349,7 +351,9 @@ class InvitationRepository(
             .whereEqualTo("eventId", eventId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

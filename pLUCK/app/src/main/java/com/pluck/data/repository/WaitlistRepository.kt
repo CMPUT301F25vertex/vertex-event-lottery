@@ -1,6 +1,7 @@
 package com.pluck.data.repository
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -11,6 +12,7 @@ import com.pluck.ui.screens.WaitlistEntry
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
 import java.time.LocalDate
@@ -29,6 +31,13 @@ import java.time.ZoneId
 data class WaitlistMembership(
     val entryId: String,
     val status: WaitlistStatus
+)
+
+data class WaitlistDecisionStats(
+    val accepted: Int = 0,
+    val pending: Int = 0,
+    val declined: Int = 0,
+    val cancelled: Int = 0
 )
 
 class WaitlistRepository(
@@ -237,26 +246,26 @@ class WaitlistRepository(
      * The entrant is marked as CANCELLED and, if previously accepted, the event enrollment count
      * is decremented to free the spot for future draws.
      */
-    suspend fun removeChosenEntrant(
-        eventId: String,
-        userId: String
-    ): Result<Unit> {
-        if (eventId.isBlank() || userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("Invalid event or user id"))
+    suspend fun removeChosenEntrant(waitlistEntryId: String): Result<Unit> {
+        if (waitlistEntryId.isBlank()) {
+            return Result.failure(IllegalArgumentException("Invalid waitlist entry id"))
         }
 
         return try {
-            val snapshot = waitlistCollection
-                .whereEqualTo("eventId", eventId)
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-
-            val entryDoc = snapshot.documents.firstOrNull()
-                ?: return Result.failure(IllegalStateException("Entrant not found on waitlist"))
+            val entryDoc = waitlistCollection.document(waitlistEntryId).get().await()
+            if (!entryDoc.exists()) {
+                return Result.failure(IllegalStateException("Entrant not found on waitlist"))
+            }
 
             val entry = entryDoc.toObject(FirebaseWaitlistEntry::class.java)
-            val wasAccepted = entry?.status == WaitlistStatus.ACCEPTED
+                ?: return Result.failure(IllegalStateException("Invalid waitlist entry data"))
+
+            val eventId = entry.eventId
+            if (eventId.isBlank()) {
+                return Result.failure(IllegalStateException("Waitlist entry missing event id"))
+            }
+
+            val wasAccepted = entry.status == WaitlistStatus.ACCEPTED
 
             val updates = mutableMapOf<String, Any>(
                 "status" to WaitlistStatus.CANCELLED.name,
@@ -266,7 +275,7 @@ class WaitlistRepository(
                 "isReplacement" to FieldValue.delete()
             )
 
-            waitlistCollection.document(entryDoc.id)
+            waitlistCollection.document(waitlistEntryId)
                 .update(updates)
                 .await()
 
@@ -964,7 +973,9 @@ class WaitlistRepository(
                 .whereEqualTo("eventId", eventId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        close(error)
+                        // Handle permission errors gracefully
+                        trySend(emptyList())
+                        close()
                         return@addSnapshotListener
                     }
 
@@ -997,7 +1008,9 @@ class WaitlistRepository(
                 .whereEqualTo("eventId", eventId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        close(error)
+                        // Handle permission errors gracefully
+                        trySend(emptyList())
+                        close()
                         return@addSnapshotListener
                     }
 
@@ -1017,6 +1030,88 @@ class WaitlistRepository(
 
             awaitClose { listener.remove() }
         }
+
+    /**
+     * Observe aggregated decision stats (accepted, pending, declined, cancelled) for an event.
+     */
+    fun observeChosenStats(eventId: String): Flow<WaitlistDecisionStats> = callbackFlow {
+        val listener = waitlistCollection
+            .whereEqualTo("eventId", eventId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(WaitlistDecisionStats())
+                    close()
+                    return@addSnapshotListener
+                }
+
+                val stats = snapshot?.let { calculateDecisionStats(it.documents) } ?: WaitlistDecisionStats()
+                trySend(stats)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Observe total rejection count (declined + cancelled) for an event.
+     */
+    fun observeRejectionCountForEvent(eventId: String): Flow<Int> =
+        observeChosenStats(eventId).map { it.declined + it.cancelled }
+
+    /**
+     * Fetch total rejection count across multiple events.
+     */
+    suspend fun getRejectionCountForEvents(eventIds: List<String>): Int {
+        if (eventIds.isEmpty()) return 0
+
+        return try {
+            var total = 0
+            eventIds.chunked(10).forEach { batch ->
+                val snapshot = waitlistCollection
+                    .whereIn("eventId", batch)
+                    .get()
+                    .await()
+
+                val stats = calculateDecisionStats(snapshot.documents)
+                total += stats.declined + stats.cancelled
+            }
+            total
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+}
+
+private fun calculateDecisionStats(documents: List<DocumentSnapshot>): WaitlistDecisionStats {
+    var accepted = 0
+    var pending = 0
+    var declined = 0
+    var cancelled = 0
+
+    documents.forEach { doc ->
+        val statusValue = doc.getString("status")
+        val status = statusValue?.runCatching { WaitlistStatus.valueOf(this) }?.getOrNull()
+        val declinedAt = doc.getTimestamp("declinedAt")
+        val hasDeclined = declinedAt != null || status == WaitlistStatus.DECLINED
+
+        if (hasDeclined) {
+            declined++
+        }
+
+        when (status) {
+            WaitlistStatus.ACCEPTED -> accepted++
+            WaitlistStatus.INVITED, WaitlistStatus.SELECTED -> pending++
+            WaitlistStatus.CANCELLED -> cancelled++
+            else -> Unit
+        }
+    }
+
+    return WaitlistDecisionStats(
+        accepted = accepted,
+        pending = pending,
+        declined = declined,
+        cancelled = cancelled
+    )
 }
 
 private fun List<WaitlistEntry>.dedupeByUser(): List<WaitlistEntry> {

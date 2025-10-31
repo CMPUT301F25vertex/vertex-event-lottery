@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pluck.data.firebase.WaitlistStatus
+import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
@@ -88,13 +89,14 @@ data class ChosenEntrant(
 fun ChosenEntrantsScreen(
     event: Event,
     chosenEntrants: List<ChosenEntrant> = emptyList(),
+    decisionStats: WaitlistDecisionStats = WaitlistDecisionStats(),
     waitingCount: Int = 0,
     availableSpots: Int = 0,
     isLoading: Boolean = false,
     onBackClick: () -> Unit = {},
     onExportCSV: () -> Unit = {},
     onRunDraw: () -> Unit = {},
-    onRemoveEntrant: (String) -> Unit = {},
+    onRemoveEntrant: (ChosenEntrant) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     PluckLayeredBackground(
@@ -120,10 +122,10 @@ fun ChosenEntrantsScreen(
                     onRunDraw = onRunDraw
                 )
 
-            ChosenEntrantsStats(
-                chosenEntrants = chosenEntrants,
-                capacity = event.capacity
-            )
+                ChosenEntrantsStats(
+                    stats = decisionStats,
+                    capacity = event.capacity
+                )
 
             Surface(
                 modifier = Modifier
@@ -337,15 +339,13 @@ private fun DrawStatChip(
 
 @Composable
 private fun ChosenEntrantsStats(
-    chosenEntrants: List<ChosenEntrant>,
+    stats: WaitlistDecisionStats,
     capacity: Int
 ) {
-    val acceptedCount = chosenEntrants.count { it.status == WaitlistStatus.ACCEPTED }
-    val pendingCount = chosenEntrants.count {
-        it.status == WaitlistStatus.INVITED || it.status == WaitlistStatus.SELECTED
-    }
-    val declinedCount = chosenEntrants.count { it.status == WaitlistStatus.DECLINED }
-    val cancelledCount = chosenEntrants.count { it.status == WaitlistStatus.CANCELLED }
+    val acceptedCount = stats.accepted
+    val pendingCount = stats.pending
+    val declinedCount = stats.declined
+    val cancelledCount = stats.cancelled
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -449,7 +449,7 @@ private fun ChosenEntrantsStatCard(
 @Composable
 private fun ChosenEntrantsList(
     chosenEntrants: List<ChosenEntrant>,
-    onRemoveEntrant: (String) -> Unit
+    onRemoveEntrant: (ChosenEntrant) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
@@ -468,7 +468,7 @@ private fun ChosenEntrantsList(
         items(chosenEntrants, key = { it.id }) { entrant ->
             ChosenEntrantCard(
                 entrant = entrant,
-                onRemove = { onRemoveEntrant(entrant.userId) }
+                onRemove = { onRemoveEntrant(entrant) }
             )
         }
     }
@@ -698,13 +698,21 @@ private fun ChosenEntrantsScreenPreview() {
         ChosenEntrant("1", "user1", "Alice Johnson", WaitlistStatus.ACCEPTED),
         ChosenEntrant("2", "user2", "Bob Smith", WaitlistStatus.INVITED),
         ChosenEntrant("3", "user3", "Carol Davis", WaitlistStatus.DECLINED),
-        ChosenEntrant("4", "user4", "David Wilson", WaitlistStatus.ACCEPTED),
+        ChosenEntrant("4", "user4", "David Wilson", WaitlistStatus.CANCELLED),
         ChosenEntrant("5", "user5", "Eve Martinez", WaitlistStatus.SELECTED)
+    )
+
+    val sampleStats = WaitlistDecisionStats(
+        accepted = 1,
+        pending = 2,
+        declined = 1,
+        cancelled = 1
     )
 
     ChosenEntrantsScreen(
         event = sampleEvent,
         chosenEntrants = sampleEntrants,
+        decisionStats = sampleStats,
         waitingCount = 12,
         availableSpots = 25
     )
