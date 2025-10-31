@@ -75,7 +75,9 @@ class AppealRepository(
             .orderBy("submittedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully (e.g., when user loses admin access)
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -97,7 +99,9 @@ class AppealRepository(
             .orderBy("submittedAt", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully (e.g., when user loses admin access)
+                    trySend(emptyList())
+                    close()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {

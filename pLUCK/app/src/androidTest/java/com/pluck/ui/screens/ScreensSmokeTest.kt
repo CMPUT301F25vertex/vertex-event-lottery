@@ -206,7 +206,8 @@ class ScreensSmokeTest {
                     stats = OrganizerStats(
                         totalEvents = 5,
                         activeEvents = 3,
-                        totalParticipants = 120
+                        totalParticipants = 120,
+                        totalRejections = 4
                     ),
                     events = sampleEvents
                 )

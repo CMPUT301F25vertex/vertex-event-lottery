@@ -1,7 +1,9 @@
 package com.pluck.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.pluck.data.firebase.FirebaseUser
@@ -37,6 +39,9 @@ class AdminViewModel(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) : ViewModel() {
+    companion object {
+        private const val TAG = "AdminViewModel"
+    }
 
     private val _events = MutableStateFlow<List<Event>>(emptyList())
     val events: StateFlow<List<Event>> = _events.asStateFlow()
@@ -152,28 +157,133 @@ class AdminViewModel(
         }
     }
 
-    /** Loads all uploaded images from Firebase Storage (US 03.06.01) */
+    /** Loads all uploaded images from Firebase Storage and linked event URLs (US 03.06.01) */
     fun loadAllImages() {
         viewModelScope.launch {
             try {
-                val eventImagesRef = storage.reference.child("event_images")
-                val listResult = eventImagesRef.listAll().await()
+                val imagesByUrl = mutableMapOf<String, ImageMetadata>()
 
-                // Map storage items to metadata objects
-                val imagesList = listResult.items.map { storageRef ->
-                    val metadata = storageRef.metadata.await()
-                    ImageMetadata(
-                        id = storageRef.name,
-                        name = storageRef.name,
-                        url = storageRef.downloadUrl.await().toString(),
-                        path = storageRef.path,
-                        sizeBytes = metadata.sizeBytes,
-                        contentType = metadata.contentType ?: "image/*",
-                        uploadedAt = metadata.creationTimeMillis
-                    )
+                // 1. Load Firebase Storage images (best-effort)
+                listOf("event_images", "profile_images").forEach { folder ->
+                    runCatching {
+                        val folderRef = storage.reference.child(folder)
+                        val listResult = folderRef.listAll().await()
+
+                        listResult.items.forEach { storageRef ->
+                            runCatching {
+                                val metadata = storageRef.metadata.await()
+                                val downloadUrl = storageRef.downloadUrl.await().toString()
+                                val image = ImageMetadata(
+                                    id = storageRef.name,
+                                    name = storageRef.name,
+                                    url = downloadUrl,
+                                    path = storageRef.path,
+                                    sizeBytes = metadata.sizeBytes,
+                                    contentType = metadata.contentType ?: "image/*",
+                                    uploadedAt = metadata.creationTimeMillis,
+                                    source = ImageSource.STORAGE
+                                )
+                                imagesByUrl[downloadUrl] = image
+                            }.onFailure { inner ->
+                                Log.w(TAG, "Failed to load storage metadata for ${storageRef.path}", inner)
+                            }
+                        }
+                    }.onFailure { storageError ->
+                        Log.w(TAG, "Failed to list Firebase Storage images under '$folder'", storageError)
+                    }
                 }
 
-                _images.value = imagesList
+                // 2. Include event poster links (external URLs or storage references saved on events)
+                val eventDocs = runCatching {
+                    firestore.collection("events").get().await().documents
+                }.getOrElse {
+                    Log.w(TAG, "Failed to fetch events for image catalog", it)
+                    emptyList()
+                }
+
+                eventDocs.forEach { doc ->
+                    val imageUrl = doc.getString("imageUrl").orEmpty()
+                    if (imageUrl.isBlank()) return@forEach
+
+                    val title = doc.getString("title").orEmpty()
+                    val updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time
+                        ?: doc.getTimestamp("createdAt")?.toDate()?.time
+                        ?: 0L
+
+                    val existing = imagesByUrl[imageUrl]
+                    if (existing != null) {
+                        imagesByUrl[imageUrl] = existing.copy(
+                            name = if (existing.name.isNotBlank()) existing.name else "Event Poster: ${title.ifBlank { doc.id }}",
+                            eventId = doc.id,
+                            eventTitle = title.ifBlank { null },
+                            uploadedAt = maxOf(existing.uploadedAt, updatedAt),
+                            source = if (existing.source == ImageSource.STORAGE) ImageSource.STORAGE else ImageSource.EVENT_LINK
+                        )
+                    } else {
+                        imagesByUrl[imageUrl] = ImageMetadata(
+                            id = "event_link_${doc.id}",
+                            name = "Event Poster: ${title.ifBlank { doc.id }}",
+                            url = imageUrl,
+                            path = "events/${doc.id}/imageUrl",
+                            sizeBytes = 0,
+                            contentType = "external/url",
+                            uploadedAt = updatedAt,
+                            eventId = doc.id,
+                            eventTitle = title.ifBlank { null },
+                            source = ImageSource.EVENT_LINK
+                        )
+                    }
+                }
+
+                // 3. Include profile photos stored via Cloudinary (URLs on entrant profiles)
+                val entrantDocs = runCatching {
+                    firestore.collection("entrants").get().await().documents
+                }.getOrElse {
+                    Log.w(TAG, "Failed to fetch entrants for image catalog", it)
+                    emptyList()
+                }
+
+                entrantDocs.forEach { doc ->
+                    val profileUrl = doc.getString("profileImageUrl").orEmpty()
+                    if (profileUrl.isBlank()) return@forEach
+
+                    val displayName = doc.getString("displayName").orEmpty()
+                    val updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time
+                        ?: doc.getTimestamp("createdAt")?.toDate()?.time
+                        ?: 0L
+
+                    val metadataName = "Profile Photo: ${displayName.ifBlank { doc.id }}"
+
+                    val existing = imagesByUrl[profileUrl]
+                    if (existing != null) {
+                        imagesByUrl[profileUrl] = existing.copy(
+                            name = if (existing.name.isNotBlank()) existing.name else metadataName,
+                            uploadedAt = maxOf(existing.uploadedAt, updatedAt),
+                            userId = doc.id,
+                            userName = displayName.ifBlank { null },
+                            source = ImageSource.PROFILE
+                        )
+                    } else {
+                        imagesByUrl[profileUrl] = ImageMetadata(
+                            id = "profile_${doc.id}",
+                            name = metadataName,
+                            url = profileUrl,
+                            path = "entrants/${doc.id}/profileImageUrl",
+                            sizeBytes = 0,
+                            contentType = "profile/image",
+                            uploadedAt = updatedAt,
+                            eventId = null,
+                            eventTitle = null,
+                            userId = doc.id,
+                            userName = displayName.ifBlank { null },
+                            source = ImageSource.PROFILE
+                        )
+                    }
+                }
+
+                _images.value = imagesByUrl.values
+                    .sortedWith(compareByDescending<ImageMetadata> { it.uploadedAt }
+                        .thenBy { it.name })
                 updateStats()
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to load images"
@@ -260,16 +370,39 @@ class AdminViewModel(
             try {
                 // Find the image metadata
                 val image = _images.value.find { it.id == imageId }
-                if (image != null) {
-                    // Delete from Firebase Storage using the URL
-                    storage.getReferenceFromUrl(image.url).delete().await()
-                    loadAllImages()
-                } else {
-                    _error.value = "Image not found"
-                    _isLoading.value = false
+                    ?: throw IllegalStateException("Image not found")
+
+                // Remove references from events that point to this image URL
+                val referencingEvents = firestore.collection("events")
+                    .whereEqualTo("imageUrl", image.url)
+                    .get()
+                    .await()
+
+                referencingEvents.documents.forEach { doc ->
+                    doc.reference.update("imageUrl", FieldValue.delete()).await()
                 }
+
+                val referencingEntrants = firestore.collection("entrants")
+                    .whereEqualTo("profileImageUrl", image.url)
+                    .get()
+                    .await()
+
+                referencingEntrants.documents.forEach { doc ->
+                    doc.reference.update("profileImageUrl", FieldValue.delete()).await()
+                }
+
+                if (image.source == ImageSource.STORAGE) {
+                    try {
+                        storage.getReferenceFromUrl(image.url).delete().await()
+                    } catch (storageError: IllegalArgumentException) {
+                        // URL might not map to Firebase Storage; ignore in this case
+                    }
+                }
+
+                loadAllImages()
             } catch (e: Exception) {
                 _error.value = e.message ?: "Failed to remove image"
+            } finally {
                 _isLoading.value = false
             }
         }
@@ -362,6 +495,9 @@ class AdminViewModel(
  * @property sizeBytes File size in bytes
  * @property contentType MIME type (e.g., "image/jpeg")
  * @property uploadedAt Timestamp when the image was uploaded
+ * @property eventId Optional event ID that references this image
+ * @property eventTitle Optional event title associated with the image
+ * @property source Origin of the image (Firebase Storage or external link)
  */
 data class ImageMetadata(
     val id: String,
@@ -370,8 +506,19 @@ data class ImageMetadata(
     val path: String,
     val sizeBytes: Long,
     val contentType: String,
-    val uploadedAt: Long
+    val uploadedAt: Long,
+    val eventId: String? = null,
+    val eventTitle: String? = null,
+    val userId: String? = null,
+    val userName: String? = null,
+    val source: ImageSource = ImageSource.STORAGE
 )
+
+enum class ImageSource {
+    STORAGE,
+    EVENT_LINK,
+    PROFILE
+}
 
 /**
  * Log entry for a notification sent by the system.

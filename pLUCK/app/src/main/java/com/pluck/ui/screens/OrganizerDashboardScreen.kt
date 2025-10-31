@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,7 +80,8 @@ import java.time.LocalDate
 data class OrganizerStats(
     val totalEvents: Int = 0,
     val activeEvents: Int = 0,
-    val totalParticipants: Int = 0
+    val totalParticipants: Int = 0,
+    val totalRejections: Int = 0
 )
 
 @Composable
@@ -247,6 +249,13 @@ private fun OrganizerStatsCards(stats: OrganizerStats) {
             label = "Participants",
             value = stats.totalParticipants.toString(),
             color = PluckPalette.Tertiary,
+            modifier = Modifier.weight(1f)
+        )
+        OrganizerStatCard(
+            icon = Icons.Outlined.Cancel,
+            label = "Rejections",
+            value = stats.totalRejections.toString(),
+            color = PluckPalette.Decline,
             modifier = Modifier.weight(1f)
         )
     }
@@ -699,7 +708,8 @@ private fun OrganizerDashboardScreenPreview() {
         stats = OrganizerStats(
             totalEvents = 5,
             activeEvents = 3,
-            totalParticipants = 87
+            totalParticipants = 87,
+            totalRejections = 12
         ),
         events = previewEvents,
         isLoading = false

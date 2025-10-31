@@ -28,6 +28,8 @@ import java.time.ZoneId
  * @property position Queue position (1-indexed).
  * @property joinedTimestamp When the entrant joined the waitlist.
  * @property status Current status (WAITING, SELECTED, ACCEPTED, DECLINED, CANCELLED).
+ * @property selectedAt Timestamp when the entrant was selected in lottery draw (nullable).
+ * @property declinedAt Timestamp when the entrant declined the invitation (nullable).
  * @property latitude Optional latitude if geolocation was required (US 02.02.03).
  * @property longitude Optional longitude if geolocation was required (US 02.02.03).
  * @property createdAt Server-side creation timestamp.
@@ -42,6 +44,8 @@ data class FirebaseWaitlistEntry(
     val position: Int = 0,
     val joinedTimestamp: Timestamp = Timestamp.now(),
     val status: WaitlistStatus = WaitlistStatus.WAITING,
+    val selectedAt: Timestamp? = null,
+    val declinedAt: Timestamp? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     @ServerTimestamp
@@ -56,7 +60,9 @@ data class FirebaseWaitlistEntry(
         userName = "",
         position = 0,
         joinedTimestamp = Timestamp.now(),
-        status = WaitlistStatus.WAITING
+        status = WaitlistStatus.WAITING,
+        selectedAt = null,
+        declinedAt = null
     )
 
     /**

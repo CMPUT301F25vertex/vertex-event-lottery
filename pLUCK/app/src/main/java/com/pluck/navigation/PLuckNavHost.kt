@@ -103,6 +103,8 @@ import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -191,6 +193,7 @@ fun PLuckNavHost(
 
     val waitlistEntries by waitlistViewModel.waitlistEntries.collectAsState()
     val chosenEntries by waitlistViewModel.chosenEntries.collectAsState()
+    val chosenStats by waitlistViewModel.chosenStats.collectAsState()
     val waitlistLoading by waitlistViewModel.isLoading.collectAsState()
     val waitlistError by waitlistViewModel.error.collectAsState()
     val userWaitlistEntryId by waitlistViewModel.userWaitlistEntryId.collectAsState()
@@ -412,11 +415,13 @@ fun PLuckNavHost(
             val userJoinedEventIds = remember(userEventHistory) {
                 userEventHistory.map { it.event.id }.toSet()
             }
+            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             HomeScreen(
                 userName = currentUser?.displayName,
                 events = events,
                 isLoading = eventsLoading,
                 currentRoute = navController.currentBackStackEntry?.destination?.route,
+                isOrganizer = isOrganizer,
                 onSelectEvent = { event ->
                     navigator.toEventDetail(event.id)
                 },
@@ -504,14 +509,60 @@ fun PLuckNavHost(
                                 return@join
                             }
 
-                            scope.launch {
-                                waitlistViewModel.joinWaitlist(
-                                    eventId = eventToJoin.id,
-                                    userId = profile.deviceId,
-                                    userName = profile.displayName
-                                ) {
-                                    waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                    navigator.toWaitlist(eventToJoin.id)
+                            // Capture location if event requires geolocation (US 02.02.03)
+                            // When enabled, location is MANDATORY - users cannot join without it
+                            if (eventToJoin.requiresGeolocation) {
+                                scope.launch {
+                                    try {
+                                        @SuppressLint("MissingPermission")
+                                        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                                        val cancellationToken = CancellationTokenSource()
+                                        @SuppressLint("MissingPermission")
+                                        val locationResult = fusedLocationClient.getCurrentLocation(
+                                            Priority.PRIORITY_HIGH_ACCURACY,
+                                            cancellationToken.token
+                                        )
+
+                                        locationResult.addOnSuccessListener { location ->
+                                            if (location == null) {
+                                                // Location is MANDATORY - block join if unavailable
+                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                return@addOnSuccessListener
+                                            }
+                                            scope.launch {
+                                                waitlistViewModel.joinWaitlist(
+                                                    eventId = eventToJoin.id,
+                                                    userId = profile.deviceId,
+                                                    userName = profile.displayName,
+                                                    latitude = location.latitude,
+                                                    longitude = location.longitude
+                                                ) {
+                                                    waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
+                                                    navigator.toWaitlist(eventToJoin.id)
+                                                }
+                                            }
+                                        }.addOnFailureListener {
+                                            // Location is MANDATORY - block join on failure
+                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
+                                        }
+                                    } catch (e: SecurityException) {
+                                        // Location permission MANDATORY - block join if denied
+                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } else {
+                                // No geolocation required, join directly without location
+                                scope.launch {
+                                    waitlistViewModel.joinWaitlist(
+                                        eventId = eventToJoin.id,
+                                        userId = profile.deviceId,
+                                        userName = profile.displayName,
+                                        latitude = null,
+                                        longitude = null
+                                    ) {
+                                        waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
+                                        navigator.toWaitlist(eventToJoin.id)
+                                    }
                                 }
                             }
                         },
@@ -629,6 +680,7 @@ fun PLuckNavHost(
                             }
 
                             // Capture location if event requires geolocation (US 02.02.03)
+                            // When enabled, location is MANDATORY - users cannot join without it
                             if (resolvedEvent.requiresGeolocation) {
                                 scope.launch {
                                     try {
@@ -642,26 +694,33 @@ fun PLuckNavHost(
                                         )
 
                                         locationResult.addOnSuccessListener { location ->
+                                            if (location == null) {
+                                                // Location is MANDATORY - block join if unavailable
+                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                return@addOnSuccessListener
+                                            }
                                             scope.launch {
                                                 waitlistViewModel.joinWaitlist(
                                                     eventId = resolvedEvent.id,
                                                     userId = profile.deviceId,
                                                     userName = profile.displayName,
-                                                    latitude = location?.latitude,
-                                                    longitude = location?.longitude
+                                                    latitude = location.latitude,
+                                                    longitude = location.longitude
                                                 ) {
                                                     waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
                                                 }
                                             }
                                         }.addOnFailureListener {
-                                            Toast.makeText(context, "Failed to get location. Please try again.", Toast.LENGTH_SHORT).show()
+                                            // Location is MANDATORY - block join on failure
+                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: SecurityException) {
-                                        Toast.makeText(context, "Location permission denied. Please grant location access in settings.", Toast.LENGTH_LONG).show()
+                                        // Location permission MANDATORY - block join if denied
+                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             } else {
-                                // No geolocation required, join directly
+                                // No geolocation required, join directly without location
                                 scope.launch {
                                     waitlistViewModel.joinWaitlist(
                                         eventId = resolvedEvent.id,
@@ -717,6 +776,7 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Profile.route) {
+            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -731,7 +791,8 @@ fun PLuckNavHost(
                         },
                         onCreateEvent = {
                             navigator.toCreateEvent()
-                        }
+                        },
+                        showCreateButton = isOrganizer
                     )
                 }
             ) { paddingValues ->
@@ -929,6 +990,7 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Notifications.route) {
+            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -943,7 +1005,8 @@ fun PLuckNavHost(
                         },
                         onCreateEvent = {
                             navigator.toCreateEvent()
-                        }
+                        },
+                        showCreateButton = isOrganizer
                     )
                 }
             ) { paddingValues ->
@@ -1069,6 +1132,7 @@ fun PLuckNavHost(
                         capacity = capacityValue,
                         enrolled = 0,
                         organizerName = organizer.displayName,
+                        organizerId = organizer.deviceId,
                         waitlistCapacity = waitlistCapacity,
                         posterUrl = request.posterUrl,
                         registrationStart = request.registrationStartDate,
@@ -1161,6 +1225,7 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Settings.route) {
+            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -1175,7 +1240,8 @@ fun PLuckNavHost(
                         },
                         onCreateEvent = {
                             navigator.toCreateEvent()
-                        }
+                        },
+                        showCreateButton = isOrganizer
                     )
                 }
             ) { paddingValues ->
@@ -1195,6 +1261,7 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.MyEvents.route) {
+            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -1209,46 +1276,48 @@ fun PLuckNavHost(
                         },
                         onCreateEvent = {
                             navigator.toCreateEvent()
-                        }
+                        },
+                        showCreateButton = isOrganizer
                     )
                 }
             ) { paddingValues ->
                 val myEvents = remember(
                     events,
                     userEventHistory,
-                    currentUser?.deviceId,
-                    currentUser?.displayName
+                    currentUser?.deviceId
                 ) {
                     val organizerId = currentUser?.deviceId.orEmpty()
-                    val organizerName = currentUser?.displayName.orEmpty()
                     val activeHistory = userEventHistory.filterNot { history ->
                         history.status == WaitlistStatus.CANCELLED ||
                             history.status == WaitlistStatus.DECLINED
                     }
                     val historyByEventId = activeHistory.associateBy { it.event.id }
 
-                    // Only include events that the user has created or joined
+                    // Create a map of event IDs to active events (only events that still exist)
+                    val activeEventsById = events.associateBy { it.id }
+
+                    // Only include events that the user has created or joined AND still exist
                     val userRelatedEvents = buildMap {
-                        // Add events the user created
+                        // Add events the user created (only if they still exist and are active)
                         events.filter { event ->
-                            event.organizerId == organizerId ||
-                                (organizerName.isNotBlank() &&
-                                    event.organizerName.equals(organizerName, ignoreCase = true))
+                            event.organizerId == organizerId
                         }.forEach { event ->
                             put(event.id, event)
                         }
 
                         // Add events the user joined (from waitlist history)
+                        // Only include if the event still exists in the active events list
                         activeHistory.forEach { history ->
-                            putIfAbsent(history.event.id, history.event)
+                            val activeEvent = activeEventsById[history.event.id]
+                            if (activeEvent != null) {
+                                putIfAbsent(history.event.id, activeEvent)
+                            }
                         }
                     }.values
 
                     userRelatedEvents.map { event ->
                         val history = historyByEventId[event.id]
-                        val isCreatedByUser = event.organizerId == organizerId ||
-                            (organizerName.isNotBlank() &&
-                                event.organizerName.equals(organizerName, ignoreCase = true))
+                        val isCreatedByUser = event.organizerId == organizerId
 
                         val status = when {
                             // If user created this event, status based on date
@@ -1318,11 +1387,39 @@ fun PLuckNavHost(
                     }
                 }
             }
-            val organizerStats = remember(organizerEvents) {
+
+            var totalRejections by remember { mutableStateOf(0) }
+
+            // Observe rejection counts in real-time for all organizer events
+            LaunchedEffect(organizerEvents) {
+                if (organizerEvents.isEmpty()) {
+                    totalRejections = 0
+                    return@LaunchedEffect
+                }
+
+                val rejectionFlows = organizerEvents.map { event ->
+                    waitlistViewModel.observeRejectionCountForEvent(event.id)
+                }
+
+                if (rejectionFlows.size == 1) {
+                    rejectionFlows.first().collect { count ->
+                        totalRejections = count
+                    }
+                } else {
+                    kotlinx.coroutines.flow.combine(rejectionFlows) { counts ->
+                        counts.sum()
+                    }.collect { count ->
+                        totalRejections = count
+                    }
+                }
+            }
+
+            val organizerStats = remember(organizerEvents, totalRejections) {
                 OrganizerStats(
                     totalEvents = organizerEvents.size,
                     activeEvents = organizerEvents.count { !it.isFull },
-                    totalParticipants = organizerEvents.sumOf { it.enrolled }
+                    totalParticipants = organizerEvents.sumOf { it.enrolled },
+                    totalRejections = totalRejections
                 )
             }
             OrganizerDashboardScreen(
@@ -1363,6 +1460,9 @@ fun PLuckNavHost(
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
+            LaunchedEffect(Unit) {
+                adminViewModel.loadAllImages()
+            }
             if (isAdminDevice) {
                 AdminDashboardScreen(
                     stats = adminStats,
@@ -1531,6 +1631,7 @@ fun PLuckNavHost(
                             selectedAt = null
                         )
                     },
+                    decisionStats = chosenStats,
                     waitingCount = waitingCount,
                     availableSpots = availableSpots,
                     isLoading = waitlistLoading || eventsLoading,
@@ -1547,11 +1648,12 @@ fun PLuckNavHost(
                         }
                     },
                     onRunDraw = { showRunDrawDialog = true },
-                    onRemoveEntrant = { userId ->
+                    onRemoveEntrant = { entrant ->
                         scope.launch {
                             waitlistViewModel.removeChosenEntrant(
                                 eventId = event.id,
-                                userId = userId,
+                                waitlistEntryId = entrant.id,
+                                userId = entrant.userId,
                                 currentUserId = currentUserIdForChosen
                             ) {
                                 eventViewModel.loadEvent(event.id)

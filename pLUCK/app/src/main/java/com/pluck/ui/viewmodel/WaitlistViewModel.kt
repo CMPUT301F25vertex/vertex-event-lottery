@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.repository.UserEventHistory
+import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.data.repository.WaitlistRepository
 import com.pluck.data.repository.CsvExportRepository
 import com.pluck.ui.model.Event
@@ -39,6 +40,9 @@ class WaitlistViewModel(
     private val _chosenEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
     val chosenEntries: StateFlow<List<WaitlistEntry>> = _chosenEntries.asStateFlow()
 
+    private val _chosenStats = MutableStateFlow(WaitlistDecisionStats())
+    val chosenStats: StateFlow<WaitlistDecisionStats> = _chosenStats.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -56,6 +60,7 @@ class WaitlistViewModel(
 
     private var waitlistJob: Job? = null
     private var chosenJob: Job? = null
+    private var chosenStatsJob: Job? = null
 
     /**
      * Observe real-time waitlist updates for an event
@@ -93,7 +98,9 @@ class WaitlistViewModel(
     fun observeChosenEntries(eventId: String, currentUserId: String = "") {
         if (eventId.isBlank()) return
         chosenJob?.cancel()
+        chosenStatsJob?.cancel()
         _chosenEntries.value = emptyList()
+        _chosenStats.value = WaitlistDecisionStats()
         chosenJob = viewModelScope.launch {
             waitlistRepository.observeChosenEntries(eventId, currentUserId)
                 .catch { throwable ->
@@ -109,6 +116,16 @@ class WaitlistViewModel(
                             WaitlistStatus.ACCEPTED
                         )
                     )
+                }
+        }
+
+        chosenStatsJob = viewModelScope.launch {
+            waitlistRepository.observeChosenStats(eventId)
+                .catch { throwable ->
+                    _error.value = throwable.message ?: "Failed to load entrant stats"
+                }
+                .collect { stats ->
+                    _chosenStats.value = stats
                 }
         }
     }
@@ -294,6 +311,7 @@ class WaitlistViewModel(
      */
     fun removeChosenEntrant(
         eventId: String,
+        waitlistEntryId: String,
         userId: String,
         currentUserId: String? = null,
         onSuccess: () -> Unit = {}
@@ -302,9 +320,13 @@ class WaitlistViewModel(
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.removeChosenEntrant(eventId, userId)
+            waitlistRepository.removeChosenEntrant(waitlistEntryId)
                 .onSuccess {
                     if (!currentUserId.isNullOrEmpty() && currentUserId == userId) {
+                        _userWaitlistEntryId.value = null
+                        _userWaitlistStatus.value = null
+                    }
+                    if (_userWaitlistEntryId.value == waitlistEntryId) {
                         _userWaitlistEntryId.value = null
                         _userWaitlistStatus.value = null
                     }
@@ -476,4 +498,18 @@ class WaitlistViewModel(
                 .onFailure { exception -> _error.value = exception.message }
         }
     }
+
+    /**
+     * Get total rejection count across multiple events.
+     */
+    suspend fun getRejectionCountForEvents(eventIds: List<String>): Int {
+        return waitlistRepository.getRejectionCountForEvents(eventIds)
+    }
+
+    /**
+     * Observe rejection count for a single event.
+     */
+    fun observeRejectionCountForEvent(eventId: String) =
+        waitlistRepository.observeRejectionCountForEvent(eventId)
+
 }

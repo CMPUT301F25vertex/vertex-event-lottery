@@ -119,6 +119,10 @@ class DeviceAuthenticator(private val context: Context) {
                 )
                 if (!existing.exists()) {
                     payload["createdAt"] = FieldValue.serverTimestamp()
+                    payload["role"] = UserRole.ENTRANT.name
+                    payload["isActive"] = true
+                    payload["isOrganizerBanned"] = false
+                    payload["hasOutstandingAppeal"] = false
                 }
 
                 docRef.set(payload, SetOptions.merge()).await()
@@ -217,6 +221,7 @@ class DeviceAuthenticator(private val context: Context) {
                 val waitlistRepository = WaitlistRepository(firestore, eventRepository)
                 val notificationRepository = NotificationRepository(firestore, waitlistRepository, eventRepository)
 
+                // Clean up all user data
                 waitlistRepository.purgeEntrant(deviceId).getOrThrow()
 
                 val ownedEvents = eventRepository.deactivateEventsByOrganizer(deviceId).getOrThrow()
@@ -231,11 +236,20 @@ class DeviceAuthenticator(private val context: Context) {
                 AdminAccessRepository(firestore).removeDevice(deviceId)
                     .onFailure { Log.w(TAG, "Failed to remove device from admin list", it) }
 
+                // Delete the Firestore document
                 firestore.collection("entrants").document(deviceId).delete().await()
+
+                // Delete the Firebase Auth user before signing out
+                // This ensures the anonymous auth session is completely removed
+                try {
+                    auth.currentUser?.delete()?.await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to delete Firebase Auth user (may already be deleted)", e)
+                }
             }
 
+            // Clear preferences and sign out
             DeviceAuthPreferences(context).setAutoLoginEnabled(false)
-            runCatching { auth.currentUser?.delete()?.await() }
             auth.signOut()
 
             DeviceAuthResult.Success(
@@ -274,7 +288,10 @@ class DeviceAuthenticator(private val context: Context) {
             .document(deviceId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Handle permission errors gracefully (e.g., when account is deleted)
+                    Log.w(TAG, "Profile observation error for $deviceId: ${error.message}", error)
+                    trySend(null)
+                    close()
                     return@addSnapshotListener
                 }
 

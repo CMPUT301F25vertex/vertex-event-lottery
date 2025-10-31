@@ -139,7 +139,8 @@ fun CreateEventScreen(
     var registrationEndTime by remember { mutableStateOf<LocalTime?>(null) }
     var waitlistLimit by remember { mutableStateOf("") }
     var samplingCount by remember { mutableStateOf("") }
-    var requiresGeolocation by remember { mutableStateOf(false) }
+    // Geolocation toggle - when enabled, location is MANDATORY for joining
+    var requiresGeolocation by remember { mutableStateOf(true) }
 
     var posterUrl by remember { mutableStateOf<String?>(null) }
     var posterUrlInput by remember { mutableStateOf("") }
@@ -324,26 +325,29 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = title,
                         onValueChange = { title = it },
-                        label = "Event Title",
+                        label = "Event Title *",
                         icon = Icons.Outlined.Event,
-                        placeholder = "e.g., Swimming Lessons"
+                        placeholder = "e.g., Swimming Lessons",
+                        isRequired = true
                     )
 
                     CreateEventFormField(
                         value = description,
                         onValueChange = { description = it },
-                        label = "Description",
+                        label = "Description *",
                         icon = Icons.Outlined.Description,
                         placeholder = "Tell attendees what to expect...",
-                        maxLines = 4
+                        maxLines = 4,
+                        isRequired = true
                     )
 
                     CreateEventFormField(
                         value = location,
                         onValueChange = { location = it },
-                        label = "Location",
+                        label = "Location *",
                         icon = Icons.Outlined.LocationOn,
-                        placeholder = "e.g., City Pool, 123 Main St"
+                        placeholder = "e.g., City Pool, 123 Main St",
+                        isRequired = true
                     )
 
                     Text(
@@ -355,7 +359,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Event Date",
+                        label = "Event Date *",
                         value = eventDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -377,7 +381,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Event Start Time",
+                        label = "Event Start Time *",
                         value = eventTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -398,10 +402,11 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = capacity,
                         onValueChange = { capacity = it },
-                        label = "Capacity",
+                        label = "Capacity *",
                         icon = Icons.Outlined.People,
                         placeholder = "e.g., 20",
-                        keyboardType = KeyboardType.Number
+                        keyboardType = KeyboardType.Number,
+                        isRequired = true
                     )
 
                     Text(
@@ -413,7 +418,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Opens (Date)",
+                        label = "Registration Opens (Date) *",
                         value = registrationStartDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -435,7 +440,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Opens (Time)",
+                        label = "Registration Opens (Time) *",
                         value = registrationStartTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -454,7 +459,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Closes (Date)",
+                        label = "Registration Closes (Date) *",
                         value = registrationEndDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -479,7 +484,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Closes (Time)",
+                        label = "Registration Closes (Time) *",
                         value = registrationEndTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -500,22 +505,24 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = waitlistLimit,
                         onValueChange = { waitlistLimit = it },
-                        label = "Waitlist Limit",
+                        label = "Waitlist Limit *",
                         icon = Icons.Outlined.Groups,
                         placeholder = "e.g., 40",
-                        keyboardType = KeyboardType.Number
+                        keyboardType = KeyboardType.Number,
+                        isRequired = true
                     )
 
                     CreateEventFormField(
                         value = samplingCount,
                         onValueChange = { samplingCount = it },
-                        label = "Sampling Count",
+                        label = "Sampling Count *",
                         icon = Icons.Outlined.People,
                         placeholder = "Entrants per lottery draw",
-                        keyboardType = KeyboardType.Number
+                        keyboardType = KeyboardType.Number,
+                        isRequired = true
                     )
 
-                    // Geolocation toggle (US 02.02.03)
+                    // Geolocation toggle - when enabled, location becomes MANDATORY (US 02.02.03)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
@@ -541,7 +548,7 @@ fun CreateEventScreen(
                                     )
                                 )
                                 Text(
-                                    text = "Entrants must share their location when joining the waitlist",
+                                    text = "When enabled, entrants MUST share their location to join. They cannot join without location access.",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = PluckPalette.Muted
                                     )
@@ -808,7 +815,8 @@ private fun CreateEventFormField(
     icon: ImageVector,
     placeholder: String,
     maxLines: Int = 1,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    isRequired: Boolean = false
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
