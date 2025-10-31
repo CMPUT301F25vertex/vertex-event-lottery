@@ -488,7 +488,7 @@ fun PLuckNavHost(
                         userWaitlistStatus == WaitlistStatus.INVITED
                     val isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED
                     val organizerId = currentUser?.deviceId.orEmpty()
-                    val canEditPoster = currentUser?.let { profile ->
+                    val isEventOrganizer = currentUser?.let { profile ->
                         val organizerMatch = resolvedEvent.organizerId.isNotBlank() &&
                             resolvedEvent.organizerId == profile.deviceId
                         val fallbackMatch = resolvedEvent.organizerId.isBlank() &&
@@ -496,7 +496,6 @@ fun PLuckNavHost(
                             resolvedEvent.organizerName.equals(profile.displayName, ignoreCase = true)
                         organizerMatch || fallbackMatch
                     } ?: false
-                    val canInviteEntrants = canEditPoster && organizerId.isNotBlank()
 
                     EventDetailScreen(
                         event = resolvedEvent,
@@ -590,11 +589,10 @@ fun PLuckNavHost(
                         onBack = {
                             navController.popBackStack()
                         },
-                        canEditPoster = canEditPoster,
+                        isEventOrganizer = isEventOrganizer,
                         onEditPoster = { eventToEdit ->
                             navigator.toEditEvent(eventToEdit.id)
                         },
-                        canInviteEntrants = canInviteEntrants,
                         inviteFeedbackMessage = inviteFeedback?.message,
                         inviteFeedbackIsError = inviteFeedback?.isError == true,
                         inviteInProgress = inviteInProgress,
