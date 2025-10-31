@@ -69,9 +69,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -325,7 +328,7 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = title,
                         onValueChange = { title = it },
-                        label = "Event Title *",
+                        label = "Event Title",
                         icon = Icons.Outlined.Event,
                         placeholder = "e.g., Swimming Lessons",
                         isRequired = true
@@ -334,7 +337,7 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = description,
                         onValueChange = { description = it },
-                        label = "Description *",
+                        label = "Description",
                         icon = Icons.Outlined.Description,
                         placeholder = "Tell attendees what to expect...",
                         maxLines = 4,
@@ -344,7 +347,7 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = location,
                         onValueChange = { location = it },
-                        label = "Location *",
+                        label = "Location",
                         icon = Icons.Outlined.LocationOn,
                         placeholder = "e.g., City Pool, 123 Main St",
                         isRequired = true
@@ -359,7 +362,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Event Date *",
+                        label = "Event Date",
                         value = eventDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -377,11 +380,12 @@ fun CreateEventScreen(
                                 initialDate.monthValue - 1,
                                 initialDate.dayOfMonth
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventPickerField(
-                        label = "Event Start Time *",
+                        label = "Event Start Time",
                         value = eventTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -396,13 +400,14 @@ fun CreateEventScreen(
                                 initialTime.minute,
                                 false
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventFormField(
                         value = capacity,
                         onValueChange = { capacity = it },
-                        label = "Capacity *",
+                        label = "Capacity",
                         icon = Icons.Outlined.People,
                         placeholder = "e.g., 20",
                         keyboardType = KeyboardType.Number,
@@ -418,7 +423,7 @@ fun CreateEventScreen(
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Opens (Date) *",
+                        label = "Registration Opens (Date)",
                         value = registrationStartDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -436,11 +441,12 @@ fun CreateEventScreen(
                                 baseDate.monthValue - 1,
                                 baseDate.dayOfMonth
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Opens (Time) *",
+                        label = "Registration Opens (Time)",
                         value = registrationStartTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -455,11 +461,12 @@ fun CreateEventScreen(
                                 initialTime.minute,
                                 false
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Closes (Date) *",
+                        label = "Registration Closes (Date)",
                         value = registrationEndDate?.format(dateFormatter),
                         placeholder = "Select date",
                         icon = Icons.Outlined.CalendarMonth,
@@ -480,11 +487,12 @@ fun CreateEventScreen(
                                 baseDate.monthValue - 1,
                                 baseDate.dayOfMonth
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventPickerField(
-                        label = "Registration Closes (Time) *",
+                        label = "Registration Closes (Time)",
                         value = registrationEndTime?.format(timeFormatter),
                         placeholder = "Select time",
                         icon = Icons.Outlined.Schedule,
@@ -499,13 +507,14 @@ fun CreateEventScreen(
                                 initialTime.minute,
                                 false
                             ).show()
-                        }
+                        },
+                        isRequired = true
                     )
 
                     CreateEventFormField(
                         value = waitlistLimit,
                         onValueChange = { waitlistLimit = it },
-                        label = "Waitlist Limit *",
+                        label = "Waitlist Limit",
                         icon = Icons.Outlined.Groups,
                         placeholder = "e.g., 40",
                         keyboardType = KeyboardType.Number,
@@ -515,7 +524,7 @@ fun CreateEventScreen(
                     CreateEventFormField(
                         value = samplingCount,
                         onValueChange = { samplingCount = it },
-                        label = "Sampling Count *",
+                        label = "Sampling Count",
                         icon = Icons.Outlined.People,
                         placeholder = "Entrants per lottery draw",
                         keyboardType = KeyboardType.Number,
@@ -847,6 +856,15 @@ private fun CreateEventFormField(
                     color = PluckPalette.Primary
                 )
             )
+            if (isRequired) {
+                Text(
+                    text = "*",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = PluckPalette.Decline
+                    )
+                )
+            }
         }
 
         OutlinedTextField(
@@ -925,18 +943,33 @@ private fun CreateEventPickerField(
     value: String?,
     placeholder: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isRequired: Boolean
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = PluckPalette.Primary
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = PluckPalette.Primary
+                )
             )
-        )
+            if (isRequired) {
+                Text(
+                    text = "*",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = PluckPalette.Decline
+                    )
+                )
+            }
+        }
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
