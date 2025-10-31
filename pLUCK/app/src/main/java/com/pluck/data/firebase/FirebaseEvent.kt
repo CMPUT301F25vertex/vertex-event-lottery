@@ -143,7 +143,7 @@ data class FirebaseEvent(
         /**
          * Convert UI Event model to Firebase event
          */
-        fun fromEvent(event: Event, organizerId: String = ""): FirebaseEvent {
+        fun fromEvent(event: Event): FirebaseEvent {
             return FirebaseEvent(
                 id = event.id,
                 title = event.title,
@@ -152,7 +152,7 @@ data class FirebaseEvent(
                 dateTimestamp = toTimestamp(event.date, event.eventTime),
                 capacity = event.capacity,
                 enrolled = event.enrolled,
-                organizerId = event.organizerId.ifBlank { organizerId },
+                organizerId = event.organizerId,
                 organizerName = event.organizerName,
                 waitlistCount = event.waitlistCount,
                 waitlistCapacity = event.waitlistCapacity,

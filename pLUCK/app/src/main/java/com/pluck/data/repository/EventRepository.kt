@@ -32,9 +32,9 @@ class EventRepository(
      * @param organizerId ID of the user creating the event
      * @return Result with the created event ID or error
      */
-    suspend fun createEvent(event: Event, organizerId: String): Result<String> {
+    suspend fun createEvent(event: Event): Result<String> {
         return try {
-            val firebaseEvent = FirebaseEvent.fromEvent(event, organizerId)
+            val firebaseEvent = FirebaseEvent.fromEvent(event)
             val docRef = eventsCollection.document()
             val eventWithId = firebaseEvent.copy(
                 id = docRef.id,

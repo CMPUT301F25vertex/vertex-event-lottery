@@ -1143,7 +1143,7 @@ fun PLuckNavHost(
                         requiresGeolocation = request.requiresGeolocation
                     )
 
-                    eventViewModel.createEvent(newEvent, organizer.deviceId) { eventId ->
+                    eventViewModel.createEvent(newEvent) { eventId ->
                         formError = null
                         navController.popBackStack()
                         navigator.toEventDetail(eventId)
