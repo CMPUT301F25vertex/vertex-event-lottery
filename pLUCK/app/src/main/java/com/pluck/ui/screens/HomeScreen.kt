@@ -303,41 +303,11 @@ private fun HomeScreenContent(
                             }
 
                             item {
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(32.dp),
-                                    color = PluckPalette.Surface,
-                                    tonalElevation = 0.dp,
-                                    shadowElevation = 12.dp,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        PluckPalette.Primary.copy(alpha = 0.05f)
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(
-                                            horizontal = 18.dp,
-                                            vertical = 18.dp
-                                        ),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        HomeFilterRow(
-                                            categories = homeCategories,
-                                            selectedId = selectedCategoryId,
-                                            onCategorySelected = { selectedCategoryId = it },
-                                            useContainer = false
-                                        )
-                                        Text(
-                                            text = "Discover Events",
-                                            style = MaterialTheme.typography.titleLarge.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = PluckPalette.Primary,
-                                                fontSize = 22.sp
-                                            ),
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                    }
-                                }
+                                HomeFilterRow(
+                                    categories = homeCategories,
+                                    selectedId = selectedCategoryId,
+                                    onCategorySelected = { selectedCategoryId = it }
+                                )
                             }
 
                             itemsIndexed(
@@ -591,8 +561,7 @@ private fun HomeFilterRow(
     categories: List<EventCategory>,
     selectedId: String,
     onCategorySelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    useContainer: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     val baseModifier = modifier
         .fillMaxWidth()
@@ -628,21 +597,15 @@ private fun HomeFilterRow(
         }
     }
 
-    if (useContainer) {
-        Surface(
-            modifier = baseModifier,
-            shape = RoundedCornerShape(32.dp),
-            color = PluckPalette.Surface,
-            tonalElevation = 0.dp,
-            shadowElevation = 12.dp,
-            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-        ) {
-            chipRow()
-        }
-    } else {
-        Box(modifier = baseModifier) {
-            chipRow()
-        }
+    Surface(
+        modifier = baseModifier,
+        shape = RoundedCornerShape(32.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+    ) {
+        chipRow()
     }
 }
 
