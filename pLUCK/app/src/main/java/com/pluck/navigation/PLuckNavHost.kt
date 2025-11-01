@@ -15,7 +15,6 @@
  */
 package com.pluck.navigation
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.widget.Toast
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
