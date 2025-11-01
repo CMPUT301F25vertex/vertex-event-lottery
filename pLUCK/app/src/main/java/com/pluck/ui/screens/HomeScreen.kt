@@ -213,43 +213,29 @@ private fun HomeScreenContent(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        bottomBar = {
-            BottomNavBar(
-                currentRoute = currentRoute,
-                onNavigate = onNavigate,
-                onCreateEvent = onCreateEvent,
-                showCreateButton = isOrganizer
-            )
-        }
-    ) { paddingValues ->
-        PluckLayeredBackground(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val horizontalPadding = 20.dp
-            val contentTopPadding = paddingValues.calculateTopPadding() + 20.dp
-            val bottomInset = paddingValues.calculateBottomPadding()
-            val adjustedBottomInset = (bottomInset - 48.dp).coerceAtLeast(12.dp)
-            val contentBottomPadding = adjustedBottomInset + 46.dp
+    PluckLayeredBackground(
+        modifier = Modifier.fillMaxSize()
+    )
+    {
+        Column {
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(0.8f)
                     .padding(
-                        start = horizontalPadding,
-                        end = horizontalPadding,
-                        top = contentTopPadding,
-                        bottom = contentBottomPadding
+                        start = 15.dp,
+                        top = 15.dp,
+                        end = 15.dp
                     )
-            ) {
+            ){
                 when {
-                    isLoading -> HomeLoadingState()
+                    isLoading -> HomeLoadingState(Modifier)
                     filteredEvents.isEmpty() && firstVisibleIndex <= 1 -> {
                         // Show hero and filters with empty state
                         Column(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             HomeHeroCard(
@@ -261,23 +247,29 @@ private fun HomeScreenContent(
                                 },
                                 collapseProgress = 0f
                             )
+
                             // US 01.01.04 - Search bar for filtering by interests
                             EventSearchBar(
                                 searchQuery = searchQuery,
                                 onSearchQueryChange = { searchQuery = it }
                             )
+
                             HomeFilterRow(
                                 categories = homeCategories,
                                 selectedId = selectedCategoryId,
                                 onCategorySelected = { selectedCategoryId = it }
                             )
+
                             Surface(
                                 modifier = Modifier.fillMaxSize(),
                                 shape = RoundedCornerShape(32.dp),
                                 color = PluckPalette.Surface,
                                 tonalElevation = 0.dp,
                                 shadowElevation = 12.dp,
-                                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                                border = BorderStroke(
+                                    1.dp,
+                                    PluckPalette.Primary.copy(alpha = 0.05f)
+                                )
                             ) {
                                 HomeEmptyState()
                             }
@@ -317,10 +309,16 @@ private fun HomeScreenContent(
                                     color = PluckPalette.Surface,
                                     tonalElevation = 0.dp,
                                     shadowElevation = 12.dp,
-                                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                                    border = BorderStroke(
+                                        1.dp,
+                                        PluckPalette.Primary.copy(alpha = 0.05f)
+                                    )
                                 ) {
                                     Column(
-                                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                                        modifier = Modifier.padding(
+                                            horizontal = 18.dp,
+                                            vertical = 18.dp
+                                        ),
                                         verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
                                         HomeFilterRow(
@@ -342,7 +340,10 @@ private fun HomeScreenContent(
                                 }
                             }
 
-                            itemsIndexed(filteredEvents, key = { _, event -> event.id }) { index, event ->
+                            itemsIndexed(
+                                filteredEvents,
+                                key = { _, event -> event.id })
+                            { index, event ->
                                 val accentPalette = listOf(
                                     PluckPalette.Secondary,
                                     PluckPalette.Tertiary,
@@ -355,18 +356,30 @@ private fun HomeScreenContent(
                                     onClick = { onSelectEvent(event) }
                                 )
                             }
+
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
                     }
                 }
             }
 
-            ConfettiBurst(
-                trigger = confettiTrigger,
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                onCreateEvent = onCreateEvent,
+                showCreateButton = isOrganizer,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .align(Alignment.TopCenter)
             )
         }
+
+        ConfettiBurst(
+            trigger = confettiTrigger,
+            modifier = Modifier
+                .fillMaxSize()
+                .align(Alignment.TopCenter)
+        )
     }
 }
 
@@ -793,9 +806,11 @@ private fun EventMetaRow(
 }
 
 @Composable
-private fun HomeLoadingState() {
+private fun HomeLoadingState(
+    modifier: Modifier
+) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(color = PluckPalette.Primary)
@@ -821,7 +836,7 @@ private fun HomeEmptyState() {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Adjust your categories or check back soon for new lotteries.",
+            text = "Adjust your categories or check back soon for new events.",
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = PluckPalette.Muted
             ),
