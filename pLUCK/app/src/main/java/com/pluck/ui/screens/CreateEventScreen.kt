@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -118,6 +119,14 @@ data class CreateEventRequest(
     val samplingCount: String,
     val requiresGeolocation: Boolean = false
 )
+
+object CreateEventTestTags {
+    const val RegistrationOpensDate = "reg_open_date"
+    const val RegistrationOpensTime = "reg_open_time"
+    const val RegistrationClosesDate = "reg_open_date"
+    const val RegistrationClosesTime = "reg_open_time"
+    const val WaitlistLength = "waitlist_length"
+}
 
 @Composable
 fun CreateEventScreen(
@@ -436,7 +445,8 @@ fun CreateEventScreen(
                                 baseDate.monthValue - 1,
                                 baseDate.dayOfMonth
                             ).show()
-                        }
+                        },
+                        modifier = Modifier.testTag(CreateEventTestTags.RegistrationOpensDate)
                     )
 
                     CreateEventPickerField(
@@ -455,7 +465,8 @@ fun CreateEventScreen(
                                 initialTime.minute,
                                 false
                             ).show()
-                        }
+                        },
+                        modifier = Modifier.testTag(CreateEventTestTags.RegistrationOpensTime)
                     )
 
                     CreateEventPickerField(
@@ -480,7 +491,8 @@ fun CreateEventScreen(
                                 baseDate.monthValue - 1,
                                 baseDate.dayOfMonth
                             ).show()
-                        }
+                        },
+                        modifier = Modifier.testTag(CreateEventTestTags.RegistrationClosesDate)
                     )
 
                     CreateEventPickerField(
@@ -499,7 +511,8 @@ fun CreateEventScreen(
                                 initialTime.minute,
                                 false
                             ).show()
-                        }
+                        },
+                        modifier = Modifier.testTag(CreateEventTestTags.RegistrationClosesTime)
                     )
 
                     CreateEventFormField(
@@ -509,7 +522,8 @@ fun CreateEventScreen(
                         icon = Icons.Outlined.Groups,
                         placeholder = "e.g., 40",
                         keyboardType = KeyboardType.Number,
-                        isRequired = true
+                        isRequired = true,
+                        modifier = Modifier.testTag(CreateEventTestTags.WaitlistLength)
                     )
 
                     CreateEventFormField(
@@ -816,7 +830,8 @@ private fun CreateEventFormField(
     placeholder: String,
     maxLines: Int = 1,
     keyboardType: KeyboardType = KeyboardType.Text,
-    isRequired: Boolean = false
+    isRequired: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -852,7 +867,7 @@ private fun CreateEventFormField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(modifier),
             placeholder = {
                 Text(
                     text = placeholder,
@@ -925,10 +940,12 @@ private fun CreateEventPickerField(
     value: String?,
     placeholder: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
     ) {
         Text(
             text = label,
