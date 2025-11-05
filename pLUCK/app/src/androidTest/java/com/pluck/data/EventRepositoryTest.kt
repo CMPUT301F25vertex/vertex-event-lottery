@@ -117,6 +117,44 @@ class EventRepositoryTest {
     }
 
     @Test
+    fun getEventsByOrganizerTest() = runTest {
+        val repo = EventRepository()
+        async { clean() }.await()
+
+        val s1 = repo.getEventsByOrganizer("ORGANIZER1").getOrElse { List(0, { nullEvent } ) }.size
+        val s2 = repo.getEventsByOrganizer("ORGANIZER2").getOrElse { List(0, { nullEvent } ) }.size
+
+        async {
+            repo.createEvent(testEvent, "ORGANIZER1")
+            repo.createEvent(testEvent2, "ORGANIZER2")
+        }.await()
+
+        assert(repo.getEventsByOrganizer("ORGANIZER1").getOrElse { List(0, { nullEvent } ) }.size == s1 + 1)
+        assert(repo.getEventsByOrganizer("ORGANIZER2").getOrElse { List(0, { nullEvent } ) }.size == s2 + 1)
+
+        // Clean up
+        collection.whereEqualTo("title", "TEST_EVENT").get().await().documents[0].reference.delete().await()
+        collection.whereEqualTo("title", "TEST_EVENT2").get().await().documents[0].reference.delete().await()
+    }
+
+    @Test
+    fun getAvailableEventsTest() = runTest {
+        val repo = EventRepository()
+        async { clean() }.await()
+
+        val start = repo.getAvailableEvents().getOrElse { List(0, { nullEvent } ) }.size
+
+        async {
+            repo.createEvent(testEvent, "")
+            repo.createEvent(testEvent2, "")
+        }.await()
+
+        assert(repo.getAvailableEvents().getOrElse { List(0, { nullEvent } ) }.size == start + 1)
+
+        async { clean() }.await()
+    }
+
+    @Test
     fun updateEventTest() = runTest {
         val repo = EventRepository()
 
