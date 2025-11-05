@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -73,6 +75,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
+import coil.compose.AsyncImage
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
@@ -650,7 +653,8 @@ private fun HomeEventCard(
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
         border = BorderStroke(2.dp, accentColor.copy(alpha = 0.15f))
-    ) {
+    )
+    {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -662,7 +666,8 @@ private fun HomeEventCard(
                 color = accentColor.copy(alpha = 0.12f),
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
-            ) {
+            )
+            {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -686,40 +691,54 @@ private fun HomeEventCard(
                 }
             }
 
+            val hasPoster = !event.posterUrl.isNullOrBlank()
+
             // Content area
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                EventMetaRow(
-                    icon = Icons.Outlined.Schedule,
-                    label = event.dateLabel,
-                    accentColor = accentColor
+            if (hasPoster) {
+                AsyncImage(
+                    model = event.posterUrl,
+                    contentDescription = "${event.title} poster",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp),
+                    alignment = Alignment.Center
                 )
-                EventMetaRow(
-                    icon = Icons.Outlined.LocationOn,
-                    label = event.location,
-                    accentColor = accentColor
-                )
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${event.enrolled}/${event.capacity} enrolled",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = PluckPalette.Primary,
-                            fontWeight = FontWeight.Medium
-                        )
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                )
+                {
+                    EventMetaRow(
+                        icon = Icons.Outlined.Schedule,
+                        label = event.dateNoTimeLabel,
+                        accentColor = accentColor
                     )
-                    Text(
-                        text = "${event.waitlistCount} waitlisted",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = PluckPalette.Muted
-                        )
+                    EventMetaRow(
+                        icon = Icons.Outlined.LocationOn,
+                        label = event.location,
+                        accentColor = accentColor
+                    )
+                }
+            }
+            else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                )
+                {
+                    EventMetaRow(
+                        icon = Icons.Outlined.Schedule,
+                        label = event.dateLabel,
+                        accentColor = accentColor
+                    )
+                    EventMetaRow(
+                        icon = Icons.Outlined.LocationOn,
+                        label = event.location,
+                        accentColor = accentColor
                     )
                 }
             }
@@ -734,9 +753,9 @@ private fun HomeEventCard(
 @Composable
 private fun EventAvailabilityBadge(event: Event) {
     val (statusText, statusColor) = when {
-        !event.isFull -> "${event.remainingSpots} left" to PluckPalette.Accept
-        !event.isWaitlistFull -> "Waitlist Open" to PluckPalette.Secondary
-        else -> "Full" to PluckPalette.Muted
+        event.isPastEvent -> "Past Event" to PluckPalette.Secondary
+        event.isWaitlistFull -> "Event Full" to PluckPalette.Decline
+        else -> "${event.waitlistCount} Waiting" to PluckPalette.Accept
     }
 
     Surface(
