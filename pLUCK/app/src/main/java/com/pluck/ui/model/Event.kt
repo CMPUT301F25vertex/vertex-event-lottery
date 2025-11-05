@@ -78,12 +78,18 @@ data class Event(
         get() = description.take(120)
 
     /**
-     * @return Formatted date string suitable for cards and summaries.
+     * @return Formatted date string with time suitable for cards and summaries.
      */
     val dateLabel: String
         get() = eventTime?.let { time ->
             "${date.format(DATE_FORMATTER)} at ${time.format(TIME_FORMATTER)}"
         } ?: date.format(DATE_FORMATTER)
+
+    /**
+     * @return Formatted date string suitable for cards and summaries.
+     */
+    val dateNoTimeLabel: String
+        get() = date.format(DATE_FORMATTER)
 
     /**
      * @return Combined date and time for the event start.
