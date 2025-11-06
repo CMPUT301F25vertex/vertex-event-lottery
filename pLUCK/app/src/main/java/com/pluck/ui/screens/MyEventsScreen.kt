@@ -149,88 +149,75 @@ fun MyEventsScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Floating back button
-            Surface(
-                modifier = Modifier
-                    .padding(top = 24.dp, start = 24.dp)
-                    .size(56.dp)
-                    .align(Alignment.TopStart)
-                    .zIndex(10f),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onBack
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Go back",
-                        tint = PluckPalette.Primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .padding(horizontal = 15.dp, vertical = 15.dp)
             ) {
-            when {
-                isLoading -> MyEventsLoadingState()
-                filteredEvents.isEmpty() && firstVisibleIndex == 0 -> {
-                    // Static layout for empty state
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        MyEventsHero(
-                            eventCount = events.size,
-                            selectedFilter = selectedFilter,
-                            onFilterSelected = { selectedFilter = it },
-                            collapseProgress = 0f
-                        )
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .zIndex(1f),
-                            shape = RoundedCornerShape(36.dp),
-                            color = PluckPalette.Surface,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 12.dp,
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                when {
+                    isLoading -> MyEventsLoadingState()
+                    filteredEvents.isEmpty() && firstVisibleIndex == 0 -> {
+                        // Static layout for empty state
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
-                            MyEventsEmptyState(selectedFilter)
-                        }
-                    }
-                }
-                else -> {
-                    // Scrollable list with collapsing hero
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             MyEventsHero(
                                 eventCount = events.size,
                                 selectedFilter = selectedFilter,
                                 onFilterSelected = { selectedFilter = it },
-                                collapseProgress = heroCollapseProgress
+                                collapseProgress = 0f
                             )
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(1f),
+                                shape = RoundedCornerShape(36.dp),
+                                color = PluckPalette.Surface,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 12.dp,
+                                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                            ) {
+                                MyEventsEmptyState(selectedFilter)
+                            }
                         }
+                    }
+                    else -> {
+                        // Scrollable list with collapsing hero
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
 
-                        itemsIndexed(filteredEvents, key = { _, item -> item.event.id }) { index, item ->
-                            MyEventCard(
-                                item = item,
-                                accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
-                                onClick = { onEventClick(item.event) }
-                            )
+                            item {
+                                MyEventsHero(
+                                    eventCount = events.size,
+                                    selectedFilter = selectedFilter,
+                                    onFilterSelected = { selectedFilter = it },
+                                    collapseProgress = heroCollapseProgress
+                                )
+                            }
+
+                            itemsIndexed(filteredEvents, key = { _, item -> item.event.id }) { index, item ->
+                                MyEventCard(
+                                    item = item,
+                                    accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
+                                    onClick = { onEventClick(item.event) }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
                     }
                 }
-            }
             }
         }
     }
