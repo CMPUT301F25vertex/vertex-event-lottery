@@ -117,42 +117,57 @@ fun BottomNavBar(
             tonalElevation = 0.dp,
             shadowElevation = 8.dp
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left side nav items
+            if (showCreateButton) {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .wrapContentWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    NavTabs.all.take(2).forEach { tab ->
-                        NavItem(
-                            tab = tab,
-                            selected = currentRoute == tab.route,
-                            onClick = { onNavigate(tab.route) }
-                        )
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                )
+                {
+                    // Left side nav items
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .wrapContentWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        NavTabs.all.take(2).forEach { tab ->
+                            NavItem(
+                                tab = tab,
+                                selected = currentRoute == tab.route,
+                                onClick = { onNavigate(tab.route) }
+                            )
+                        }
+                    }
+                    
+                    // Right side nav items
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .wrapContentWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        NavTabs.all.drop(2).forEach { tab ->
+                            NavItem(
+                                tab = tab,
+                                selected = currentRoute == tab.route,
+                                onClick = { onNavigate(tab.route) }
+                            )
+                        }
                     }
                 }
-
-                // Center spacer for FAB (only if button is shown)
-                Spacer(modifier = Modifier.size(if (showCreateButton) 72.dp else 0.dp))
-
-                // Right side nav items
+            } else {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .wrapContentWidth(),
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    NavTabs.all.drop(2).forEach { tab ->
+                    NavTabs.all.take(4).forEach { tab ->
                         NavItem(
                             tab = tab,
                             selected = currentRoute == tab.route,
