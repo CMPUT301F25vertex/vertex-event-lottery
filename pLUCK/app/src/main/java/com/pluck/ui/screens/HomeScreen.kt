@@ -263,7 +263,9 @@ private fun HomeScreenContent(
                             )
 
                             Surface(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 15.dp),
                                 shape = RoundedCornerShape(32.dp),
                                 color = PluckPalette.Surface,
                                 tonalElevation = 0.dp,
