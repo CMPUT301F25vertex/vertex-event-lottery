@@ -162,18 +162,18 @@ fun WaitlistScreen(
                     collapseProgress = collapseProgress
                 )
 
-                WaitlistSummaryCard(
-                    event = event,
-                    waitlistSize = waitlistSize,
-                    waitlistCapacity = event.waitlistCapacity,
-                    isUserWaiting = derivedUserWaiting,
-                    isUserConfirmed = derivedUserConfirmed,
-                    currentUserPosition = currentUserPosition,
-                    waitlistFull = waitlistFull,
-                    onJoinWaitlist = onJoinWaitlist,
-                    onLeaveWaitlist = onLeaveWaitlist,
-                    modifier = Modifier.animateContentSize()
-                )
+//                WaitlistSummaryCard(
+//                    event = event,
+//                    waitlistSize = waitlistSize,
+//                    waitlistCapacity = event.waitlistCapacity,
+//                    isUserWaiting = derivedUserWaiting,
+//                    isUserConfirmed = derivedUserConfirmed,
+//                    currentUserPosition = currentUserPosition,
+//                    waitlistFull = waitlistFull,
+//                    onJoinWaitlist = onJoinWaitlist,
+//                    onLeaveWaitlist = onLeaveWaitlist,
+//                    modifier = Modifier.animateContentSize()
+//                )
 
                 WaitlistTabSelector(
                     selectedTab = selectedTab,
@@ -199,7 +199,7 @@ fun WaitlistScreen(
                             if (waitlistEntries.isEmpty()) {
                                 WaitlistEmptyState(
                                     message = "No one on the waitlist yet",
-                                    description = "Be the first to join the waitlist for this event!"
+                                    description = ""
                                 )
                             } else {
                                 WaitlistEntriesList(

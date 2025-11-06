@@ -115,29 +115,6 @@ fun SettingsScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Floating back button
-            Surface(
-                modifier = Modifier
-                    .padding(top = 24.dp, start = 24.dp)
-                    .size(56.dp)
-                    .align(Alignment.TopStart)
-                    .zIndex(10f),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onBack
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Go back",
-                        tint = PluckPalette.Primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -223,25 +200,25 @@ fun SettingsScreen(
                         )
                     }
 
-                    // Privacy Section
-                    SettingsSection(
-                        title = "Privacy & Security",
-                        icon = Icons.Outlined.Lock,
-                        iconColor = PluckPalette.Accept
-                    ) {
-                        SettingsActionItem(
-                            label = "Privacy Policy",
-                            description = "View our privacy policy"
-                        )
-                        SettingsActionItem(
-                            label = "Terms of Service",
-                            description = "View terms and conditions"
-                        )
-                        SettingsActionItem(
-                            label = "Data Management",
-                            description = "Manage your personal data"
-                        )
-                    }
+//                    // Privacy Section
+//                    SettingsSection(
+//                        title = "Privacy & Security",
+//                        icon = Icons.Outlined.Lock,
+//                        iconColor = PluckPalette.Accept
+//                    ) {
+//                        SettingsActionItem(
+//                            label = "Privacy Policy",
+//                            description = "View our privacy policy"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Terms of Service",
+//                            description = "View terms and conditions"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Data Management",
+//                            description = "Manage your personal data"
+//                        )
+//                    }
 
                     // About Section
                     SettingsInfoCallout()

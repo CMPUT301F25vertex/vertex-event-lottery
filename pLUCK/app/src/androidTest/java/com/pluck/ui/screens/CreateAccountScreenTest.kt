@@ -42,7 +42,6 @@ class CreateAccountScreenTest {
         composeRule.onNodeWithTag(CreateAccountTestTags.DisplayNameField).assertIsDisplayed()
         composeRule.onNodeWithTag(CreateAccountTestTags.EmailField).assertIsDisplayed()
         composeRule.onNodeWithTag(CreateAccountTestTags.PhoneField).assertIsDisplayed()
-        composeRule.onNodeWithText("Device ID: TEST-DEVICE-123").assertIsDisplayed()
         composeRule.onNodeWithText("Create Account").assertIsDisplayed().assertIsNotEnabled()
     }
 

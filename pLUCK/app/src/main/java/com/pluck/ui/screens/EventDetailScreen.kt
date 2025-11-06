@@ -182,30 +182,32 @@ fun EventDetailScreen(
 
                     EventLotteryInfoCard(event = event)
 
-                    if (isEventOrganizer) {
-                        OrganizerInviteCard(
-                            inviteContact = inviteContact,
-                            onInviteContactChange = {
-                                inviteContact = it
-                                onClearInviteFeedback()
-                            },
-                            inviteType = inviteType,
-                            onInviteTypeChange = { type ->
-                                inviteType = type
-                                onClearInviteFeedback()
-                            },
-                            onSendInvite = {
-                                val trimmed = inviteContact.trim()
-                                if (trimmed.isNotBlank()) {
-                                    onClearInviteFeedback()
-                                    onInviteEntrant(trimmed, inviteType)
-                                }
-                            },
-                            isSending = inviteInProgress,
-                            feedbackMessage = inviteFeedbackMessage,
-                            isError = inviteFeedbackIsError
-                        )
-                    }
+//                    if (isEventOrganizer) {
+//                        OrganizerInviteCard(
+//                            inviteContact = inviteContact,
+//                            onInviteContactChange = {
+//                                inviteContact = it
+//                                onClearInviteFeedback()
+//                            },
+//                            inviteType = inviteType,
+//                            onInviteTypeChange = { type ->
+//                                inviteType = type
+//                                onClearInviteFeedback()
+//                            },
+//                            onSendInvite = {
+//                                val trimmed = inviteContact.trim()
+//                                if (trimmed.isNotBlank()) {
+//                                    onClearInviteFeedback()
+//                                    onInviteEntrant(trimmed, inviteType)
+//                                }
+//                            },
+//                            isSending = inviteInProgress,
+//                            feedbackMessage = inviteFeedbackMessage,
+//                            isError = inviteFeedbackIsError
+//                        )
+//                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Bottom action section - fixed at bottom
@@ -965,6 +967,33 @@ private fun EventDetailBottomActions(
                             )
                         }
                     }
+                    else if (isEventOrganizer) {
+                        Button(
+                            onClick = { onViewWaitlist(event) },
+                            modifier = modifier,
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PluckPalette.Secondary,
+                                contentColor = PluckPalette.Surface
+                            ),
+                            border = BorderStroke(0.dp, Color.Transparent),
+                            contentPadding = PaddingValues(vertical = 14.dp)
+                        )
+                        {
+                            Icon(
+                                imageVector = Icons.Outlined.PeopleOutline,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(
+                                text = "View Waitlist",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    }
                     else {
                         Button(
                             onClick = { onJoinEvent(event) },
@@ -1021,35 +1050,6 @@ private fun EventDetailBottomActions(
                         .weight(0.2f)
                         .size(56.dp)
                 )
-            }
-
-            // View Waitlist Button
-            if (isEventOrganizer) {
-                Button(
-                    onClick = { onViewWaitlist(event) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PluckPalette.Secondary,
-                        contentColor = PluckPalette.Surface
-                    ),
-                    border = BorderStroke(0.dp, Color.Transparent),
-                    contentPadding = PaddingValues(vertical = 14.dp)
-                )
-                {
-                    Icon(
-                        imageVector = Icons.Outlined.PeopleOutline,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = "View Waitlist",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
             }
         }
     }

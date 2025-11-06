@@ -545,7 +545,7 @@ fun PLuckNavHost(
                                                     longitude = location.longitude
                                                 ) {
                                                     waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                                    navigator.toWaitlist(eventToJoin.id)
+                                                    Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         }.addOnFailureListener {
@@ -568,7 +568,7 @@ fun PLuckNavHost(
                                         longitude = null
                                     ) {
                                         waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                        navigator.toWaitlist(eventToJoin.id)
+                                        Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }

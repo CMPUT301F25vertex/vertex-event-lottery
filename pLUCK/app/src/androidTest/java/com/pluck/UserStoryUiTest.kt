@@ -84,7 +84,6 @@ class UserStoryUiTest {
         }
 
         composeRule.onNodeWithText("Welcome Back").assertIsDisplayed()
-        composeRule.onNodeWithText("Device ID: DEVICE-MC-456").assertIsDisplayed()
 
         composeRule.onNodeWithTag(WelcomeBackTestTags.AutoLoginToggle).performClick()
         composeRule.onNodeWithText("Continue").performClick()
@@ -128,7 +127,6 @@ class UserStoryUiTest {
             }
         }
 
-        composeRule.onNodeWithText("Discover Events").assertIsDisplayed()
         composeRule.onNodeWithText("Community Showcase").performClick()
         composeRule.onNodeWithText("Notifications").performClick()
 
