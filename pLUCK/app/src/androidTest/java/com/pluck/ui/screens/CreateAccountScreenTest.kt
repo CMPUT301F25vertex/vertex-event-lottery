@@ -15,6 +15,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+// US 01.02.01 – Entrant provides personal information
+// US 01.07.01 – Entrant identified by device (no login required)
 @RunWith(AndroidJUnit4::class)
 class CreateAccountScreenTest {
 
