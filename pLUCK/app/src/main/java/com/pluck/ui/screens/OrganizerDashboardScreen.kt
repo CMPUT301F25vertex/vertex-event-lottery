@@ -133,39 +133,39 @@ fun OrganizerDashboardScreen(
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-            OrganizerDashboardHero(
-                organizerName = organizerName,
-                stats = stats
-            )
+                OrganizerDashboardHero(
+                    organizerName = organizerName,
+                    stats = stats
+                )
+    
+                OrganizerStatsCards(stats = stats)
 
-            OrganizerStatsCards(stats = stats)
+                OrganizerCreateEventCard(onClick = onCreateEvent)
 
-            OrganizerCreateEventCard(onClick = onCreateEvent)
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-            ) {
-                when {
-                    isLoading -> OrganizerLoadingState()
-                    events.isEmpty() -> OrganizerEmptyState()
-                    else -> OrganizerEventsList(
-                        events = events,
-                        onEventClick = onEventClick,
-                        onEditEvent = onEditEvent,
-                        onRunDraw = onRunDraw,
-                        onViewWaitlist = onViewWaitlist,
-                        onManageChosenEntrants = onManageChosenEntrants,
-                        onViewEntrantLocations = onViewEntrantLocations
-                    )
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(1f),
+                    shape = RoundedCornerShape(36.dp),
+                    color = PluckPalette.Surface,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 12.dp,
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                ) {
+                    when {
+                        isLoading -> OrganizerLoadingState()
+                        events.isEmpty() -> OrganizerEmptyState()
+                        else -> OrganizerEventsList(
+                            events = events,
+                            onEventClick = onEventClick,
+                            onEditEvent = onEditEvent,
+                            onRunDraw = onRunDraw,
+                            onViewWaitlist = onViewWaitlist,
+                            onManageChosenEntrants = onManageChosenEntrants,
+                            onViewEntrantLocations = onViewEntrantLocations
+                        )
+                    }
                 }
-            }
             }
         }
     }
