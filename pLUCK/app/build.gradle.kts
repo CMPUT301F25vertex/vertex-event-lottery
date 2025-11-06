@@ -5,6 +5,13 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.services)
+    id("org.jetbrains.dokka") version "2.1.0"
+
+}
+dokka {
+    dokkaPublications.html {
+        outputDirectory.set(layout.projectDirectory.dir("ktdoc/dokka"))
+    }
 }
 
 // Load local.properties
