@@ -196,17 +196,17 @@ fun WaitlistScreen(
                 ) {
                     when (selectedTab) {
                         WaitlistTab.WAITING -> {
-//                            if (waitlistEntries.isEmpty()) {
-//                                WaitlistEmptyState(
-//                                    message = "No one on the waitlist yet",
-//                                    description = "Be the first to join the waitlist for this event!"
-//                                )
-//                            } else {
-                            WaitlistEntriesList(
-                                entries = waitlistEntries,
-                                title = "Waitlist Queue"
-                            )
-//                            }
+                            if (waitlistEntries.isEmpty()) {
+                                WaitlistEmptyState(
+                                    message = "No one on the waitlist yet",
+                                    description = ""
+                                )
+                            } else {
+                                WaitlistEntriesList(
+                                    entries = waitlistEntries,
+                                    title = "Waitlist Queue"
+                                )
+                            }
                         }
                         WaitlistTab.CHOSEN -> {
                             if (chosenEntries.isEmpty()) {
