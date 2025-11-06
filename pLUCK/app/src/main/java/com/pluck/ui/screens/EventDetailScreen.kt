@@ -206,6 +206,8 @@ fun EventDetailScreen(
 //                            isError = inviteFeedbackIsError
 //                        )
 //                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Bottom action section - fixed at bottom
