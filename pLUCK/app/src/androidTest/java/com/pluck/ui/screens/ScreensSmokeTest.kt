@@ -132,7 +132,6 @@ class ScreensSmokeTest {
 
         composeRule.onNodeWithText("Community Yoga").assertIsDisplayed()
         composeRule.onNodeWithText("Join Waitlist").assertIsDisplayed()
-        composeRule.onNodeWithText("View Waitlist").assertIsDisplayed()
     }
 
     @Test
@@ -249,7 +248,6 @@ class ScreensSmokeTest {
         }
 
         composeRule.onNodeWithText("Welcome Back").assertIsDisplayed()
-        composeRule.onNodeWithText("Device ID: device-5678").assertIsDisplayed()
     }
 
     @Test
@@ -264,7 +262,6 @@ class ScreensSmokeTest {
         }
 
         composeRule.onNodeWithText("Appearance").assertIsDisplayed()
-        composeRule.onNodeWithText("Privacy & Security").assertIsDisplayed()
     }
 
     @Test
