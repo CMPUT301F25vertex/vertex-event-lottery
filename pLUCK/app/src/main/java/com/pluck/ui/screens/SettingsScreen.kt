@@ -200,25 +200,25 @@ fun SettingsScreen(
                         )
                     }
 
-                    // Privacy Section
-                    SettingsSection(
-                        title = "Privacy & Security",
-                        icon = Icons.Outlined.Lock,
-                        iconColor = PluckPalette.Accept
-                    ) {
-                        SettingsActionItem(
-                            label = "Privacy Policy",
-                            description = "View our privacy policy"
-                        )
-                        SettingsActionItem(
-                            label = "Terms of Service",
-                            description = "View terms and conditions"
-                        )
-                        SettingsActionItem(
-                            label = "Data Management",
-                            description = "Manage your personal data"
-                        )
-                    }
+//                    // Privacy Section
+//                    SettingsSection(
+//                        title = "Privacy & Security",
+//                        icon = Icons.Outlined.Lock,
+//                        iconColor = PluckPalette.Accept
+//                    ) {
+//                        SettingsActionItem(
+//                            label = "Privacy Policy",
+//                            description = "View our privacy policy"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Terms of Service",
+//                            description = "View terms and conditions"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Data Management",
+//                            description = "Manage your personal data"
+//                        )
+//                    }
 
                     // About Section
                     SettingsInfoCallout()
