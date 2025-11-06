@@ -1121,7 +1121,7 @@ fun PLuckNavHost(
                         formError = "Provide a positive waitlist limit."
                         return@CreateEventScreen
                     }
-                    
+
                     val samplingCount = request.samplingCount.toIntOrNull()
                     if (samplingCount == null || samplingCount <= 0) {
                         formError = "Sampling count must be a positive number."

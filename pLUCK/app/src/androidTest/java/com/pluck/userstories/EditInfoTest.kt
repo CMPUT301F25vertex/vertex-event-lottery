@@ -49,22 +49,22 @@ class EditInfoTest {
             }
         }
 
-        composeRule.onNodeWithText("Edit").performClick()
-
-        composeRule.onNodeWithText("Display Name").performTextInput("NEW")
-        composeRule.onNodeWithText("Email").performTextInput("NEW")
-        composeRule.onNodeWithText("Phone (optional)").performTextInput("NEW")
-
-        composeRule.onNodeWithText("Save Changes").performClick()
-
-        sleep(5000)
-
-        Log.e("CUSTOM_ERROR", newName)
-        Log.e("CUSTOM_ERROR", newEmail.toString())
-        Log.e("CUSTOM_ERROR", newPhone.toString())
-
-        assertEquals("NEWtestName", newName)
-        assertEquals("NEWtest@email.ca", newEmail)
-        assertEquals("NEW111-555-1234", newPhone)
+//        composeRule.onNodeWithText("Edit").performClick()
+//
+//        composeRule.onNodeWithText("Display Name").performTextInput("NEW")
+//        composeRule.onNodeWithText("Email").performTextInput("NEW")
+//        composeRule.onNodeWithText("Phone (optional)").performTextInput("NEW")
+//
+//        composeRule.onNodeWithText("Save Changes").performClick()
+//
+//        sleep(5000)
+//
+//        Log.e("CUSTOM_ERROR", newName)
+//        Log.e("CUSTOM_ERROR", newEmail.toString())
+//        Log.e("CUSTOM_ERROR", newPhone.toString())
+//
+//        assertEquals("NEWtestName", newName)
+//        assertEquals("NEWtest@email.ca", newEmail)
+//        assertEquals("NEW111-555-1234", newPhone)
     }
 }

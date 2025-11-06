@@ -978,8 +978,7 @@ private fun CreateEventPickerField(
     isRequired: Boolean
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
