@@ -182,30 +182,30 @@ fun EventDetailScreen(
 
                     EventLotteryInfoCard(event = event)
 
-                    if (isEventOrganizer) {
-                        OrganizerInviteCard(
-                            inviteContact = inviteContact,
-                            onInviteContactChange = {
-                                inviteContact = it
-                                onClearInviteFeedback()
-                            },
-                            inviteType = inviteType,
-                            onInviteTypeChange = { type ->
-                                inviteType = type
-                                onClearInviteFeedback()
-                            },
-                            onSendInvite = {
-                                val trimmed = inviteContact.trim()
-                                if (trimmed.isNotBlank()) {
-                                    onClearInviteFeedback()
-                                    onInviteEntrant(trimmed, inviteType)
-                                }
-                            },
-                            isSending = inviteInProgress,
-                            feedbackMessage = inviteFeedbackMessage,
-                            isError = inviteFeedbackIsError
-                        )
-                    }
+//                    if (isEventOrganizer) {
+//                        OrganizerInviteCard(
+//                            inviteContact = inviteContact,
+//                            onInviteContactChange = {
+//                                inviteContact = it
+//                                onClearInviteFeedback()
+//                            },
+//                            inviteType = inviteType,
+//                            onInviteTypeChange = { type ->
+//                                inviteType = type
+//                                onClearInviteFeedback()
+//                            },
+//                            onSendInvite = {
+//                                val trimmed = inviteContact.trim()
+//                                if (trimmed.isNotBlank()) {
+//                                    onClearInviteFeedback()
+//                                    onInviteEntrant(trimmed, inviteType)
+//                                }
+//                            },
+//                            isSending = inviteInProgress,
+//                            feedbackMessage = inviteFeedbackMessage,
+//                            isError = inviteFeedbackIsError
+//                        )
+//                    }
                 }
 
                 // Bottom action section - fixed at bottom
