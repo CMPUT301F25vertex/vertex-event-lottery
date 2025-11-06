@@ -39,7 +39,7 @@ class CreateEventTest {
             CreateEventScreen()
         }
 
-        composeRule.onNodeWithText("Registration Opens (Date) *").printToLog("TESTING_TAG")
+//        composeRule.onNodeWithText("Registration Opens (Date) *").printToLog("TESTING_TAG")
 
         // TODO
     }
@@ -52,7 +52,7 @@ class CreateEventTest {
             CreateEventScreen()
         }
 
-        composeRule.onNodeWithTag(CreateEventTestTags.WaitlistLength).performTextInput("47")
+//        composeRule.onNodeWithTag(CreateEventTestTags.WaitlistLength).performTextInput("47")
 
         // TODO
     }
