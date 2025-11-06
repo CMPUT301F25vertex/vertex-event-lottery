@@ -112,7 +112,7 @@ class ScreensSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText("Event Title").assertIsDisplayed()
+        composeRule.onNodeWithText("Event Title *").assertIsDisplayed()
         composeRule.onAllNodesWithText("Create Event")[0].assertIsDisplayed()
     }
 

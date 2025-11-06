@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -121,6 +122,14 @@ data class CreateEventRequest(
     val samplingCount: String,
     val requiresGeolocation: Boolean = false
 )
+
+object CreateEventTestTags {
+    const val RegistrationOpensDate = "reg_open_date"
+    const val RegistrationOpensTime = "reg_open_time"
+    const val RegistrationClosesDate = "reg_open_date"
+    const val RegistrationClosesTime = "reg_open_time"
+    const val WaitlistLength = "waitlist_length"
+}
 
 @Composable
 fun CreateEventScreen(
@@ -518,7 +527,8 @@ fun CreateEventScreen(
                         icon = Icons.Outlined.Groups,
                         placeholder = "e.g., 40",
                         keyboardType = KeyboardType.Number,
-                        isRequired = true
+                        isRequired = true,
+                        modifier = Modifier.testTag(CreateEventTestTags.WaitlistLength)
                     )
 
                     CreateEventFormField(
@@ -846,7 +856,8 @@ private fun CreateEventFormField(
     placeholder: String,
     maxLines: Int = 1,
     keyboardType: KeyboardType = KeyboardType.Text,
-    isRequired: Boolean = false
+    isRequired: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -891,7 +902,7 @@ private fun CreateEventFormField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(modifier),
             placeholder = {
                 Text(
                     text = placeholder,
@@ -968,7 +979,8 @@ private fun CreateEventPickerField(
     isRequired: Boolean
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
