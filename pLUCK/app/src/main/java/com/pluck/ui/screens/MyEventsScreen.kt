@@ -124,8 +124,8 @@ fun MyEventsScreen(
     val filteredEvents = remember(events, selectedFilter) {
         when (selectedFilter) {
             MyEventsFilter.ALL -> events
-            MyEventsFilter.UPCOMING -> events.filter { it.status == EventStatus.UPCOMING }
-            MyEventsFilter.PAST -> events.filter { it.status == EventStatus.PAST }
+            MyEventsFilter.UPCOMING -> events.filter { it.event.date > LocalDate.now() }
+            MyEventsFilter.PAST -> events.filter { it.event.date < LocalDate.now() }
             MyEventsFilter.JOINED -> events.filter { it.historyStatus != null && !it.isCreatedByUser }
             MyEventsFilter.CREATED -> events.filter { it.isCreatedByUser }
         }
