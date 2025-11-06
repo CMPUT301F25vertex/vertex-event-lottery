@@ -221,13 +221,11 @@ private fun HomeScreenContent(
     )
     {
         Column {
-
             Box(
                 modifier = Modifier
                     .weight(0.8f)
                     .padding(
                         start = 15.dp,
-                        top = 15.dp,
                         end = 15.dp
                     )
             ){
@@ -237,10 +235,11 @@ private fun HomeScreenContent(
                         // Show hero and filters with empty state
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 16.dp),
+                                .fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             HomeHeroCard(
                                 userName = userName,
                                 onScanQRCode = onScanQRCode,
@@ -276,6 +275,8 @@ private fun HomeScreenContent(
                             ) {
                                 HomeEmptyState()
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                     else -> {
@@ -285,6 +286,10 @@ private fun HomeScreenContent(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
                             item {
                                 HomeHeroCard(
                                     userName = userName,
