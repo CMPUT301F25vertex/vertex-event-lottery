@@ -242,10 +242,7 @@ fun ShowQRCodeButton(
         Icon(
             Icons.Outlined.QrCode2,
             contentDescription = null,
-            modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("View QR Code")
     }
 
     if (showQRDialog) {
