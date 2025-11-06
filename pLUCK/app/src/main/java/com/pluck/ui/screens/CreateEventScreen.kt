@@ -248,7 +248,6 @@ fun CreateEventScreen(
             registrationStartTime != null &&
             registrationEndDate != null &&
             registrationEndTime != null &&
-            waitlistLimit.isNotBlank() &&
             samplingCount.isNotBlank() &&
             !posterUploadInProgress  // Wait for Cloudinary upload to complete before allowing submission
 
@@ -527,7 +526,7 @@ fun CreateEventScreen(
                         icon = Icons.Outlined.Groups,
                         placeholder = "e.g., 40",
                         keyboardType = KeyboardType.Number,
-                        isRequired = true,
+                        isRequired = false,
                         modifier = Modifier.testTag(CreateEventTestTags.WaitlistLength)
                     )
 
