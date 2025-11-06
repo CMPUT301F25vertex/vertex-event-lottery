@@ -1116,12 +1116,12 @@ fun PLuckNavHost(
                         return@CreateEventScreen
                     }
 
-                    val waitlistCapacity = request.waitlistLimit.toIntOrNull()
-                    if (waitlistCapacity == null || waitlistCapacity <= 0) {
+                    val waitlistCapacity = request.waitlistLimit.toIntOrDefault(Int.MAX_VALUE)
+                    if (waitlistCapacity <= 0) {
                         formError = "Provide a positive waitlist limit."
                         return@CreateEventScreen
                     }
-
+                    
                     val samplingCount = request.samplingCount.toIntOrNull()
                     if (samplingCount == null || samplingCount <= 0) {
                         formError = "Sampling count must be a positive number."
@@ -1802,4 +1802,12 @@ class PLuckNavigator(private val navController: NavHostController) {
     fun toQRScanner() = navController.navigate(PLuckDestination.QRScanner.route)
     fun toChosenEntrants(eventId: String) = navController.navigate(PLuckDestination.ChosenEntrants.createRoute(eventId))
     fun toEntrantLocationsMap(eventId: String) = navController.navigate(PLuckDestination.EntrantLocationsMap.createRoute(eventId))
+}
+
+fun String.toIntOrDefault(defaultValue: Int = 0): Int {
+    return try {
+        this.toInt()
+    } catch (e: NumberFormatException) {
+        defaultValue
+    }
 }
