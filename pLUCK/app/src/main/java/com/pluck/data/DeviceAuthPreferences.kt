@@ -36,8 +36,48 @@ class DeviceAuthPreferences(context: Context) {
         prefs.edit().putBoolean(KEY_AUTO_LOGIN, enabled).apply()
     }
 
+    /**
+     * Saves user profile data for pre-filling after sign-out
+     */
+    fun saveProfileData(displayName: String, email: String?, phoneNumber: String?) {
+        prefs.edit()
+            .putString(KEY_DISPLAY_NAME, displayName)
+            .putString(KEY_EMAIL, email)
+            .putString(KEY_PHONE_NUMBER, phoneNumber)
+            .apply()
+    }
+
+    /**
+     * Gets saved display name
+     */
+    fun getSavedDisplayName(): String? = prefs.getString(KEY_DISPLAY_NAME, null)
+
+    /**
+     * Gets saved email
+     */
+    fun getSavedEmail(): String? = prefs.getString(KEY_EMAIL, null)
+
+    /**
+     * Gets saved phone number
+     */
+    fun getSavedPhoneNumber(): String? = prefs.getString(KEY_PHONE_NUMBER, null)
+
+    /**
+     * Clears all saved profile data (used on account deletion)
+     */
+    fun clearProfileData() {
+        prefs.edit()
+            .remove(KEY_DISPLAY_NAME)
+            .remove(KEY_EMAIL)
+            .remove(KEY_PHONE_NUMBER)
+            .apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "pluck_device_auth"
         private const val KEY_AUTO_LOGIN = "auto_login_enabled"
+        private const val KEY_DISPLAY_NAME = "saved_display_name"
+        private const val KEY_EMAIL = "saved_email"
+        private const val KEY_PHONE_NUMBER = "saved_phone_number"
     }
 }
