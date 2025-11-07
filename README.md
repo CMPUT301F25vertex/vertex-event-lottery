@@ -1,14 +1,15 @@
-Must add these lines to your local.properties file
+# pLuck
+A top of the line event app featuring everything you'd expect and a full theme customizer
 
-CLOUDINARY_CLOUD_NAME=ds4pt6izy
+## Building
+1. Clone the repo
+2. Recieve a copy of goole-services.json and copy it into the folder pLuck/app, replacing the file that is already there with the same name
+3. Recieve a copy of the local.properties file, and place it into the folder pLuck, again replacing the file that is already there with the same name
+4. Launch android studio and build the target `app`
 
+## Wiki
+Are wiki can be accessed here: https://github.com/CMPUT301F25vertex/vertex-event-lottery/wiki
 
-CLOUDINARY_UPLOAD_PRESET=pluck_unsigned
-
-
-CLOUDINARY_ALLOW_PUBLIC_ID_OVERRIDE=false  
-
-also, get an api key for maps
-Google Maps API Key (get your own key from https://console.cloud.google.com/)
-
-MAPS_API_KEY = 
+## Credits
+Made by:
+Anant Gupta, Arsh Ahsan, Ahmed Sajid, Ayaad Sharif, Benjamin Bingham, and Gurbaaz Gill
