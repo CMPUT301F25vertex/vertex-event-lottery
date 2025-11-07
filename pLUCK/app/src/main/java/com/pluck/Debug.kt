@@ -1,3 +1,3 @@
 package com.pluck
 
-val DEBUG = false
+const val DEBUG = false
