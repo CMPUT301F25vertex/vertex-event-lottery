@@ -789,28 +789,7 @@ private fun PosterUploadSection(
                 Text("Remove Poster")
             }
         }
-
-        OutlinedTextField(
-            value = manualPosterUrl,
-            onValueChange = onManualPosterUrlChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poster URL") },
-            placeholder = { Text("https://example.com/poster.jpg") },
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PluckPalette.Secondary,
-                unfocusedBorderColor = PluckPalette.Primary.copy(alpha = 0.12f),
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = PluckPalette.Primary.copy(alpha = 0.02f)
-            )
-        )
-
-        Text(
-            text = "Recommended ratio 4:3, JPEG or PNG. Uploaded to Cloudinary CDN.",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = PluckPalette.Muted
-            )
-        )
+        
         if (!canUploadPoster) {
             Text(
                 text = "Poster uploads unavailable. Paste a direct URL instead.",
