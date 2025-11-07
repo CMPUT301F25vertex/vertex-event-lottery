@@ -10,8 +10,8 @@
  *
  * Navigation Flow:
  * - New users: DeviceLogin -> CreateAccountScreen -> HomeScreen
- * - Returning users (auto-login ON): DeviceLogin -> auto-navigate to HomeScreen (1 sec delay)
- * - Returning users (auto-login OFF): DeviceLogin -> WelcomeBackScreen -> HomeScreen
+ * - Returning users (auto-login ON): DeviceLogin -> WelcomeBackScreen (300ms) -> HomeScreen
+ * - Returning users (auto-login OFF): DeviceLogin -> WelcomeBackScreen -> HomeScreen (manual)
  */
 package com.pluck.navigation
 
@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,7 +62,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
-import com.pluck.DEBUG
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.DeviceAuthPreferences
@@ -73,7 +73,6 @@ import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.components.BottomNavBar
-import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.screens.CreateAccountScreen
 import com.pluck.ui.screens.CreateEventRequest
 import com.pluck.ui.screens.CreateEventScreen
@@ -234,7 +233,7 @@ fun PLuckNavHost(
                     profileUpdateMessage =
                         "Organizer access revoked. Your events have been closed. Submit an appeal if this was a mistake."
                     eventViewModel.loadEvents()
-                    if (DEBUG) Toast.makeText(
+                    Toast.makeText(
                         context,
                         "Organizer access revoked. Your events have been closed.",
                         Toast.LENGTH_LONG
@@ -270,25 +269,13 @@ fun PLuckNavHost(
                     currentUser = profile
                     val route = navController.currentBackStackEntry?.destination?.route
                     if (autoLoginEnabled && route == PLuckDestination.DeviceLogin.route) {
-                        // Add 1 second delay for smooth UX transition
-                        delay(1000)
+                        // Brief delay to show welcome screen before navigating
+                        delay(300)
                         navigator.toEventList(clearBackStack = true)
                     }
                 }
             }
         initializingSession = false
-    }
-
-    // This LaunchedEffect only triggers once on app start, not when toggle is changed
-    LaunchedEffect(initializingSession, currentUser) {
-        if (!initializingSession && autoLoginEnabled && currentUser != null) {
-            val route = navController.currentBackStackEntry?.destination?.route
-            if (route == PLuckDestination.DeviceLogin.route) {
-                // Add 1 second delay for smooth UX transition
-                delay(1000)
-                navigator.toEventList(clearBackStack = true)
-            }
-        }
     }
 
     LaunchedEffect(currentUser) {
@@ -316,10 +303,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(adminCheckError) {
         adminCheckError?.let { message ->
-            if (DEBUG) {
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
-
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             adminCheckError = null
 
             Log.e("ADMIN ERROR", message)
@@ -328,7 +312,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(notificationError) {
         notificationError?.let { message ->
-            if (DEBUG) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             notificationsViewModel.clearError()
 
             Log.e("NOTIFICATION ERROR", message)
@@ -337,9 +321,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(waitlistError) {
         waitlistError?.let { message ->
-            if (DEBUG) {
-                Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
-            }
+            Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
             waitlistViewModel.clearError()
 
             Log.e("WAITLIST ERROR", message)
@@ -348,7 +330,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(eventError) {
         eventError?.let { message ->
-            if (DEBUG) Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
             eventViewModel.clearError()
 
             Log.e("EVENT ERROR", message)
@@ -369,18 +351,26 @@ fun PLuckNavHost(
     ) {
         composable(PLuckDestination.DeviceLogin.route) {
             // Conditional screen based on user state
-            // Note: Returning users with auto-login enabled are auto-navigated
-            // to HomeScreen via LaunchedEffect (they never see this screen)
+            // Note: Returning users with auto-login enabled see WelcomeBackScreen briefly
+            // before auto-navigating to HomeScreen (300ms delay for smooth transition)
 
             val user = currentUser
             when {
                 // New user - show account creation
                 user == null -> {
+                    // Pre-fill with saved profile data if available
+                    val savedName = authPreferences.getSavedDisplayName()
+                    val savedEmail = authPreferences.getSavedEmail()
+                    val savedPhone = authPreferences.getSavedPhoneNumber()
+
                     CreateAccountScreen(
                         deviceId = deviceId,
                         isLoading = loginInProgress || initializingSession,
                         errorMessage = loginError,
                         autoLoginEnabled = autoLoginEnabled,
+                        initialDisplayName = savedName ?: "",
+                        initialEmail = savedEmail ?: "",
+                        initialPhoneNumber = savedPhone ?: "",
                         onAutoLoginToggle = { enabled ->
                             autoLoginEnabled = enabled
                             authPreferences.setAutoLoginEnabled(enabled)
@@ -406,8 +396,8 @@ fun PLuckNavHost(
                         }
                     )
                 }
-                // Returning user WITHOUT auto-login - show welcome back
-                !autoLoginEnabled -> {
+                // Returning user - show welcome back (with or without auto-login)
+                else -> {
                     @Suppress("KotlinConstantConditions")
                     WelcomeBackScreen(
                         userName = user.displayName,
@@ -474,10 +464,6 @@ fun PLuckNavHost(
             )
         ) { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EventDetail.EVENT_ID_ARG)
-            val resolvedEvent = remember(eventId, events, selectedEvent) {
-                val fromList = events.firstOrNull { it.id == eventId }
-                fromList ?: selectedEvent?.takeIf { it.id == eventId }
-            }
             val currentUserId = currentUser?.deviceId.orEmpty()
 
             LaunchedEffect(eventId) {
@@ -485,8 +471,9 @@ fun PLuckNavHost(
             }
 
             LaunchedEffect(eventId) {
-                if (eventId != null && resolvedEvent == null) {
-                    eventViewModel.loadEvent(eventId)
+                if (eventId != null) {
+                    // Use observeEvent for real-time updates to event data (waitlistCount, etc.)
+                    eventViewModel.observeEvent(eventId)
                 }
             }
 
@@ -496,19 +483,23 @@ fun PLuckNavHost(
                 }
             }
 
+            // Use selectedEvent directly for real-time updates, fallback to events list for initial load
+            val resolvedEvent = selectedEvent?.takeIf { it.id == eventId }
+                ?: events.firstOrNull { it.id == eventId }
+
             when {
                 resolvedEvent != null -> {
                     val isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                        userWaitlistStatus == WaitlistStatus.SELECTED ||
-                        userWaitlistStatus == WaitlistStatus.INVITED
+                            userWaitlistStatus == WaitlistStatus.SELECTED ||
+                            userWaitlistStatus == WaitlistStatus.INVITED
                     val isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val isEventOrganizer = currentUser?.let { profile ->
                         val organizerMatch = resolvedEvent.organizerId.isNotBlank() &&
-                            resolvedEvent.organizerId == profile.deviceId
+                                resolvedEvent.organizerId == profile.deviceId
                         val fallbackMatch = resolvedEvent.organizerId.isBlank() &&
-                            profile.displayName.isNotBlank() &&
-                            resolvedEvent.organizerName.equals(profile.displayName, ignoreCase = true)
+                                profile.displayName.isNotBlank() &&
+                                resolvedEvent.organizerName.equals(profile.displayName, ignoreCase = true)
                         organizerMatch || fallbackMatch
                     } ?: false
 
@@ -519,7 +510,7 @@ fun PLuckNavHost(
                         onJoinEvent = join@{ eventToJoin ->
                             val profile = currentUser
                             if (profile == null) {
-                                if (DEBUG) Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
                                 return@join
                             }
 
@@ -540,7 +531,7 @@ fun PLuckNavHost(
                                         locationResult.addOnSuccessListener { location ->
                                             if (location == null) {
                                                 // Location is MANDATORY - block join if unavailable
-                                                if (DEBUG) Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
                                                 return@addOnSuccessListener
                                             }
                                             scope.launch {
@@ -551,17 +542,20 @@ fun PLuckNavHost(
                                                     latitude = location.latitude,
                                                     longitude = location.longitude
                                                 ) {
+                                                    // Refresh user status and event data immediately
                                                     waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                                    if (DEBUG) Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
+                                                    eventViewModel.loadEvent(eventToJoin.id)
+                                                    waitlistViewModel.loadUserEventHistory(profile.deviceId)
+                                                    // Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         }.addOnFailureListener {
                                             // Location is MANDATORY - block join on failure
-                                            if (DEBUG) Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: SecurityException) {
                                         // Location permission MANDATORY - block join if denied
-                                        if (DEBUG) Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             } else {
@@ -574,8 +568,11 @@ fun PLuckNavHost(
                                         latitude = null,
                                         longitude = null
                                     ) {
+                                        // Refresh user status and event data immediately
                                         waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                        if (DEBUG) Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
+                                        eventViewModel.loadEvent(eventToJoin.id)
+                                        waitlistViewModel.loadUserEventHistory(profile.deviceId)
+                                        // Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }
@@ -595,7 +592,7 @@ fun PLuckNavHost(
                                     }
                                 }
                             } else {
-                                if (DEBUG) Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
                             }
                         },
                         onViewWaitlist = { eventToView ->
@@ -681,14 +678,14 @@ fun PLuckNavHost(
                         waitlistEntries = waitlistEntries,
                         chosenEntries = chosenEntries,
                         isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                            userWaitlistStatus == WaitlistStatus.SELECTED ||
-                            userWaitlistStatus == WaitlistStatus.INVITED,
+                                userWaitlistStatus == WaitlistStatus.SELECTED ||
+                                userWaitlistStatus == WaitlistStatus.INVITED,
                         isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED,
                         onBack = { navController.popBackStack() },
                         onJoinWaitlist = join@{
                             val profile = currentUser
                             if (profile == null) {
-                                if (DEBUG) Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
                                 return@join
                             }
 
@@ -709,7 +706,7 @@ fun PLuckNavHost(
                                         locationResult.addOnSuccessListener { location ->
                                             if (location == null) {
                                                 // Location is MANDATORY - block join if unavailable
-                                                if (DEBUG) Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
                                                 return@addOnSuccessListener
                                             }
                                             scope.launch {
@@ -720,16 +717,19 @@ fun PLuckNavHost(
                                                     latitude = location.latitude,
                                                     longitude = location.longitude
                                                 ) {
+                                                    // Refresh user status and event data immediately
                                                     waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                                                    eventViewModel.loadEvent(resolvedEvent.id)
+                                                    waitlistViewModel.loadUserEventHistory(profile.deviceId)
                                                 }
                                             }
                                         }.addOnFailureListener {
                                             // Location is MANDATORY - block join on failure
-                                            if (DEBUG) Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: SecurityException) {
                                         // Location permission MANDATORY - block join if denied
-                                        if (DEBUG) Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             } else {
@@ -742,7 +742,10 @@ fun PLuckNavHost(
                                         latitude = null,
                                         longitude = null
                                     ) {
+                                        // Refresh user status and event data immediately
                                         waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
+                                        eventViewModel.loadEvent(resolvedEvent.id)
+                                        waitlistViewModel.loadUserEventHistory(profile.deviceId)
                                     }
                                 }
                             }
@@ -751,7 +754,7 @@ fun PLuckNavHost(
                             val entryId = userWaitlistEntryId
                             val profile = currentUser
                             if (entryId == null) {
-                                if (DEBUG) Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
                                 return@leave
                             }
 
@@ -958,6 +961,15 @@ fun PLuckNavHost(
                             }
                         },
                         onSignOut = {
+                            // Save profile data before signing out for pre-filling
+                            currentUser?.let { user ->
+                                authPreferences.saveProfileData(
+                                    displayName = user.displayName,
+                                    email = user.email,
+                                    phoneNumber = user.phoneNumber
+                                )
+                            }
+
                             currentUser = null
                             loginError = null
                             profileUpdateMessage = null
@@ -977,6 +989,9 @@ fun PLuckNavHost(
                                 loginInProgress = true
                                 when (authenticator.deleteAccount()) {
                                     is DeviceAuthResult.Success -> {
+                                        // Clear saved profile data on account deletion
+                                        authPreferences.clearProfileData()
+
                                         currentUser = null
                                         loginError = null
                                         profileUpdateMessage = null
@@ -1302,7 +1317,7 @@ fun PLuckNavHost(
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val activeHistory = userEventHistory.filterNot { history ->
                         history.status == WaitlistStatus.CANCELLED ||
-                            history.status == WaitlistStatus.DECLINED
+                                history.status == WaitlistStatus.DECLINED
                     }
                     val historyByEventId = activeHistory.associateBy { it.event.id }
 
@@ -1395,8 +1410,8 @@ fun PLuckNavHost(
                     // Filter by organizerId first (most reliable), fallback to name comparison
                     events.filter { event ->
                         event.organizerId == organizerId ||
-                            (organizerName?.isNotBlank() == true &&
-                                event.organizerName.equals(organizerName, ignoreCase = true))
+                                (organizerName?.isNotBlank() == true &&
+                                        event.organizerName.equals(organizerName, ignoreCase = true))
                     }
                 }
             }
@@ -1597,8 +1612,8 @@ fun PLuckNavHost(
 
                 val waitingCount = waitlistEntries.count {
                     it.status == WaitlistStatus.WAITING ||
-                        it.status == WaitlistStatus.INVITED ||
-                        it.status == WaitlistStatus.SELECTED
+                            it.status == WaitlistStatus.INVITED ||
+                            it.status == WaitlistStatus.SELECTED
                 }
                 val availableSpots = (event.capacity - event.enrolled).coerceAtLeast(0)
                 val currentWave = if (event.samplingCount > 0) {
@@ -1751,7 +1766,7 @@ fun PLuckNavHost(
                                 displayName = currentUser?.displayName
                             ).onSuccess {
                                 isAdminDevice = true
-                                if (DEBUG) Toast.makeText(context, "Admin access granted.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Admin access granted.", Toast.LENGTH_LONG).show()
                                 showAdminRegistrationDialog = false
                                 adminRegistrationPassword = ""
                                 adminRegistrationError = null

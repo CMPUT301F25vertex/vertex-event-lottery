@@ -62,13 +62,16 @@ fun CreateAccountScreen(
     isLoading: Boolean,
     errorMessage: String?,
     autoLoginEnabled: Boolean,
+    initialDisplayName: String = "",
+    initialEmail: String = "",
+    initialPhoneNumber: String = "",
     onAutoLoginToggle: (Boolean) -> Unit,
     onCreateAccount: (displayName: String, email: String?, phoneNumber: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var displayName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf(initialDisplayName) }
+    var email by remember { mutableStateOf(initialEmail) }
+    var phoneNumber by remember { mutableStateOf(initialPhoneNumber) }
     val scrollState = rememberScrollState()
 
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
@@ -182,21 +185,21 @@ fun CreateAccountScreen(
                                     )
                                 )
                                 Text(
-                        text = "Sign in automatically next time you launch the app.",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = PluckPalette.Muted
-                        )
-                    )
-                }
-                Switch(
-                    checked = autoLoginEnabled,
-                    onCheckedChange = onAutoLoginToggle,
-                    modifier = Modifier.testTag(CreateAccountTestTags.AutoLoginToggle),
-                    enabled = !isLoading,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = PluckPalette.Primary
-                    )
+                                    text = "Sign in automatically next time you launch the app.",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = PluckPalette.Muted
+                                    )
+                                )
+                            }
+                            Switch(
+                                checked = autoLoginEnabled,
+                                onCheckedChange = onAutoLoginToggle,
+                                modifier = Modifier.testTag(CreateAccountTestTags.AutoLoginToggle),
+                                enabled = !isLoading,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = PluckPalette.Primary
+                                )
                             )
                         }
                     }
