@@ -67,6 +67,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -368,7 +369,8 @@ private fun EventDetailHeroCard(
                     ),
                     textAlign = TextAlign.Center,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("eventTitle")
                 )
                 Text(
                     text = "Hosted by ${event.organizerName}",
@@ -376,7 +378,8 @@ private fun EventDetailHeroCard(
                         color = PluckPalette.Muted,
                         fontWeight = FontWeight.Medium
                     ),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.testTag("eventOrganizer")
                 )
             }
         }
@@ -410,17 +413,20 @@ private fun EventDetailInfoSection(
             EventInfoRow(
                 icon = Icons.Outlined.Schedule,
                 label = event.dateLabel,
-                accentColor = PluckPalette.Secondary
+                accentColor = PluckPalette.Secondary,
+                modifier = Modifier.testTag("eventDate")
             )
             EventInfoRow(
                 icon = Icons.Outlined.LocationOn,
                 label = event.location,
-                accentColor = PluckPalette.Tertiary
+                accentColor = PluckPalette.Tertiary,
+                modifier = Modifier.testTag("eventLocation")
             )
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = "${event.enrolled}/${event.capacity} enrolled • ${event.remainingSpots} spots left",
-                accentColor = PluckPalette.Pink
+                accentColor = PluckPalette.Pink,
+                modifier = Modifier.testTag("eventCapacity")
             )
         }
     }
@@ -433,10 +439,11 @@ private fun EventDetailInfoSection(
 private fun EventInfoRow(
     icon: ImageVector,
     label: String,
-    accentColor: Color = PluckPalette.Secondary
+    accentColor: Color = PluckPalette.Secondary,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -505,7 +512,8 @@ private fun EventDetailDescriptionSection(
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = PluckPalette.Muted,
                     lineHeight = 22.sp
-                )
+                ),
+                modifier = Modifier.testTag("eventDescription")
             )
         }
     }
