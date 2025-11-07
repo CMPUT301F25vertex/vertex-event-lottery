@@ -443,15 +443,6 @@ fun ProfileScreen(
                             modifier = Modifier.testTag(ProfileScreenTestTags.DeleteAccountButton)
                         )
                     }
-
-                    Text(
-                        text = "Need help? Contact support@pluck.app",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = PluckPalette.Muted
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         }
