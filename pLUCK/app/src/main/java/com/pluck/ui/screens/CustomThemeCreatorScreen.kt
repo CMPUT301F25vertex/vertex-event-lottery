@@ -139,7 +139,7 @@ fun CustomThemeCreatorScreen(
             ) {
                 ThemeColorSection(
                     title = "Light Mode",
-                    description = "Light color scheme",
+                    description = "Controls surfaces and action colors when light mode is active.",
                     colors = listOf(
                         ColorItem("Background", lightBackground) {
                             editingColor = ColorField.LIGHT_BACKGROUND
@@ -158,7 +158,7 @@ fun CustomThemeCreatorScreen(
 
                 ThemeColorSection(
                     title = "Dark Mode",
-                    description = "Dark color scheme",
+                    description = "Tune the deep surfaces and highlight colors for dark mode.",
                     colors = listOf(
                         ColorItem("Background", darkBackground) {
                             editingColor = ColorField.DARK_BACKGROUND
