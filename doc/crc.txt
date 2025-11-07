@@ -103,7 +103,7 @@ Responsibility:
     Store User Information
     Store WaitList and Lottery configuration
     Store geolocation data
-    Track creation and ipdate/convert Timestamps
+    Track creation and update/convert Timestamps
 Collaborators:    
     Event
     Timestamp
@@ -365,8 +365,7 @@ Collaborators:
     PLuckDestination 
     DeviceAuthenticator 
     DeviceAuthPreferences 
-    ThemePreferences 
-    FirebaseAuth 
+    ThemePreferences  
     AdminAccessRepository 
     OrganizerAccessRepository 
     AppealRepository 
@@ -381,19 +380,8 @@ Collaborators:
     WaitlistEntry 
     WaitlistStatus 
     UserRole 
-    OrganizerStats 
-    MyEventItem 
+    OrganizerStats  
     EventStatus 
-    CreateEventRequest 
-    // All Screen Composable
-    BottomNavBar 
-    PlaceholderScreen 
-    RunDrawDialog 
-    LocationServices 
-    Context
-    Toast 
-    ThemeManager 
-    PluckTheme 
 
 // UI/Models
 
@@ -401,7 +389,7 @@ Class:
     EntrantProfile
 Responsibility:
     Represents the current user's identity within the UI layer
-    Stoers user-specific data and identifiers for app logic
+    Stores user-specific data and identifiers for app logic
     Stores ban/appeal flags with updated Timestamps
 Collaborators:
     Instant
@@ -432,7 +420,7 @@ Collaborators:
 Class:
     NotificationItem
 Responsibility:
-    Represents a singualr, user-facing notification in a list or feed.
+    Represents a singular, user-facing notification in a list or feed.
     Consolidates all data needed to render a notification card
     Stores invitation (Accept/Reject) status
 Collaborators:
@@ -487,7 +475,7 @@ Responsibility:
     Store theme metadata and predefined themes
     Store light mode color palette
     Store dark mode color palette
-    Conert theme to PluckColors for light/dark mode
+    Convert theme to PluckColors for light/dark mode
 Collaborators:
     PluckColors
     ContrastUtils
