@@ -43,30 +43,30 @@ class EventDetailScreenTest {
         )
     }
 
-//    @Test
-//    fun eventDetailScreen_displaysCorrectly() {
-//        composeRule.setContent {
-//            EventDetailScreen(
-//                event = fakeEvent,
-//                isUserOnWaitlist = false,
-//                isUserConfirmed = false,
-//                onJoinEvent = {}
-//            )
-//        }
-//
-//        // Wait if needed
-//        composeRule.waitForIdle()
-//
-//        // Add assertions to check if the screen is displayed correctly
-//        val expectedDate = fakeEvent.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
-//        composeRule.onRoot().printToLog("EVENT_UI")
-//        composeRule.onNodeWithTag("eventTitle").assertIsDisplayed()
-//        composeRule.onNodeWithTag("eventOrganizer").assertIsDisplayed()
-//        composeRule.onNodeWithText(expectedDate).assertIsDisplayed()
-//        composeRule.onNodeWithTag("eventLocation").assertIsDisplayed()
-//        composeRule.onNodeWithTag("eventCapacity").assertIsDisplayed()
-//        composeRule.onNodeWithTag("eventDescription").assertIsDisplayed()
-//    }
+    @Test
+    fun eventDetailScreen_displaysCorrectly() {
+        composeRule.setContent {
+            EventDetailScreen(
+                event = fakeEvent,
+                isUserOnWaitlist = false,
+                isUserConfirmed = false,
+                onJoinEvent = {}
+            )
+        }
+
+        // Wait if needed
+        composeRule.waitForIdle()
+
+        // Add assertions to check if the screen is displayed correctly
+        val expectedDate = fakeEvent.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+        composeRule.onRoot().printToLog("EVENT_UI")
+        composeRule.onNodeWithTag("eventTitle").assertIsDisplayed()
+        composeRule.onNodeWithTag("eventOrganizer").assertIsDisplayed()
+        composeRule.onNodeWithText(expectedDate).assertIsDisplayed()
+        composeRule.onNodeWithTag("eventLocation").assertIsDisplayed()
+        composeRule.onNodeWithTag("eventCapacity").assertIsDisplayed()
+        composeRule.onNodeWithTag("eventDescription").assertIsDisplayed()
+    }
 
 
     @Test
