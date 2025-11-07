@@ -91,7 +91,7 @@ Responsibility:
     Define folder paths for profile images and event posters
     Handle singleton lifecycle management
 Collaborators:
-    MediManager
+    MediaManager
     Context
 
 
@@ -133,7 +133,7 @@ Class:
     FirebaseUser
 Responsibility:
     Represent user profile data in Firestore format
-    Store User role (Entrant, Oranizer, Admin) and their contact info
+    Store User role (Entrant, Organizer, Admin) and their contact info
     Store profile image URL
     Track account status and update timestamps
 Collaborators:
@@ -164,7 +164,7 @@ Collaborators:
 
 
 Class:
-    WaitlistEntry 
+    WaitlistStatus 
 Responsibility:
     Define waitlist state (Waiting/ Invited/ Selected/ Accepted/ Declined/ Cancelled)
 Collaborators:
@@ -583,3 +583,25 @@ Collaborators:
     UserEventHistory
 
 
+Class:
+    PLuckNavigator
+Responsibility:
+    Provide type-safe navigation methods wrapping NavHostController
+    Navigate to specific screens with/without parameters
+Collaborators:
+    Navigate to specific screens with/without parameters
+
+Class:
+    PLuckDestination 
+Responsibility:
+    Define type-safe navigation routes for all app screens
+    Provide route strings and parameterized route generation
+Collaborators:
+
+
+
+Class:
+    EventStatus
+Responsibility:
+    Define event states (Upcoming/ Past/ Confirmed)
+Collaborators:
