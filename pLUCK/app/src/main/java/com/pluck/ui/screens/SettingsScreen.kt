@@ -30,9 +30,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -119,86 +121,109 @@ fun SettingsScreen(
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 contentAlignment = Alignment.TopCenter
             ) {
-                Surface(
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 460.dp)
+                    .zIndex(1f),
+                shape = RoundedCornerShape(36.dp),
+                color = PluckPalette.Surface,
+                tonalElevation = 0.dp,
+                shadowElevation = 18.dp,
+                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 460.dp)
-                        .zIndex(1f),
-                    shape = RoundedCornerShape(36.dp),
-                    color = PluckPalette.Surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 18.dp,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 28.dp, vertical = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(28.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 28.dp, vertical = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(28.dp)
+                    // Header
+                    SettingsHeader()
+
+                    // Notifications Section
+                    SettingsSection(
+                        title = "Notifications",
+                        icon = Icons.Outlined.Notifications,
+                        iconColor = PluckPalette.Secondary
                     ) {
-                        // Header
-                        SettingsHeader()
-
-                        // Notifications Section
-                        SettingsSection(
-                            title = "Notifications",
-                            icon = Icons.Outlined.Notifications,
-                            iconColor = PluckPalette.Secondary
-                        ) {
-                            SettingsToggleItem(
-                                label = "All Notifications",
-                                description = "Enable or disable all notifications",
-                                checked = notificationsEnabled,
-                                onCheckedChange = {
-                                    notificationsEnabled = it
-                                    notificationPrefs.setAllNotificationsEnabled(it)
-                                }
-                            )
-                            SettingsToggleItem(
-                                label = "Push Notifications",
-                                description = "Receive push notifications for updates",
-                                checked = pushNotifications,
-                                onCheckedChange = {
-                                    pushNotifications = it
-                                    notificationPrefs.setPushNotificationsEnabled(it)
-                                },
-                                enabled = notificationsEnabled
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            SettingsToggleItem(
-                                label = "Email Notifications",
-                                description = "Receive email summaries",
-                                checked = emailNotifications,
-                                onCheckedChange = {
-                                    emailNotifications = it
-                                    notificationPrefs.setEmailNotificationsEnabled(it)
-                                },
-                                enabled = notificationsEnabled
-                            )
-                        }
-
-                        // Appearance Section
-                        SettingsSection(
-                            title = "Appearance",
-                            icon = Icons.Outlined.Palette,
-                            iconColor = PluckPalette.Tertiary
-                        ) {
-                            SettingsActionItem(
-                                label = "Color Theme",
-                                description = "Choose your preferred color scheme",
-                                onClick = onNavigateToThemePicker
-                            )
-                            SettingsToggleItem(
-                                label = "Dark Mode",
-                                description = "Switch between light and dark theme",
-                                checked = darkModeEnabled,
-                                onCheckedChange = onDarkModeChange,
-                                enabled = true
-                            )
-                        }
+                        SettingsToggleItem(
+                            label = "All Notifications",
+                            description = "Enable or disable all notifications",
+                            checked = notificationsEnabled,
+                            onCheckedChange = {
+                                notificationsEnabled = it
+                                notificationPrefs.setAllNotificationsEnabled(it)
+                            }
+                        )
+                        SettingsToggleItem(
+                            label = "Push Notifications",
+                            description = "Receive push notifications for updates",
+                            checked = pushNotifications,
+                            onCheckedChange = {
+                                pushNotifications = it
+                                notificationPrefs.setPushNotificationsEnabled(it)
+                            },
+                            enabled = notificationsEnabled
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        SettingsToggleItem(
+                            label = "Email Notifications",
+                            description = "Receive email summaries",
+                            checked = emailNotifications,
+                            onCheckedChange = {
+                                emailNotifications = it
+                                notificationPrefs.setEmailNotificationsEnabled(it)
+                            },
+                            enabled = notificationsEnabled
+                        )
                     }
+
+                    // Appearance Section
+                    SettingsSection(
+                        title = "Appearance",
+                        icon = Icons.Outlined.Palette,
+                        iconColor = PluckPalette.Tertiary
+                    ) {
+                        SettingsActionItem(
+                            label = "Color Theme",
+                            description = "Choose your preferred color scheme",
+                            onClick = onNavigateToThemePicker
+                        )
+                        SettingsToggleItem(
+                            label = "Dark Mode",
+                            description = "Switch between light and dark theme",
+                            checked = darkModeEnabled,
+                            onCheckedChange = onDarkModeChange,
+                            enabled = true
+                        )
+                    }
+
+//                    // Privacy Section
+//                    SettingsSection(
+//                        title = "Privacy & Security",
+//                        icon = Icons.Outlined.Lock,
+//                        iconColor = PluckPalette.Accept
+//                    ) {
+//                        SettingsActionItem(
+//                            label = "Privacy Policy",
+//                            description = "View our privacy policy"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Terms of Service",
+//                            description = "View terms and conditions"
+//                        )
+//                        SettingsActionItem(
+//                            label = "Data Management",
+//                            description = "Manage your personal data"
+//                        )
+//                    }
+
+                    // About Section
+                    SettingsInfoCallout()
                 }
+            }
             }
         }
     }
@@ -407,6 +432,37 @@ private fun SettingsActionItem(
     }
 }
 
+@Composable
+private fun SettingsInfoCallout() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Secondary.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.16f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "pLUCK v1.0.0",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
+            )
+            Text(
+                text = "Made with care for fair event access",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Muted
+                )
+            )
+        }
+    }
+}
 
 @Preview(showBackground = true, widthDp = 420, heightDp = 920)
 @Composable

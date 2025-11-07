@@ -61,6 +61,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
+import com.pluck.DEBUG
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.DeviceAuthPreferences
@@ -72,6 +73,7 @@ import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.screens.CreateAccountScreen
 import com.pluck.ui.screens.CreateEventRequest
 import com.pluck.ui.screens.CreateEventScreen
@@ -232,7 +234,7 @@ fun PLuckNavHost(
                     profileUpdateMessage =
                         "Organizer access revoked. Your events have been closed. Submit an appeal if this was a mistake."
                     eventViewModel.loadEvents()
-                    Toast.makeText(
+                    if (DEBUG) Toast.makeText(
                         context,
                         "Organizer access revoked. Your events have been closed.",
                         Toast.LENGTH_LONG
@@ -314,7 +316,10 @@ fun PLuckNavHost(
 
     LaunchedEffect(adminCheckError) {
         adminCheckError?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            if (DEBUG) {
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+
             adminCheckError = null
 
             Log.e("ADMIN ERROR", message)
@@ -323,7 +328,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(notificationError) {
         notificationError?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            if (DEBUG) Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             notificationsViewModel.clearError()
 
             Log.e("NOTIFICATION ERROR", message)
@@ -332,7 +337,9 @@ fun PLuckNavHost(
 
     LaunchedEffect(waitlistError) {
         waitlistError?.let { message ->
-            Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
+            if (DEBUG) {
+                Toast.makeText(context, "Waitlist Error: $message", Toast.LENGTH_LONG).show()
+            }
             waitlistViewModel.clearError()
 
             Log.e("WAITLIST ERROR", message)
@@ -341,7 +348,7 @@ fun PLuckNavHost(
 
     LaunchedEffect(eventError) {
         eventError?.let { message ->
-            Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
+            if (DEBUG) Toast.makeText(context, "Event Error: $message", Toast.LENGTH_LONG).show()
             eventViewModel.clearError()
 
             Log.e("EVENT ERROR", message)
@@ -512,7 +519,7 @@ fun PLuckNavHost(
                         onJoinEvent = join@{ eventToJoin ->
                             val profile = currentUser
                             if (profile == null) {
-                                Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
+                                if (DEBUG) Toast.makeText(context, "Please sign in to join events.", Toast.LENGTH_LONG).show()
                                 return@join
                             }
 
@@ -533,7 +540,7 @@ fun PLuckNavHost(
                                         locationResult.addOnSuccessListener { location ->
                                             if (location == null) {
                                                 // Location is MANDATORY - block join if unavailable
-                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                if (DEBUG) Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
                                                 return@addOnSuccessListener
                                             }
                                             scope.launch {
@@ -545,16 +552,16 @@ fun PLuckNavHost(
                                                     longitude = location.longitude
                                                 ) {
                                                     waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                                    Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
+                                                    if (DEBUG) Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         }.addOnFailureListener {
                                             // Location is MANDATORY - block join on failure
-                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
+                                            if (DEBUG) Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: SecurityException) {
                                         // Location permission MANDATORY - block join if denied
-                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
+                                        if (DEBUG) Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             } else {
@@ -568,7 +575,7 @@ fun PLuckNavHost(
                                         longitude = null
                                     ) {
                                         waitlistViewModel.checkUserWaitlistStatus(eventToJoin.id, profile.deviceId)
-                                        Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
+                                        if (DEBUG) Toast.makeText(context, "You just joined the waitlist!", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }
@@ -588,7 +595,7 @@ fun PLuckNavHost(
                                     }
                                 }
                             } else {
-                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                                if (DEBUG) Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
                             }
                         },
                         onViewWaitlist = { eventToView ->
@@ -681,7 +688,7 @@ fun PLuckNavHost(
                         onJoinWaitlist = join@{
                             val profile = currentUser
                             if (profile == null) {
-                                Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
+                                if (DEBUG) Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
                                 return@join
                             }
 
@@ -702,7 +709,7 @@ fun PLuckNavHost(
                                         locationResult.addOnSuccessListener { location ->
                                             if (location == null) {
                                                 // Location is MANDATORY - block join if unavailable
-                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
+                                                if (DEBUG) Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
                                                 return@addOnSuccessListener
                                             }
                                             scope.launch {
@@ -718,11 +725,11 @@ fun PLuckNavHost(
                                             }
                                         }.addOnFailureListener {
                                             // Location is MANDATORY - block join on failure
-                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
+                                            if (DEBUG) Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: SecurityException) {
                                         // Location permission MANDATORY - block join if denied
-                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
+                                        if (DEBUG) Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             } else {
@@ -744,7 +751,7 @@ fun PLuckNavHost(
                             val entryId = userWaitlistEntryId
                             val profile = currentUser
                             if (entryId == null) {
-                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
+                                if (DEBUG) Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
                                 return@leave
                             }
 
@@ -1744,7 +1751,7 @@ fun PLuckNavHost(
                                 displayName = currentUser?.displayName
                             ).onSuccess {
                                 isAdminDevice = true
-                                Toast.makeText(context, "Admin access granted.", Toast.LENGTH_LONG).show()
+                                if (DEBUG) Toast.makeText(context, "Admin access granted.", Toast.LENGTH_LONG).show()
                                 showAdminRegistrationDialog = false
                                 adminRegistrationPassword = ""
                                 adminRegistrationError = null
