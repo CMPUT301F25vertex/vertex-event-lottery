@@ -4,7 +4,7 @@ Responsibility:
     Initialize and manage app cycle
     Load and manage user theme preferences using interactions
     Initialize and display Navigation Host
-    coordinate between theme changes/storage and UI
+    Coordinate between theme changes/storage and UI
 Collaborators:
     ThemePreferences
     ThemeManager
@@ -213,7 +213,7 @@ Collaborators:
     FirebaseFirestore 
     OrganizerAppeal 
     AppealStatus 
-    UserRolde
+    UserRole
 
 
 Class:
@@ -221,16 +221,14 @@ Class:
 Responsibility:
     Upload profile images and posters to Cloudinary
     Update Firestore with generated image URLs
-    Organize uploads into folders (profiles/, events/)
-    Track upload progress with error handling adn cancellation
+    Organize uploads into folders (profiles / events)
+    Track upload progress with error handling and cancellation
     Initialize Cloudinary MediaManager
 Collaborators:
     FirebaseFirestore
     MediaManager 
-    CloudinaryConfig 
-    FirebaseFirestore 
+    CloudinaryConfig  
     
-
 
 Class:
     CsvExportRepository
@@ -252,7 +250,7 @@ Responsibility:
     Creates new Events and updates in real-time
     Retieve Available Events (open Waitlist)
     Retrieves Events with applied filters
-    handle soft deletes and hard deletes
+    Handle soft deletes and hard deletes
     Maintain and update Waitlist counts
     Convert between Event and FirebaseEvent models
 Collaborators:
