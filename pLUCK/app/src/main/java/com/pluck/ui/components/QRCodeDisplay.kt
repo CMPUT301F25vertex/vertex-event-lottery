@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.pluck.DEBUG
 import com.pluck.ui.util.QRCodeGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -164,13 +165,13 @@ fun QRCodeDialog(
                                     val success = saveQRCodeToGallery(context, bitmap, eventTitle)
                                     isDownloading = false
                                     if (success) {
-                                        Toast.makeText(
+                                        if (DEBUG) Toast.makeText(
                                             context,
                                             "QR Code saved to gallery",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } else {
-                                        Toast.makeText(
+                                        if (DEBUG) Toast.makeText(
                                             context,
                                             "Failed to save QR Code",
                                             Toast.LENGTH_SHORT
