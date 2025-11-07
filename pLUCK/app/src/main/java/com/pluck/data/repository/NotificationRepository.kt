@@ -180,7 +180,7 @@ class NotificationRepository(
                     throw ex
                 }
             }
-            docRef.delete().await()
+
             return AcceptNotificationResult.AlreadyParticipating
         }
 
@@ -220,7 +220,7 @@ class NotificationRepository(
                 throw ex
             }
         }
-        docRef.delete().await()
+
         AcceptNotificationResult.Joined
     }
 
@@ -245,7 +245,6 @@ class NotificationRepository(
                 throw ex
             }
         }
-        docRef.delete().await()
     }
 
     suspend fun markRead(notificationId: String): Result<Unit> = runCatching {

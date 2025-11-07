@@ -73,6 +73,7 @@ import com.pluck.ui.model.Event
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.screens.CreateAccountScreen
 import com.pluck.ui.screens.CreateEventRequest
 import com.pluck.ui.screens.CreateEventScreen
