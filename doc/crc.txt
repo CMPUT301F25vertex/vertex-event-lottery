@@ -1,318 +1,599 @@
 Class:
-    User
+    MainActivity
 Responsibility:
-    Represents a user account
-    Stores user's information
-    Handles Notifications preferences
-    Unique device identity
+    Initialize and manage app cycle
+    Load and manage user theme preferences using interactions
+    Initialize and display Navigation Host
+    coordinate between theme changes/storage and UI
 Collaborators:
-    Event
-    WaitList
-    Notifications
+    ThemePreferences
+    ThemeManager
+    PLuckNavHost
+    PluckTheme
 
 
 Class:
-    Entrant (extends User)
+    PLuckApp
 Responsibility:
-    Views available Events and history
-    Scans QRcodes to explore Events
-    Joins/Leaves WaitList
-    Recieves Event Notifications
-    Accepts/Declines invitations
+    Entry point for global application startup
+    Configure Cloudinary SDK for image uploads
+    Provides a foundation for future application-wide initializations 
 Collaborators:
-    Event
-    WaitList
-    Notifications
-    QRcodes
+    CloudinaryConfig
 
 
 Class:
-    Organizer (extends User)
+    DeviceAuthenticator
 Responsibility:
-    Creates Events (incl QRcodes and Poster)
-    Manages WaitList
-    Condycts Lucky draw
-    Sends out Notifications
+    Manage device-based authentication flow
+    Register new users or sign in existing users
+    Create and update user profiles in Firestore
+    Handles data access/deletion across multiple repositories
+    Resolve and provide device IDs
 Collaborators:
-    Event
-    WaitList
-    Notifications
-    QRcodes
-    Geolocation
-    Lottery
-    Images
-    Invitation
+    FirebaseAuth
+    FirebaseFirestore
+    DeviceIdProvider 
+    EventRepository 
+    WaitlistRepository 
+    NotificationRepository
+    AdminAccessRepository 
+    DeviceAuthPreferences
+    EntrantProfile 
 
 
 Class:
-    Admin (extends User)
+     DeviceAuthPreferences
 Responsibility:
-    Browse Events / Users (E & O) / Images
-    Remove Events / Users (E & O) / Images
-    Remove Organizers that violate app policy 
-    Review Notification logs
+    Store and retrieve auto-login preference
+    Be consistent with authentication preferences across sessions
+    Manage SharedPreferences for authentication settings
 Collaborators:
-    Event
-    Entrant
-    Organizer
-    Notifications
-    Images
-
-
-Class: 
-    Event
-Responsibility:
-    Store Event Details
-    Maintain WaitList registrations
-    Follow Geolocation settings
-    Contain QRcode and poster
-    Notify Final Draw Entrants
-Collaborators:
-    Entrant
-    Organizer
-    Admin
-    WaitList
-    Lottery
-    Notifications
-    Invitation
-    Geolocation
-    QRcode
-    Images
-
-
-Class: 
-    WaitList
-Responsibility:
-    Follow registration period
-    Maintain Entrant's registration for Events
-    Track Entrant's location
-    Provide Dataset to Lottery Draw
-    Enforcing Limits
-Collaborators:
-    Event
-    Entrant
-    Organizer
-    Lottery
-    Geolocation
+    Context
 
 
 Class:
-    Lottery
+    DeviceIdProvider
 Responsibility:
-    Randomly select Attendees from WaitList
-    Draw a replacement for each rejection
-    Track selected & non-selected Entrants
+    Retrieve/Generate stable unique device identifiers
+    Ensure device ID consistency across app sessions
 Collaborators:
+    Context
+
+
+Class:
+    NotificationPreferences
+Responsibility:
+    Store and retrieve notification preference settings
+    Control push notification preferences
+    Control email notification preferences
+    Control entrant/organizer notification preferences
+    Determines if a notification should be sent based on user preferences.
+    Persist notification settings across sessions
+Collaborators:
+    Context
+    NotificationType
+
+
+Class:
+    NotificationType
+Responsibility:
+    Provide type-safe notification categorization
+Collaborators:
+
+
+Class:
+    CloudinaryConfig
+Responsibility:
+    Initialize Cloudinary MediaManager SDK
+    Provide Cloudinary configuration
+    Generate public IDs/URLs for uploaded images
+    Define folder paths for profile images and event posters
+    Handle singleton lifecycle management
+Collaborators:
+    MediManager
+    Context
+
+
+Class:
+     FirebaseEvent
+Responsibility:
+    Represent event data in Firestore format
+    Store Event details
+    Store User Information
+    Store WaitList and Lottery configuration
+    Store geolocation data
+    Track creation and ipdate/convert Timestamps
+Collaborators:    
     Event
-    WaitList
-    Organizer
-    Entrant
+    Timestamp
+    DrawStatus
+
+
+Class:
+    EventInvitation
+Responsibility:
+    Represent event invitations in Firestore format
+    Store invitation details
+    Track invitation status and update timestamps
+    Support wave-based lottery draws 
+Collaborators:
+    Timestamp 
+    InvitationStatus
+
+
+Class:
+    InvitationStatus
+Responsibility:
+    Define invitation states (Pending, Accepted / Declined / Expired)
+Collaborators:
+
+
+Class:
+    FirebaseUser
+Responsibility:
+    Represent user profile data in Firestore format
+    Store User role (Entrant, Oranizer, Admin) and their contact info
+    Store profile image URL
+    Track account status and update timestamps
+Collaborators:
+    Timestamp
+    UserRole
+
+
+Class:
+    UserRole
+Responsibility:
+    Defines User Status (Entrant / Organizer / Admin)
+Collaborators:
+
+
+Class:
+    FirebaseWaitlistEntry
+Responsibility:
+    Represent waitlist entry data in Firestore format
+    Store entrant information
+    Store entrant's waitlist status, queue position and geolocation data (optional)
+    Track join, selection, and declined timestamps
+    Convert between Firebase Timestamp and LocalDate
+    Convert to UI WaitlistEntry model
+Collaborators:
+    WaitlistEntry 
+    Timestamp 
+    WaitlistStatus 
+
+
+Class:
+    WaitlistEntry 
+Responsibility:
+    Define waitlist state (Waiting/ Invited/ Selected/ Accepted/ Declined/ Cancelled)
+Collaborators:
+
+
+Class:
+    OrganizerAppeal
+Responsibility:
+    Represent organizer appeal data in Firestore format
+    Store appeal details
+    Track appeal status
+    Store admin review information
+Collaborators:
+    Timestamp 
+    AppealStatus
+
+
+Class:
+    AppealStatus
+Responsibility:
+    Define appeal states (Pending/ Approved/ Rejected)
+Collaborators:
+
+
+Class:
+    AdminAccessRepository
+Responsibility:
+    Verify if device is registered as admin
+    Register new admin devices with password (validated)
+    Remove Admin devices
+    Store Admin metadata and convert Firestore documents to AdminConfig
+Collaborators:
+    FirebaseFirestore 
+    AdminConfig 
+
+
+Class:
+    AppealRepository
+Responsibility:
+    Manages full lifecycle of organizer appeals
+    Validate user ban status before appeal submission
+    Retrieve all pending appeals for admin view
+    Reject and Approve appeals (reinstate access)
+    Observe real-time appeal updates
+Collaborators:
+    FirebaseFirestore 
+    OrganizerAppeal 
+    AppealStatus 
+    UserRolde
+
+
+Class:
+    CloudinaryUploadRepository
+Responsibility:
+    Upload profile images and posters to Cloudinary
+    Update Firestore with generated image URLs
+    Organize uploads into folders (profiles/, events/)
+    Track upload progress with error handling adn cancellation
+    Initialize Cloudinary MediaManager
+Collaborators:
+    FirebaseFirestore
+    MediaManager 
+    CloudinaryConfig 
+    FirebaseFirestore 
     
 
-Class: 
-    Images
+
+Class:
+    CsvExportRepository
 Responsibility:
-    Allow Organizers to upload/update event information
-    Browsed/Removed by Admin
-    Browsed by Entrants
-Collaborators: 
-    Organizer
-    Admin
+    Manages the creation and saving of CSV files
+    Takes a list of WaitlistEntry objects and formats them into a CSV string.
+Collaborators:
+    Event
+    WaitlistStatus
+    MediaStore
+    WaitlistEntry
+    FileProvider 
+
+
+Class:
+    EventRepository
+Responsibility:
+    Manages the complete lifecycle of events in Firestore
+    Creates new Events and updates in real-time
+    Retieve Available Events (open Waitlist)
+    Retrieves Events with applied filters
+    handle soft deletes and hard deletes
+    Maintain and update Waitlist counts
+    Convert between Event and FirebaseEvent models
+Collaborators:
+    FirebaseFirestore
+    FirebaseEvent
     Event
 
 
 Class:
-    QRcode
+    InvitationRepository
 Responsibility:
-    Link each Event to a unique QRcode
-    Validate scanned codes
-    Encoed Event information
+    Run lottery draws from final waitlist
+    Create event invitations for selected users
+    Handles the logic for a user to accept an invitation
+    Handles the logic for a user to decline an invitation
+    Support wave-based lottery system
+    Update waitlist and event statuses atomically
+Collaborators:
+    FirebaseFirestore 
+    FirebaseEvent
+    EventInvitation 
+    InvitationStatus 
+    WaitlistStatus 
+
+
+Class:
+    NotificationRepository
+Responsibility:
+    Send event invitations via email or phone
+    Accept / Decline invitation notifications
+    Integrate with waitlist on accept/decline
+    Delete notifications for users (on account deletion)
+    Delete notifications for events (on event deletion)
+    Convert Firebase notifications to domain models
+Collaborators:
+    WaitlistRepository 
+    EventRepository 
+    Firebasefirestore
+    EntrantProfile
+    NotificationItem
+    NotificationCategory
+    WaitlistStatus
+    InviteContactType
+    FirebaseNotification
+
+Class:
+    OrganizerAccessRepository
+Responsibility:
+    Manages the process of registering users as organizers
+    Validate user registration (ban / duplicates)
+    Manages the process of downgrading organizers to entrants
+    Delete all events when downgrading organizer
+    Update user roles in Firestore in real-time
+Collaborators:
+    FirebaseFirestore 
+    UserRole 
+
+
+Class:
+    WaitlistRepository
+Responsibility:
+    Manages all user interactions with an event's waitlist and enrollment process.
+    Join / Leave Event waitlists
+    Accept / Decline Lottery invitations
+    Remove selected Entrants from waitlist
+    Run lottery draws and select random entrants
+    Draw replacement entrants for declined spots    
+    Notify non-chosen entrants after lottery
+    Send custom notifications to entrants
+    Update entrant display names across waitlists (cancelling non-responsive)
+    After account deletion, purge all waitlist entries for a user
+    After event deletion, purge all waitlist entries for an event 
+    Retrieve and calculate waitlist counts
+Collaborators:
+    FirebaseFirestore 
+    FirebaseWaitlistEntry 
+    EventRepository 
+    WaitlistEntry 
+    WaitlistStatus
+    Event
+
+
+Class:
+    UserRepository
+Responsibility:
+    Retrieve all users from Firestore by role
+    Retrieve a single user by ID
+    Delete user profiles
+    Remove organizer role and ban users
+    Convert Firestore documents to FirebaseUser models
+Collaborators:
+    FirebaseFirestore
+    FirebaseUser
+    UserRole
+
+
+Class:
+    PLuckNavHost
+Responsibility:
+    Acts as the central navigation controller for the entire application
+    Manage navigation state and back stack via PLuckNavigator
+    Manage all Viewmodel / local UI and session states
+    Observe real-time profile changes & Waitlist updates
+    Load and persist theme preferences (handle changes)
+    Verify and provide admin dashboard access
+    Manages all Account and Event operations
+    Request location services for geolocation-required events
+    Capture user location when joining events
+Collaborators:
+    NavHostController 
+    PLuckNavigator 
+    PLuckDestination 
+    DeviceAuthenticator 
+    DeviceAuthPreferences 
+    ThemePreferences 
+    FirebaseAuth 
+    AdminAccessRepository 
+    OrganizerAccessRepository 
+    AppealRepository 
+    EventRepository
+    EventViewModel 
+    WaitlistViewModel 
+    NotificationsViewModel 
+    AdminViewModel 
+    EntrantProfile 
+    Event 
+    NotificationItem     
+    WaitlistEntry 
+    WaitlistStatus 
+    UserRole 
+    OrganizerStats 
+    MyEventItem 
+    EventStatus 
+    CreateEventRequest 
+    // All Screen Composable
+    BottomNavBar 
+    PlaceholderScreen 
+    RunDrawDialog 
+    LocationServices 
+    Context
+    Toast 
+    ThemeManager 
+    PluckTheme 
+
+// UI/Models
+
+Class:
+    EntrantProfile
+Responsibility:
+    Represents the current user's identity within the UI layer
+    Stoers user-specific data and identifiers for app logic
+    Stores ban/appeal flags with updated Timestamps
+Collaborators:
+    Instant
+    UserRole
+    PluckNavHost
+    
+
+Class:
+    DrawStatus
+Responsibility:
+    Define draw states (Pending/Completed/Cancelled)
+    Provide type-safe draw status categorization
+Collaborators:
+    
+
+Class:
+    Event
+Responsibility:
+    Represents a single event within the application's UI layer
+    Store event Event/Organizer data
+    Compute Lottery draws and update
+Collaborators:
+    DrawStatus
+    LocalDateTime
+    DateTimeFormatter
+
+
+Class:
+    NotificationItem
+Responsibility:
+    Represents a singualr, user-facing notification in a list or feed.
+    Consolidates all data needed to render a notification card
+    Stores invitation (Accept/Reject) status
+Collaborators:
+    FirebaseNotification
+    NotificationCategory
+    NotificationButtons
+    NotificationStatus
+    InviteContactType
+
+
+Class:
+    NotificationCategory
+Responsibility:
+    Define selcetion category
+    Define daadline category
+    Define waitlist/replacement category 
+    Provide default accent color for each category
+Collaborators:
+    NotificationItem
+
+
+Class:
+    NotificationStatus 
+Responsibility:
+    Define notification read/unread state
+    Provide type-safe read status categorization
+Collaborators:
+    NotificationItem
+
+
+Class:
+    NotificationButtons
+Responsibility:
+    Provides a simple, immutable container of boolean flags 
+    Defines visibility of the CTA buttons set
+Collaborators:
+    NotificationItem
+
+
+Class:
+    InviteContactType
+Responsibility:
+    Specifies the method used for a direct invitation
+    Provide type-safe contact method categorization
+Collaborators:
+    NotificationItem
+
+
+Class:
+    CustomTheme 
+Responsibility:
+    Store theme metadata and predefined themes
+    Store light mode color palette
+    Store dark mode color palette
+    Conert theme to PluckColors for light/dark mode
+Collaborators:
+    PluckColors
+    ContrastUtils
+    Color
+
+
+Class:
+    PluckTheme
+Responsibility:
+    Retrieve and convert CustomTheme to PluckColors
+    Calculate contrast-safe "on" colors and ensureContrast
+    Create material color scheme and apply theme
+Collaborators:
+    ThemeManager
+    CustomTheme
+    PluckColors
+
+
+Class:
+    PluckColors
+Responsibility:
+    Store color palette
+    Store isDark flag for theme mode
+Collaborators:
+    Color
+
+
+Class:
+    ThemeManager 
+Responsibility:
+    Store and Retrieve themes by ID
+    Provide all predefined themes
+Collaborators:
+    CustomTheme
+
+
+Class:
+    ThemePreferences
+Responsibility:
+    Persist and retrieve dark mode setting
+    Persist and retrieve selected theme ID
+    Clear custom theme and reset to default
+Collaborators:
+    CustomTheme
+
+
+Class:
+    AdminViewModel
+Responsibility:
+    Manages all Admin dashboard states
+    Observe organizers and appeals in real-time
+    Delete events, profiles, and images with cleanup
+    Revoke organizer privileges and close their events
+Collaborators:
+    EventRepository
+    UserRepository
+    AppealRepository
+    NotificationRepository 
+    FirebaseFirestore
+
+
+Class:
+    EventViewModel 
+Responsibility:
+    Manage all Event states
+    Observe events and specific event in real-time
+    Create, update, and delete events
+    Run lottery draw and update draw status
 Collaborators:
     Event
-    Organizer
-    Entrant
+    EventRepository
+    WaitlistViewModel
+
 
 Class:
-    Notification
+    NotificationsViewModel 
 Responsibility:
-    Represent notification message data
-    Notify Entrants about Selection (Won/Lost)
-    Allow Entrants to Accept/Decline Invitation
+    Manage all Notification states
+    Observe notifications in real-time for a user profile
+    Track processing states to prevent duplicate actions
+    Send event invitations via email/phone with feedback
+    Handle invitation/notification logic
 Collaborators:
+    NotificationRepository
+    EntrantProfile 
+    NotificationItem
+    AcceptNotificationResult 
+
+
+Class:
+    WaitlistViewModel 
+Responsibility:
+    Manage all Waitlist states
+    Observe waitlist and chosen entries in real-time
+    Handle waitlist joins/leaves and run draws
+    Export chosen entrants to csv
+    Notify non-chosen entrants
+    Check and refresh user waitlist membership
+Collaborators:
+    WaitlistRepository
+    CsvExportRepository
     Event
-    Entrant
-    Organizer
-    Lottery
-    Invitation
+    WaitlistEntry
+    WaitlistStatus
+    UserEventHistory
 
 
-Class:
-    Geolocation
-Responsibility:
-    Store Event location
-    Enable/Disable Entrant tracking
-    Verify user location during registration
-Collaborators:
-    Event
-    Entrant
-    Organizer
-    WaitList
-
-
-Class:
-    Invitation
-Responsibility:
-    Contains all the Lottey Winners  
-    Invites Entrants to attend the Event 
-    Tracks Invitation status (accepted / declined)
-Collaborators:
-    Event
-    Lotttery
-    Entrant
-    Organizer
-
-
-Class:
-    Database
-Responsibility:
-    Store and Maintain all App data
-    Interface with Firebase
-    Sore Notifications history
-Collaborators:
-    Event
-    User
-    Images
-    NotificationLog
-
-
-Class:
-    NotificationLog
-Responsibility:
-    Store all Notifications sent out
-    Store Notification Data ( Time, Content )
-    Allow Filter & Search
-Collaborators:
-    Notification
-    Filters
-
-
-Class:
-    Filter
-Responsibility:
-    Manage Filter parameters (preferences)
-    Filter Events based on User's preferances
-Collaborators:
-    Events
-    Entrant
-    Search
-
-
-Class:
-    Export
-Responsibility:
-    export data by converting and generating CSV file
-Collaborators:
-    Event
-    Entrant
-    Organizer
-    WaitList
-    Invitation
-
-
-Class:
-    ItemBar
-Responsibility:
-    Represents preview of specific types of items
-    Expand for Full Details
-Collaborators:
-    Entrant
-    Event
-    MenuItem
-
-
-Class:
-    Search
-Responsibility:
-    Search on Events based on user's preferances
-    Must work with Filter
-    Queries data from Firebase and outputs results
-Collaborators:
-    Event
-    Entrant
-    Filter
-    SearchBar
-    Database
-
-
-Class:
-    PopUp
-Responsibility:
-    Represents a pop-up in the app
-    Displays Action Messages
-    Prompts Confirmations for important selections
-Collaborators:
-    User - Entrant, Organizer, Admin
-    Event
-    Notification
-    Database
-
-
-Class:
-    SearchBar
-Responisibility:
-    Triggers Search Operation
-    Displays Search Sectin on the App
-Collaborators:
-    Search
-    Database
-    TextField
-
-
-Class:
-    MenuItem
-Responsibility:
-    Represents a menu item on the screen
-    Handles menu item selection
-    Can contain buttons / controls
-    Execute selection operation
-Collaborators:
-    User - Entrant, Organizer, Admin
-    MenuList
-    Event
-    Notification
-
-
-Class:
-    MenuList
-Responsibility:
-    Represent a list of items in a menu
-    Can contain several MenuItems
-Collaborators:
-    User - Entrant, Organizer, Admin
-    MenuItem
-
-
-Class:
-    TextField
-Responsibility:
-    Represent a text field on the screen
-    Contains immutable text
-    Can change depending on what text to show
-Collaborators:
-    User - Entrant, Organizer, Admin
-    Popup
-    SearchBar
-    Notification
-
-
-Class:
-    AdminConsole
-Responsibility:
-    Provide control to administrators
-Collaborators:
-    Database
-    Event
-    Images
-    NotificationLog
-    Entrant
-    Organizer
