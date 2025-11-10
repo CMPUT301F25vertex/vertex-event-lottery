@@ -811,7 +811,6 @@ private fun CreateEventHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-
         Box(
             modifier = Modifier
                 .fillMaxWidth(),
@@ -835,29 +834,6 @@ private fun CreateEventHeader(
                 contentDescription = "Close",
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
-
-            // Close button
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(56.dp)
-                    .zIndex(2f),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                contentColor = PluckPalette.Primary,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onCancel
-            )
-            {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = "Close",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
         }
 
         Text(
