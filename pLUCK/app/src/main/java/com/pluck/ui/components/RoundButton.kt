@@ -11,18 +11,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * A generic left aligned back button that executes `onBack` when pressed
- * @param onBack Function executed when button is pressed
+ * A generic round button that executes `onClick` when pressed
+ * @param onClick Function executed when button is pressed
  */
 @Composable
-fun BackButton(
-    onBack: () -> Unit = {}
+fun RoundButton(
+    onClick: () -> Unit = {},
+    imageVector: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
             .size(56.dp),
         shape = CircleShape,
@@ -30,13 +34,13 @@ fun BackButton(
         contentColor = PluckPalette.Primary,
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
-        onClick = onBack
+        onClick = onClick
     )
     {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = Icons.Outlined.ArrowBack,
-                contentDescription = "Back",
+                imageVector = imageVector,
+                contentDescription = contentDescription,
                 modifier = Modifier.size(24.dp)
             )
         }

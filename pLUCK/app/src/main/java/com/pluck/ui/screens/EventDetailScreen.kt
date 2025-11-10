@@ -20,18 +20,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -64,12 +60,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,8 +78,7 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import coil.compose.AsyncImage
-import com.pluck.ui.components.BackButton
-import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
 
@@ -189,7 +179,11 @@ fun EventDetailScreen(
     )
     {
         Column {
-            BackButton(onBack)
+            RoundButton(
+                onClick = onBack,
+                imageVector = Icons.Outlined.ArrowBack,
+                contentDescription = "Back"
+            )
 
             Box(
                 modifier = Modifier
