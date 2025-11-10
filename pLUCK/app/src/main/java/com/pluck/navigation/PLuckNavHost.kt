@@ -357,8 +357,7 @@ fun PLuckNavHost(
         startDestination = PLuckDestination.Startup.route
     )
     {
-        // Initial loading screen shown to the user, ensures that the user has access to firebase,
-        // and Cloudinary
+        // Initial loading screen shown to the user, ensures that the user has access to firebase
         composable(PLuckDestination.Startup.route) {
             StartupScreen(
                 hasFirebaseConnection,
