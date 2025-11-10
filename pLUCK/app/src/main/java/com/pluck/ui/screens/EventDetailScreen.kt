@@ -87,6 +87,10 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import coil.compose.AsyncImage
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
 
 /**
  * EventDetailScreen.kt
@@ -124,106 +128,94 @@ fun EventDetailScreen(
         }
     }
 
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column {
-                // Back button - positioned at top left
-                Surface(
-                    modifier = Modifier
-                        .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
-                        .size(56.dp),
-                    shape = CircleShape,
-                    color = PluckPalette.Surface,
-                    contentColor = PluckPalette.Primary,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    onClick = onBack
-                )
-                {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+    val listElements = mutableListOf<ComposableItem>()
 
-                // Main content column - properly centered
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 20.dp)
-                        .weight(1F),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                )
-                {
-                    EventDetailHeroCard(
-                        event = event,
-                        canEditPoster = isEventOrganizer,
-                        onEditPoster = { onEditPoster(event) }
-                    )
+    listElements.add(ComposableItem {
+        EventDetailHeroCard(
+            event = event,
+            canEditPoster = isEventOrganizer,
+            onEditPoster = { onEditPoster(event) }
+        )
+    })
 
-                    EventDetailInfoSection(event = event)
+    listElements.add(ComposableItem {
+        EventDetailInfoSection(event = event)
+    })
 
-                    EventDetailDescriptionSection(description = event.description)
+    listElements.add(ComposableItem {
+        EventDetailDescriptionSection(description = event.description)
+    })
 
-                    EventDetailReminder(
-                        remainingSpots = event.remainingSpots,
-                        waitlistCount = event.waitlistCount
-                    )
+    listElements.add(ComposableItem {
+        EventDetailReminder(
+            remainingSpots = event.remainingSpots,
+            waitlistCount = event.waitlistCount
+        )
+    })
 
-                    EventLotteryInfoCard(event = event)
+    listElements.add(ComposableItem {
+        EventLotteryInfoCard(event = event)
+    })
 
-//                    if (isEventOrganizer) {
-//                        OrganizerInviteCard(
-//                            inviteContact = inviteContact,
-//                            onInviteContactChange = {
-//                                inviteContact = it
-//                                onClearInviteFeedback()
-//                            },
-//                            inviteType = inviteType,
-//                            onInviteTypeChange = { type ->
-//                                inviteType = type
-//                                onClearInviteFeedback()
-//                            },
-//                            onSendInvite = {
-//                                val trimmed = inviteContact.trim()
-//                                if (trimmed.isNotBlank()) {
-//                                    onClearInviteFeedback()
-//                                    onInviteEntrant(trimmed, inviteType)
-//                                }
-//                            },
-//                            isSending = inviteInProgress,
-//                            feedbackMessage = inviteFeedbackMessage,
-//                            isError = inviteFeedbackIsError
-//                        )
+//    listElements.add(ComposableItem {
+//        if (isEventOrganizer) {
+//            OrganizerInviteCard(
+//                inviteContact = inviteContact,
+//                onInviteContactChange = {
+//                    inviteContact = it
+//                    onClearInviteFeedback()
+//                },
+//                inviteType = inviteType,
+//                onInviteTypeChange = { type ->
+//                    inviteType = type
+//                    onClearInviteFeedback()
+//                },
+//                onSendInvite = {
+//                    val trimmed = inviteContact.trim()
+//                    if (trimmed.isNotBlank()) {
+//                        onClearInviteFeedback()
+//                        onInviteEntrant(trimmed, inviteType)
 //                    }
+//                },
+//                isSending = inviteInProgress,
+//                feedbackMessage = inviteFeedbackMessage,
+//                isError = inviteFeedbackIsError
+//            )
+//        }
+//    })
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+    PluckLayeredBackground(
+        modifier = Modifier.fillMaxSize()
+    )
+    {
+        Column {
+            BackButton(onBack)
 
-                // Bottom action section - fixed at bottom
-                EventDetailBottomActions(
-                    event = event,
-                    isUserOnWaitlist = isUserOnWaitlist,
-                    isUserConfirmed = isUserConfirmed,
-                    isEventOrganizer = isEventOrganizer,
-                    onJoinEvent = onJoinEvent,
-                    onLeaveWaitlist = onLeaveWaitlist,
-                    onViewWaitlist = onViewWaitlist,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+            Box(
+                modifier = Modifier
+                    .weight(0.85f)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp
+                    )
+            ) {
+                FullWidthLazyScroll(
+                    listElements = listElements
                 )
             }
+
+            // Bottom action section - fixed at bottom
+            EventDetailBottomActions(
+                event = event,
+                isUserOnWaitlist = isUserOnWaitlist,
+                isUserConfirmed = isUserConfirmed,
+                isEventOrganizer = isEventOrganizer,
+                onJoinEvent = onJoinEvent,
+                onLeaveWaitlist = onLeaveWaitlist,
+                onViewWaitlist = onViewWaitlist,
+                modifier = Modifier
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            )
         }
     }
 }

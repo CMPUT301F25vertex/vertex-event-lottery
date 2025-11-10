@@ -28,11 +28,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,7 +48,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -77,7 +74,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
 import coil.compose.AsyncImage
 import com.pluck.ui.components.BottomNavBar
-import com.pluck.ui.components.PluckAccentCircle
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
@@ -216,6 +214,77 @@ private fun HomeScreenContent(
         }
     }
 
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        HomeHeroCard(
+            userName = userName,
+            onScanQRCode = onScanQRCode,
+            onRefreshClick = {
+                confettiTrigger++
+                onRefresh()
+            },
+            collapseProgress = heroCollapseProgress
+        )
+    })
+
+    listElements.add(ComposableItem {
+        // US 01.01.04 - Search bar for filtering events
+        EventSearchBar(
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it }
+        )
+    })
+
+    listElements.add(ComposableItem {
+        HomeFilterRow(
+            categories = homeCategories,
+            selectedId = selectedCategoryId,
+            onCategorySelected = { selectedCategoryId = it }
+        )
+    })
+
+    when {
+        isLoading -> listElements.add(ComposableItem { HomeLoadingState(Modifier) })
+        filteredEvents.isEmpty() && firstVisibleIndex <= 1 -> {
+            listElements.add(ComposableItem {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    shape = RoundedCornerShape(32.dp),
+                    color = PluckPalette.Surface,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 12.dp,
+                    border = BorderStroke(
+                        1.dp,
+                        PluckPalette.Primary.copy(alpha = 0.05f)
+                    )
+                ) {
+                    HomeEmptyState()
+                }
+            })
+        }
+        else -> {
+            var i = 0
+            for (event in filteredEvents) {
+                val accentPalette = listOf(
+                    PluckPalette.Secondary,
+                    PluckPalette.Tertiary,
+                    PluckPalette.Pink,
+                    PluckPalette.Magenta
+                )
+                listElements.add(ComposableItem {
+                    HomeEventCard(
+                        event = event,
+                        accentColor = accentPalette[i % accentPalette.size],
+                        onClick = { onSelectEvent(event) }
+                    )
+                })
+                ++i
+            }
+        }
+    }
+
     PluckLayeredBackground(
         modifier = Modifier.fillMaxSize()
     )
@@ -223,126 +292,15 @@ private fun HomeScreenContent(
         Column {
             Box(
                 modifier = Modifier
-                    .weight(0.8f)
+                    .weight(0.85f)
                     .padding(
-                        start = 15.dp,
-                        end = 15.dp
+                        start = 16.dp,
+                        end = 16.dp
                     )
-            ){
-                when {
-                    isLoading -> HomeLoadingState(Modifier)
-                    filteredEvents.isEmpty() && firstVisibleIndex <= 1 -> {
-                        // Show hero and filters with empty state
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            HomeHeroCard(
-                                userName = userName,
-                                onScanQRCode = onScanQRCode,
-                                onRefreshClick = {
-                                    confettiTrigger++
-                                    onRefresh()
-                                },
-                                collapseProgress = 0f
-                            )
-
-                            // US 01.01.04 - Search bar for filtering by interests
-                            EventSearchBar(
-                                searchQuery = searchQuery,
-                                onSearchQueryChange = { searchQuery = it }
-                            )
-
-                            HomeFilterRow(
-                                categories = homeCategories,
-                                selectedId = selectedCategoryId,
-                                onCategorySelected = { selectedCategoryId = it }
-                            )
-
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(vertical = 15.dp),
-                                shape = RoundedCornerShape(32.dp),
-                                color = PluckPalette.Surface,
-                                tonalElevation = 0.dp,
-                                shadowElevation = 12.dp,
-                                border = BorderStroke(
-                                    1.dp,
-                                    PluckPalette.Primary.copy(alpha = 0.05f)
-                                )
-                            ) {
-                                HomeEmptyState()
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
-                    else -> {
-                        // Scrollable list with collapsing hero
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            item {
-                                HomeHeroCard(
-                                    userName = userName,
-                                    onScanQRCode = onScanQRCode,
-                                    onRefreshClick = {
-                                        confettiTrigger++
-                                        onRefresh()
-                                    },
-                                    collapseProgress = heroCollapseProgress
-                                )
-                            }
-
-                            // US 01.01.04 - Search bar for filtering events
-                            item {
-                                EventSearchBar(
-                                    searchQuery = searchQuery,
-                                    onSearchQueryChange = { searchQuery = it }
-                                )
-                            }
-
-                            item {
-                                HomeFilterRow(
-                                    categories = homeCategories,
-                                    selectedId = selectedCategoryId,
-                                    onCategorySelected = { selectedCategoryId = it }
-                                )
-                            }
-
-                            itemsIndexed(
-                                filteredEvents,
-                                key = { _, event -> event.id })
-                            { index, event ->
-                                val accentPalette = listOf(
-                                    PluckPalette.Secondary,
-                                    PluckPalette.Tertiary,
-                                    PluckPalette.Pink,
-                                    PluckPalette.Magenta
-                                )
-                                HomeEventCard(
-                                    event = event,
-                                    accentColor = accentPalette[index % accentPalette.size],
-                                    onClick = { onSelectEvent(event) }
-                                )
-                            }
-
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                        }
-                    }
-                }
+            ) {
+                FullWidthLazyScroll(
+                    listElements = listElements
+                )
             }
 
             BottomNavBar(
@@ -811,7 +769,7 @@ private fun HomeEmptyState() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
