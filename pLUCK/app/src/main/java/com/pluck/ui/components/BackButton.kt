@@ -13,6 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * A generic left aligned back button that executes `onBack` when pressed
+ * @param onBack Function executed when button is pressed
+ */
 @Composable
 fun BackButton(
     onBack: () -> Unit = {}
