@@ -64,6 +64,7 @@ import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
 import com.google.firebase.Timestamp
+import com.pluck.ui.components.BackButton
 
 data class InvitationWithEvent(
     val invitation: EventInvitation,
@@ -87,28 +88,7 @@ fun InvitationsScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Floating back button
-            Surface(
-                modifier = Modifier
-                    .padding(top = 24.dp, start = 24.dp)
-                    .size(56.dp)
-                    .align(Alignment.TopStart)
-                    .zIndex(10f),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onBack
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Go back",
-                        tint = PluckPalette.Primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            BackButton(onBack = onBack)
 
             Column(
                 modifier = Modifier
