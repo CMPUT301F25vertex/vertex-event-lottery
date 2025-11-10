@@ -72,6 +72,9 @@ import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.data.firebase.WaitlistStatus
+import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.model.Event
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -145,79 +148,69 @@ fun MyEventsScreen(
         }
     }
 
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        MyEventsHero(
+            eventCount = events.size,
+            selectedFilter = selectedFilter,
+            onFilterSelected = { selectedFilter = it },
+            collapseProgress = heroCollapseProgress
+        )
+    })
+
+    when {
+        isLoading -> {
+            listElements.add(ComposableItem {
+                MyEventsLoadingState()
+            })
+        }
+        filteredEvents.isEmpty() && firstVisibleIndex == 0 -> {
+            listElements.add(ComposableItem {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(1f),
+                    shape = RoundedCornerShape(36.dp),
+                    color = PluckPalette.Surface,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 12.dp,
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                ) {
+                    MyEventsEmptyState(selectedFilter)
+                }
+            })
+        }
+        else -> {
+            var i = 0
+            for (event in filteredEvents) {
+                listElements.add(ComposableItem {
+                    MyEventCard(
+                        item = event,
+                        accentColor = if (i % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
+                        onClick = { onEventClick(event.event) }
+                    )
+                })
+                ++i
+            }
+        }
+    }
+
     PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Column {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 15.dp, vertical = 15.dp)
+                    .weight(0.85f)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp
+                    )
             ) {
-                when {
-                    isLoading -> MyEventsLoadingState()
-                    filteredEvents.isEmpty() && firstVisibleIndex == 0 -> {
-                        // Static layout for empty state
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            MyEventsHero(
-                                eventCount = events.size,
-                                selectedFilter = selectedFilter,
-                                onFilterSelected = { selectedFilter = it },
-                                collapseProgress = 0f
-                            )
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .zIndex(1f),
-                                shape = RoundedCornerShape(36.dp),
-                                color = PluckPalette.Surface,
-                                tonalElevation = 0.dp,
-                                shadowElevation = 12.dp,
-                                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                            ) {
-                                MyEventsEmptyState(selectedFilter)
-                            }
-                        }
-                    }
-                    else -> {
-                        // Scrollable list with collapsing hero
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            item {
-                                MyEventsHero(
-                                    eventCount = events.size,
-                                    selectedFilter = selectedFilter,
-                                    onFilterSelected = { selectedFilter = it },
-                                    collapseProgress = heroCollapseProgress
-                                )
-                            }
-
-                            itemsIndexed(filteredEvents, key = { _, item -> item.event.id }) { index, item ->
-                                MyEventCard(
-                                    item = item,
-                                    accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
-                                    onClick = { onEventClick(item.event) }
-                                )
-                            }
-
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                        }
-                    }
-                }
+                FullWidthLazyScroll(
+                    listElements = listElements
+                )
             }
         }
     }
@@ -609,7 +602,7 @@ private fun MyEventsEmptyState(filter: MyEventsFilter) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
