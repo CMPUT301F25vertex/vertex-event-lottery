@@ -10,10 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-data class ComposableItem(
-    val content: @Composable () -> Unit
-)
-
 /**
  * A full width set of scrollable elements, that uses LazyColumn for improved performance on longer
  * lists
