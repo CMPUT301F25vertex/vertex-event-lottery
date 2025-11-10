@@ -142,7 +142,7 @@ fun BottomNavBar(
                             )
                         }
                     }
-                    
+
                     // Right side nav items
                     Row(
                         modifier = Modifier
