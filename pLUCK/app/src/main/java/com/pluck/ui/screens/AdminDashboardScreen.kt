@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
@@ -140,11 +141,7 @@ fun AdminDashboardScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            RoundButton(
-                onClick = onBack,
-                imageVector = Icons.Outlined.ArrowBack,
-                contentDescription = "Back"
-            )
+            BackButton(onBack = onBack)
 
             Column(
                 modifier = Modifier

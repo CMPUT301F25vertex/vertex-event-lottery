@@ -78,6 +78,7 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import coil.compose.AsyncImage
+import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
@@ -179,11 +180,7 @@ fun EventDetailScreen(
     )
     {
         Column {
-            RoundButton(
-                onClick = onBack,
-                imageVector = Icons.Outlined.ArrowBack,
-                contentDescription = "Back"
-            )
+            BackButton(onBack = onBack)
 
             Box(
                 modifier = Modifier

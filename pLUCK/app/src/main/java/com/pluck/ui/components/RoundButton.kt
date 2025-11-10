@@ -27,7 +27,6 @@ fun RoundButton(
 ) {
     Surface(
         modifier = modifier
-            .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
             .size(56.dp),
         shape = CircleShape,
         color = PluckPalette.Surface,
@@ -45,4 +44,20 @@ fun RoundButton(
             )
         }
     }
+}
+
+/**
+ * A specialization of the RoundButton composable for left aligned back buttons
+ */
+@Composable
+fun BackButton(
+    onBack: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    RoundButton(
+        onClick = onBack,
+        imageVector = Icons.Outlined.ArrowBack,
+        contentDescription = "Back",
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
+    )
 }

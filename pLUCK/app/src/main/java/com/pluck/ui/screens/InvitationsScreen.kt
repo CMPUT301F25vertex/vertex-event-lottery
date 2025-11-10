@@ -63,6 +63,7 @@ import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
 import com.google.firebase.Timestamp
+import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.RoundButton
 
 data class InvitationWithEvent(
@@ -87,11 +88,7 @@ fun InvitationsScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            RoundButton(
-                onClick = onBack,
-                imageVector = Icons.Outlined.ArrowBack,
-                contentDescription = "Back"
-            )
+            BackButton(onBack = onBack)
 
             Column(
                 modifier = Modifier
