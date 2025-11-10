@@ -19,6 +19,12 @@ import android.annotation.SuppressLint
 import android.net.ConnectivityManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -103,7 +109,6 @@ import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -170,7 +175,7 @@ fun PLuckNavHost(
     var loginError by remember { mutableStateOf<String?>(null) }
     var initializingSession by remember { mutableStateOf(true) }
     var deviceId by remember { mutableStateOf(authenticator.currentDeviceId()) }
-    var autoLoginEnabled by rememberSaveable { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
+    var autoLoginEnabled by remember { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
     var customTheme by remember { mutableStateOf(themePrefs.getCustomTheme()) }
     var profileUpdateMessage by remember { mutableStateOf<String?>(null) }
     var profileUpdateError by remember { mutableStateOf<String?>(null) }
@@ -269,12 +274,6 @@ fun PLuckNavHost(
             .onSuccess { profile ->
                 if (profile != null) {
                     currentUser = profile
-                    val route = navController.currentBackStackEntry?.destination?.route
-                    if (autoLoginEnabled && route == PLuckDestination.DeviceLogin.route) {
-                        // Brief delay to show welcome screen before navigating
-                        delay(300)
-                        navigator.toEventList(clearBackStack = true)
-                    }
                 }
             }
         initializingSession = false
@@ -354,83 +353,84 @@ fun PLuckNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = PLuckDestination.Startup.route
-    )
+        startDestination = PLuckDestination.Startup.route,
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() },
+        popEnterTransition = { fadeIn() },
+        popExitTransition = { fadeOut() }    )
     {
         // Initial loading screen shown to the user, ensures that the user has access to firebase
         composable(PLuckDestination.Startup.route) {
             StartupScreen(
                 hasFirebaseConnection,
                 onConnect = {
-                    navigator.toDeviceLogin()
+                    if (currentUser != null && autoLoginEnabled) {
+                        navigator.toEventList(clearBackStack = true)
+                    } else {
+                        navigator.toDeviceLogin()
+                    }
                 }
             )
         }
 
         composable(PLuckDestination.DeviceLogin.route) {
-            // Conditional screen based on user state
-            // Note: Returning users with auto-login enabled see WelcomeBackScreen briefly
-            // before auto-navigating to HomeScreen (300ms delay for smooth transition)
-
             val user = currentUser
-            when {
-                // New user - show account creation
-                user == null -> {
-                    // Pre-fill with saved profile data if available
-                    val savedName = authPreferences.getSavedDisplayName()
-                    val savedEmail = authPreferences.getSavedEmail()
-                    val savedPhone = authPreferences.getSavedPhoneNumber()
+            // New user - show account creation
+            if (user == null) {
+                // Pre-fill with saved profile data if available
+                val savedName = authPreferences.getSavedDisplayName()
+                val savedEmail = authPreferences.getSavedEmail()
+                val savedPhone = authPreferences.getSavedPhoneNumber()
 
-                    CreateAccountScreen(
-                        deviceId = deviceId,
-                        isLoading = loginInProgress || initializingSession,
-                        errorMessage = loginError,
-                        autoLoginEnabled = autoLoginEnabled,
-                        initialDisplayName = savedName ?: "",
-                        initialEmail = savedEmail ?: "",
-                        initialPhoneNumber = savedPhone ?: "",
-                        onAutoLoginToggle = { enabled ->
-                            autoLoginEnabled = enabled
-                            authPreferences.setAutoLoginEnabled(enabled)
-                        },
-                        onCreateAccount = { displayName, email, phoneNumber ->
-                            scope.launch {
-                                if (loginInProgress) return@launch
-                                loginError = null
-                                loginInProgress = true
+                CreateAccountScreen(
+                    deviceId = deviceId,
+                    isLoading = loginInProgress || initializingSession,
+                    errorMessage = loginError,
+                    autoLoginEnabled = autoLoginEnabled,
+                    initialDisplayName = savedName ?: "",
+                    initialEmail = savedEmail ?: "",
+                    initialPhoneNumber = savedPhone ?: "",
+                    onAutoLoginToggle = { enabled ->
+                        autoLoginEnabled = enabled
+                        authPreferences.setAutoLoginEnabled(enabled)
+                    },
+                    onCreateAccount = { displayName, email, phoneNumber ->
+                        scope.launch {
+                            if (loginInProgress) return@launch
+                            loginError = null
+                            loginInProgress = true
 
-                                when (val result = authenticator.registerOrSignIn(displayName, email, phoneNumber)) {
-                                    is DeviceAuthResult.Success -> {
-                                        currentUser = result.profile
-                                        deviceId = result.profile.deviceId
-                                        navigator.toEventList(clearBackStack = true)
-                                    }
-                                    is DeviceAuthResult.Error -> {
-                                        loginError = result.message
-                                    }
+                            when (val result = authenticator.registerOrSignIn(displayName, email, phoneNumber)) {
+                                is DeviceAuthResult.Success -> {
+                                    currentUser = result.profile
+                                    deviceId = result.profile.deviceId
+                                    navigator.toEventList(clearBackStack = true)
                                 }
-                                loginInProgress = false
+                                is DeviceAuthResult.Error -> {
+                                    loginError = result.message
+                                }
                             }
+                            loginInProgress = false
                         }
-                    )
-                }
-                // Returning user - show welcome back (with or without auto-login)
-                else -> {
-                    @Suppress("KotlinConstantConditions")
-                    WelcomeBackScreen(
-                        userName = user.displayName,
-                        deviceId = deviceId,
-                        isLoading = loginInProgress || initializingSession,
-                        autoLoginEnabled = autoLoginEnabled,
-                        onAutoLoginToggle = { enabled ->
-                            autoLoginEnabled = enabled
-                            authPreferences.setAutoLoginEnabled(enabled)
-                        },
-                        onContinue = {
-                            navigator.toEventList(clearBackStack = true)
-                        }
-                    )
-                }
+                    }
+                )
+            }
+            else {
+                // Only show welcome back screen if auto login is not enabled
+                @Suppress("KotlinConstantConditions")
+                WelcomeBackScreen(
+                    userName = user.displayName,
+                    deviceId = deviceId,
+                    isLoading = loginInProgress || initializingSession,
+                    autoLoginEnabled = autoLoginEnabled,
+                    onAutoLoginToggle = { enabled ->
+                        autoLoginEnabled = enabled
+                        authPreferences.setAutoLoginEnabled(enabled)
+                    },
+                    onContinue = {
+                        navigator.toEventList(clearBackStack = true)
+                    }
+                )
             }
         }
         composable(PLuckDestination.EventList.route) {
