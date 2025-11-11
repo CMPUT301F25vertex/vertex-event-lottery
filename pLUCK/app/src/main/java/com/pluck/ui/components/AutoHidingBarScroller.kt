@@ -53,7 +53,7 @@ fun AutoHidingBarScroller(
     listElements: List<ComposableItem>,
     indexOfPersistentElement: Int,
     bottomBar: @Composable () -> Unit,
-    additionalContent: @Composable () -> Unit
+    additionalContent: @Composable () -> Unit = { }
 ) {
     // Must be a valid index
     assert(indexOfPersistentElement < listElements.size)
