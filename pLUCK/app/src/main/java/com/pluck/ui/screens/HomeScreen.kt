@@ -76,7 +76,6 @@ import androidx.compose.ui.platform.LocalDensity
 import coil.compose.AsyncImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BottomNavBar
-import com.pluck.ui.components.BottomNavBarRowScope
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.PluckLayeredBackground
