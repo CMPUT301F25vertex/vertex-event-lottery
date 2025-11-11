@@ -10,7 +10,6 @@
  */
 package com.pluck.ui.screens
 
-import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -46,6 +45,8 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -87,13 +89,23 @@ import com.pluck.ui.theme.autoTextColor
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.PLuckDatePicker
+import com.pluck.ui.components.PLuckDateRangePicker
+import com.pluck.ui.components.PLuckTimePicker
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAmount
+import java.time.temporal.TemporalUnit
+import java.util.Calendar
+import java.util.Date
 import java.util.UUID
+import kotlin.time.Duration.Companion.days
 
 /**
  * CreateEventScreen.kt
@@ -134,6 +146,7 @@ object CreateEventTestTags {
     const val WaitlistLength = "waitlist_length"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
     isLoading: Boolean = false,
@@ -167,6 +180,19 @@ fun CreateEventScreen(
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val coroutineScope = rememberCoroutineScope()
+
+    val dateSelectLambdaNullValue = { date: LocalDate -> }
+    var dateSelectLambda by remember { mutableStateOf(dateSelectLambdaNullValue) }
+    var defaultDateDialogDate by remember { mutableStateOf(LocalDate.now()) }
+
+    val rangeSelectLambdaNullValue = { startDate: LocalDate, endDate: LocalDate -> }
+    var rangeSelectLambda by remember { mutableStateOf(rangeSelectLambdaNullValue) }
+    var defaultDateRangeDialogStartDate by remember { mutableStateOf(LocalDate.now()) }
+    var defaultDateRangeDialogEndDate by remember { mutableStateOf(LocalDate.now().plus(1, ChronoUnit.DAYS)) }
+
+    val timeSelectLambdaNullValue = { time: LocalTime -> }
+    var timeSelectLambda by remember { mutableStateOf(timeSelectLambdaNullValue) }
+    var defaultTimeDialogTime by remember { mutableStateOf(LocalTime.now()) }
 
     /**
      * Image picker launcher for event poster selection.
@@ -345,19 +371,10 @@ fun CreateEventScreen(
             placeholder = "Select date",
             icon = Icons.Outlined.CalendarMonth,
             onClick = {
-                val initialDate = eventDate ?: LocalDate.now()
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        eventDate = LocalDate.of(year, month + 1, dayOfMonth)
-                        if (eventTime == null) {
-                            eventTime = LocalTime.of(9, 0)
-                        }
-                    },
-                    initialDate.year,
-                    initialDate.monthValue - 1,
-                    initialDate.dayOfMonth
-                ).show()
+                defaultDateDialogDate = eventDate ?: LocalDate.now()
+                dateSelectLambda = { date: LocalDate -> eventDate = date }
+
+                if (eventTime == null) eventTime = LocalTime.now()
             },
             isRequired = true
         )
@@ -370,16 +387,8 @@ fun CreateEventScreen(
             placeholder = "Select time",
             icon = Icons.Outlined.Schedule,
             onClick = {
-                val initialTime = eventTime ?: LocalTime.of(9, 0)
-                TimePickerDialog(
-                    context,
-                    { _, hourOfDay, minute ->
-                        eventTime = LocalTime.of(hourOfDay, minute)
-                    },
-                    initialTime.hour,
-                    initialTime.minute,
-                    false
-                ).show()
+                defaultTimeDialogTime = eventTime ?: LocalTime.now()
+                timeSelectLambda = { time: LocalTime -> eventTime = time }
             },
             isRequired = true
         )
@@ -407,26 +416,30 @@ fun CreateEventScreen(
         )
     })
 
+    var registrationPeriodString: String? = null
+    if (registrationStartDate != null && registrationEndDate != null) {
+        registrationPeriodString = "${registrationStartDate?.format(dateFormatter)} - ${registrationEndDate?.format(dateFormatter)}"
+    }
+
     listElements.add(ComposableItem {
         CreateEventPickerField(
-            label = "Registration Opens (Date)",
-            value = registrationStartDate?.format(dateFormatter),
-            placeholder = "Select date",
+            label = "Registration Period",
+            value = registrationPeriodString,
+            placeholder = "Select period",
             icon = Icons.Outlined.CalendarMonth,
             onClick = {
-                val baseDate = registrationStartDate ?: eventDate ?: LocalDate.now()
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        registrationStartDate = LocalDate.of(year, month + 1, dayOfMonth)
-                        if (registrationStartTime == null) {
-                            registrationStartTime = LocalTime.of(8, 0)
-                        }
-                    },
-                    baseDate.year,
-                    baseDate.monthValue - 1,
-                    baseDate.dayOfMonth
-                ).show()
+                defaultDateRangeDialogStartDate = registrationStartDate ?: LocalDate.now()
+                defaultDateRangeDialogEndDate = registrationEndDate
+                    ?: registrationStartDate?.plus(1, ChronoUnit.DAYS)
+                    ?: LocalDate.now().plus(1, ChronoUnit.DAYS)
+
+                rangeSelectLambda = { startDate: LocalDate, endDate: LocalDate ->
+                    registrationStartDate = startDate
+                    registrationEndDate = endDate
+                }
+
+                if (registrationStartTime == null) registrationStartTime = LocalTime.of(8, 0)
+                if (registrationEndTime == null) registrationEndTime = LocalTime.of(18, 0)
             },
             isRequired = true
         )
@@ -434,49 +447,13 @@ fun CreateEventScreen(
 
     listElements.add(ComposableItem {
         CreateEventPickerField(
-            label = "Registration Opens (Time)",
+            label = "Registration Start Time",
             value = registrationStartTime?.format(timeFormatter),
             placeholder = "Select time",
             icon = Icons.Outlined.Schedule,
             onClick = {
-                val initialTime = registrationStartTime ?: LocalTime.of(8, 0)
-                TimePickerDialog(
-                    context,
-                    { _, hourOfDay, minute ->
-                        registrationStartTime = LocalTime.of(hourOfDay, minute)
-                    },
-                    initialTime.hour,
-                    initialTime.minute,
-                    false
-                ).show()
-            },
-            isRequired = true
-        )
-    })
-
-    listElements.add(ComposableItem {
-        CreateEventPickerField(
-            label = "Registration Closes (Date)",
-            value = registrationEndDate?.format(dateFormatter),
-            placeholder = "Select date",
-            icon = Icons.Outlined.CalendarMonth,
-            onClick = {
-                val baseDate = registrationEndDate
-                    ?: registrationStartDate
-                    ?: eventDate
-                    ?: LocalDate.now()
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        registrationEndDate = LocalDate.of(year, month + 1, dayOfMonth)
-                        if (registrationEndTime == null) {
-                            registrationEndTime = LocalTime.of(18, 0)
-                        }
-                    },
-                    baseDate.year,
-                    baseDate.monthValue - 1,
-                    baseDate.dayOfMonth
-                ).show()
+                defaultTimeDialogTime = registrationStartTime ?: LocalTime.of(8, 0)
+                timeSelectLambda = { time: LocalTime -> registrationStartTime = time }
             },
             isRequired = true
         )
@@ -489,16 +466,8 @@ fun CreateEventScreen(
             placeholder = "Select time",
             icon = Icons.Outlined.Schedule,
             onClick = {
-                val initialTime = registrationEndTime ?: LocalTime.of(18, 0)
-                TimePickerDialog(
-                    context,
-                    { _, hourOfDay, minute ->
-                        registrationEndTime = LocalTime.of(hourOfDay, minute)
-                    },
-                    initialTime.hour,
-                    initialTime.minute,
-                    false
-                ).show()
+                defaultTimeDialogTime = registrationEndTime ?: LocalTime.of(18, 0)
+                timeSelectLambda = { time: LocalTime -> registrationEndTime = time }
             },
             isRequired = true
         )
@@ -693,6 +662,37 @@ fun CreateEventScreen(
     {
         SquircleScrollableLazyList(
             listElements = listElements
+        )
+    }
+
+    if (dateSelectLambda != dateSelectLambdaNullValue) {
+        PLuckDatePicker(
+            onDateSelected = dateSelectLambda,
+            onDismiss = {
+                dateSelectLambda = dateSelectLambdaNullValue
+            },
+            defaultDate = defaultDateDialogDate
+        )
+    }
+
+    if (rangeSelectLambda != rangeSelectLambdaNullValue) {
+        PLuckDateRangePicker(
+            onDateSelected = rangeSelectLambda,
+            onDismiss = {
+                rangeSelectLambda = rangeSelectLambdaNullValue
+            },
+            defaultStartDate = defaultDateRangeDialogStartDate,
+            defaultEndDate = defaultDateRangeDialogEndDate
+        )
+    }
+
+    if (timeSelectLambda != timeSelectLambdaNullValue) {
+        PLuckTimePicker(
+            onTimeSelected = timeSelectLambda,
+            onDismiss = {
+                timeSelectLambda = timeSelectLambdaNullValue
+            },
+            defaultTime = defaultTimeDialogTime
         )
     }
 }
@@ -901,7 +901,9 @@ private fun CreateEventFormField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().then(modifier),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(modifier),
             placeholder = {
                 Text(
                     text = placeholder,
