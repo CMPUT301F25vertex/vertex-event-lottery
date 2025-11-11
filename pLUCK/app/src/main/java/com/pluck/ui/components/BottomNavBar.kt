@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -106,104 +107,63 @@ fun BottomNavBar(
     showCreateButton: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val items = mutableListOf<@Composable () -> Unit>()
+
+    NavTabs.all.take(2).forEach { tab ->
+        items.add({
+            NavItem(
+                tab = tab,
+                selected = currentRoute == tab.route,
+                onClick = { onNavigate(tab.route) }
+            )
+        })
+    }
+
+    if (showCreateButton) {
+        items.add({
+            RoundButton(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add Event",
+                circleColor = PluckPalette.Secondary,
+                iconColor = autoTextColor(PluckPalette.Secondary),
+                onClick = onCreateEvent
+            )
+        })
+    }
+
+    NavTabs.all.drop(2).forEach { tab ->
+        items.add({
+            NavItem(
+                tab = tab,
+                selected = currentRoute == tab.route,
+                onClick = { onNavigate(tab.route) }
+            )
+        })
+    }
+
     Box(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.BottomCenter
-    ) {
+        modifier = modifier
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    )
+    {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = PluckPalette.Surface,
-            shape = RoundedCornerShape(0.dp),
-            tonalElevation = 0.dp,
-            shadowElevation = 8.dp
         ) {
-            if (showCreateButton) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                )
-                {
-                    // Left side nav items
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .wrapContentWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        NavTabs.all.take(2).forEach { tab ->
-                            NavItem(
-                                tab = tab,
-                                selected = currentRoute == tab.route,
-                                onClick = { onNavigate(tab.route) }
-                            )
-                        }
-                    }
-
-                    // Right side nav items
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .wrapContentWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        NavTabs.all.drop(2).forEach { tab ->
-                            NavItem(
-                                tab = tab,
-                                selected = currentRoute == tab.route,
-                                onClick = { onNavigate(tab.route) }
-                            )
-                        }
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    NavTabs.all.take(4).forEach { tab ->
-                        NavItem(
-                            tab = tab,
-                            selected = currentRoute == tab.route,
-                            onClick = { onNavigate(tab.route) }
-                        )
-                    }
-                }
-            }
-        }
-
-        // Floating action button centered and elevated (only show for organizers)
-        if (showCreateButton) {
-            FloatingActionButton(
-                onClick = onCreateEvent,
+            Row(
                 modifier = Modifier
-                    .offset(y = (-24).dp)
-                    .size(56.dp)
-                    .zIndex(2f),
-                containerColor = PluckPalette.Secondary,
-                contentColor = autoTextColor(PluckPalette.Secondary),
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 8.dp
-                ),
-                shape = CircleShape
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Create Event",
-                    modifier = Modifier.size(28.dp)
-                )
+                for (item in items) {
+                    item()
+                }
             }
         }
     }
 }
-
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -231,17 +191,7 @@ private fun NavItem(
                 imageVector = tab.icon,
                 contentDescription = tab.label,
                 tint = contentColor,
-                modifier = Modifier.size(22.dp)
-            )
-            Text(
-                text = tab.label,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                softWrap = false,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                color = contentColor
+                modifier = Modifier.size(32.dp)
             )
         }
     }
