@@ -69,7 +69,8 @@ fun AutoHidingBarScroller(
 
     val overviewCollapsed by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0
+            listState.firstVisibleItemIndex > 0 ||
+                    listState.firstVisibleItemScrollOffset > 0
         }
     }
 
@@ -141,16 +142,10 @@ fun AutoHidingBarScroller(
 
                     listElements[indexOfPersistentElement].content()
 
-                    if (overviewCollapsed) {
-                        Spacer(modifier = Modifier.size(16.dp))
-                    }
+                    Spacer(modifier = Modifier.size(16.dp))
 
                     LazyColumn(state = listState)
                     {
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
                         for (i in listElements.indices) {
                             if (i > indexOfPersistentElement) {
                                 item {
