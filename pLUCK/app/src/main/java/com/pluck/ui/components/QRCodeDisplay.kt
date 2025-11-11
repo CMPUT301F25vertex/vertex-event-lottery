@@ -234,17 +234,11 @@ fun ShowQRCodeButton(
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
 
-    OutlinedButton(
+    RoundButton(
         onClick = { showQRDialog = true },
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.3f))
-    ) {
-        Icon(
-            Icons.Outlined.QrCode2,
-            contentDescription = null,
-        )
-    }
+        imageVector = Icons.Outlined.QrCode2,
+        contentDescription = "View QR Code"
+    )
 
     if (showQRDialog) {
         QRCodeDialog(
