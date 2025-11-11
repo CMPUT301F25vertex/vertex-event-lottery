@@ -34,13 +34,15 @@ import androidx.compose.ui.unit.dp
  * @param indexOfPersistentElement An index inside the listElements list of the element you wish to
  *      always be visible
  * @param bottomBar The dynamically hiding bottom bar visible to the user
+ * @param additionalContent Additional content to be added after scrollable elements
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AutoHidingBarScroller(
     listElements: List<ComposableItem>,
     indexOfPersistentElement: Int,
-    bottomBar: @Composable () -> Unit
+    bottomBar: @Composable () -> Unit,
+    additionalContent: @Composable () -> Unit
 ) {
     // Must be a valid index
     assert(indexOfPersistentElement < listElements.size)
@@ -100,7 +102,8 @@ fun AutoHidingBarScroller(
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -150,6 +153,8 @@ fun AutoHidingBarScroller(
                     }
                 }
             }
+
+            additionalContent()
         }
     }
 }

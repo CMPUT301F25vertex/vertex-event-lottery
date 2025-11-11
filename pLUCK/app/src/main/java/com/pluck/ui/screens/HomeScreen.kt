@@ -12,6 +12,7 @@
  */
 package com.pluck.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -73,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
 import coil.compose.AsyncImage
+import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
@@ -285,24 +287,10 @@ private fun HomeScreenContent(
         }
     }
 
-    PluckLayeredBackground(
-        modifier = Modifier.fillMaxSize()
-    )
-    {
-        Column {
-            Box(
-                modifier = Modifier
-                    .weight(0.85f)
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp
-                    )
-            ) {
-                FullWidthLazyScroll(
-                    listElements = listElements
-                )
-            }
-
+    AutoHidingBarScroller(
+        listElements = listElements,
+        indexOfPersistentElement = 2,
+        bottomBar = {
             BottomNavBar(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
@@ -311,12 +299,11 @@ private fun HomeScreenContent(
                 modifier = Modifier
             )
         }
-
+    ) {
         ConfettiBurst(
             trigger = confettiTrigger,
             modifier = Modifier
                 .fillMaxSize()
-                .align(Alignment.TopCenter)
         )
     }
 }
