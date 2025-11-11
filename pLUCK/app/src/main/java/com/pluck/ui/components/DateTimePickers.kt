@@ -1,17 +1,37 @@
 package com.pluck.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerColors
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerFormatter
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
+import androidx.compose.ui.window.DialogProperties
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * A full screen dialogue that asks for date input
@@ -32,7 +52,6 @@ fun PLuckDatePicker(
     )
 
     DatePickerDialog(
-        modifier = Modifier.fillMaxSize(),
         onDismissRequest = { onDismiss() },
         confirmButton = {
             TextButton(onClick = {
@@ -52,6 +71,93 @@ fun PLuckDatePicker(
             }
         }
     ) {
-        DatePicker(state = datePickerState)
+        DatePicker(
+            state = datePickerState,
+            title = { },
+            headline = {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        modifier = Modifier.padding(start = 16.dp),
+                        text = "Select Event Date",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary,
+                            fontSize = 24.sp
+                        )
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LocalConfiguration.current.screenHeightDp.dp * 0.8f)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PLuckDateRangePicker(
+    onDateSelected: (LocalDate, LocalDate) -> Unit,
+    onDismiss: () -> Unit,
+    defaultStartDate: LocalDate,
+    defaultEndDate: LocalDate,
+) {
+    val defaultStartMillis: Long = defaultStartDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val defaultEndMillis: Long = defaultEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    val dateRangePickerState = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = defaultStartMillis,
+        initialSelectedEndDateMillis = defaultEndMillis
+    )
+
+    DatePickerDialog(
+        onDismissRequest = { onDismiss() },
+        confirmButton = {
+            TextButton(onClick = {
+                val startDate: LocalDate = Instant.ofEpochMilli(dateRangePickerState.selectedStartDateMillis ?: Instant.now().toEpochMilli()).atZone(
+                    ZoneId.of("UTC")).toLocalDate()
+
+                val endDate: LocalDate = Instant.ofEpochMilli(dateRangePickerState.selectedEndDateMillis ?: Instant.now().toEpochMilli()).atZone(
+                    ZoneId.of("UTC")).toLocalDate()
+
+                onDateSelected(startDate, endDate)
+
+                onDismiss()
+            }) {
+                Text("Ok")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                onDismiss()
+            }) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        DateRangePicker(
+            state = dateRangePickerState,
+            title = { },
+            headline = {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        modifier = Modifier.padding(start = 16.dp),
+                        text = "Select Registration Period",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary,
+                            fontSize = 20.sp
+                        )
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LocalConfiguration.current.screenHeightDp.dp * 0.8f)
+        )
     }
 }
