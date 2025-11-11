@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -23,14 +24,16 @@ fun RoundButton(
     onClick: () -> Unit = {},
     imageVector: ImageVector,
     contentDescription: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    circleColor: Color = PluckPalette.Surface,
+    iconColor: Color = PluckPalette.Primary
 ) {
     Surface(
         modifier = modifier
             .size(56.dp),
         shape = CircleShape,
-        color = PluckPalette.Surface,
-        contentColor = PluckPalette.Primary,
+        color = circleColor,
+        contentColor = iconColor,
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
         onClick = onClick
