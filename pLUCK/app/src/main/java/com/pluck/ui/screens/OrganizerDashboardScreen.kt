@@ -59,7 +59,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
@@ -98,60 +101,58 @@ fun OrganizerDashboardScreen(
     onViewWaitlist: (Event) -> Unit = {},
     onManageChosenEntrants: (Event) -> Unit = {},
     onViewEntrantLocations: (Event) -> Unit = {},
-    onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    currentRoute: String?,
+    onNavigate: (String) -> Unit
 ) {
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column {
-                BackButton(onBack = onBack)
+    val listElements = mutableListOf<ComposableItem>()
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                )
-                {
-                    OrganizerDashboardHero(
-                        organizerName = organizerName,
-                        stats = stats
-                    )
+    listElements.add(ComposableItem {
+        OrganizerDashboardHero(
+            organizerName = organizerName,
+            stats = stats
+        )
+    })
 
-                    OrganizerStatsCards(stats = stats)
+    listElements.add(ComposableItem {
+        OrganizerStatsCards(stats = stats)
+    })
 
-                    OrganizerCreateEventCard(onClick = onCreateEvent)
+    listElements.add(ComposableItem {
+        OrganizerCreateEventCard(onClick = onCreateEvent)
+    })
 
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(1f),
-                        shape = RoundedCornerShape(36.dp),
-                        color = PluckPalette.Surface,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 12.dp,
-                        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                    ) {
-                        when {
-                            isLoading -> OrganizerLoadingState()
-                            events.isEmpty() -> OrganizerEmptyState()
-                            else -> OrganizerEventsList(
-                                events = events,
-                                onEventClick = onEventClick,
-                                onEditEvent = onEditEvent,
-                                onRunDraw = onRunDraw,
-                                onViewWaitlist = onViewWaitlist,
-                                onManageChosenEntrants = onManageChosenEntrants,
-                                onViewEntrantLocations = onViewEntrantLocations
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    when {
+        isLoading -> listElements.add(ComposableItem {
+            OrganizerLoadingState()
+        })
+
+        events.isEmpty() -> listElements.add(ComposableItem {
+            OrganizerEmptyState()
+        })
+
+        else -> listElements.addAll(OrganizerEventsList(
+            events = events,
+            onEventClick = onEventClick,
+            onEditEvent = onEditEvent,
+            onRunDraw = onRunDraw,
+            onViewWaitlist = onViewWaitlist,
+            onManageChosenEntrants = onManageChosenEntrants,
+            onViewEntrantLocations = onViewEntrantLocations
+        ))
     }
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        indexOfPersistentElement = 2,
+        bottomBar = {
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                onCreateEvent = onCreateEvent,
+                showCreateButton = true, // Always an organizer on this page
+            )
+        }
+    )
 }
 
 @Composable
@@ -364,7 +365,6 @@ private fun OrganizerCreateEventCard(onClick: () -> Unit) {
     }
 }
 
-@Composable
 private fun OrganizerEventsList(
     events: List<Event>,
     onEventClick: (Event) -> Unit,
@@ -373,24 +373,25 @@ private fun OrganizerEventsList(
     onViewWaitlist: (Event) -> Unit,
     onManageChosenEntrants: (Event) -> Unit,
     onViewEntrantLocations: (Event) -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Text(
-                text = "Your Events",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = PluckPalette.Primary
-                )
+): List<ComposableItem> {
+    val eventElements = mutableListOf<ComposableItem>()
+
+    eventElements.add(ComposableItem {
+        Text(
+            text = "Your Events",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                color = PluckPalette.Primary
             )
-        }
-        itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
+        )
+    })
+
+    var i = 0
+    for (event in events) {
+        eventElements.add(ComposableItem {
             OrganizerEventCard(
                 event = event,
-                accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
+                accentColor = if (i % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
                 onEventClick = { onEventClick(event) },
                 onEditEvent = { onEditEvent(event) },
                 onRunDraw = { onRunDraw(event) },
@@ -398,8 +399,12 @@ private fun OrganizerEventsList(
                 onManageChosenEntrants = { onManageChosenEntrants(event) },
                 onViewEntrantLocations = { onViewEntrantLocations(event) }
             )
-        }
+        })
+
+        ++i
     }
+
+    return eventElements
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -695,7 +700,9 @@ private fun OrganizerDashboardScreenPreview() {
             totalRejections = 12
         ),
         events = previewEvents,
-        isLoading = false
+        isLoading = false,
+        currentRoute = "",
+        onNavigate = { }
     )
 }
 

@@ -1503,8 +1503,14 @@ fun PLuckNavHost(
                 onViewEntrantLocations = { event ->
                     navigator.toEntrantLocationsMap(event.id)
                 },
-                onBack = {
-                    navController.popBackStack()
+                currentRoute = navController.currentBackStackEntry?.destination?.route,
+                onNavigate = { route ->
+                    when (route) {
+                        "event_list" -> navigator.toEventList()
+                        "notifications" -> navigator.toNotifications()
+                        "settings" -> navigator.toSettings()
+                        "profile" -> navigator.toProfile()
+                    }
                 }
             )
         }

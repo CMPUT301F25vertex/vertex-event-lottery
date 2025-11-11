@@ -103,7 +103,7 @@ object NavTabs {
 fun BottomNavBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
-    onCreateEvent: () -> Unit = {},
+    onCreateEvent: () -> Unit,
     showCreateButton: Boolean = false,
     modifier: Modifier = Modifier
 ) {
