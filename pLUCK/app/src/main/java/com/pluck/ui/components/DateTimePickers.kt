@@ -96,6 +96,15 @@ fun PLuckDatePicker(
     }
 }
 
+/**
+ * A full screen dialogue that asks for a date range
+ * @param onDateSelected Executes when the user selects a date range
+ * @param onDismiss Executes when the user tries to dismiss the dialogue
+ * @param defaultStartDate The default value to be selected before the user selects a start date, and also
+ *      the default start date that will be selected if the user selects no start date
+ * @param defaultEndDate The default value to be selected before the user selects an end date, and also
+ *      the default end date that will be selected if the user selects no end date
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PLuckDateRangePicker(
