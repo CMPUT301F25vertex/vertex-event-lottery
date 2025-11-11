@@ -179,6 +179,13 @@ fun PLuckDateRangePicker(
     }
 }
 
+/**
+ * A full screen dialogue that asks for a time
+ * @param onTimeSelected Called when a time is selected by the user
+ * @param onDismiss Called when the user tries to close the dialog
+ * @param defaultTime The time showed before the user selects a time, and the default value if the
+ *      user does not select a time
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PLuckTimePicker(
@@ -186,7 +193,10 @@ fun PLuckTimePicker(
     onDismiss: () -> Unit,
     defaultTime: LocalTime
 ) {
-    val timePickerState = rememberTimePickerState()
+    val timePickerState = rememberTimePickerState(
+        initialHour = defaultTime.hour,
+        initialMinute = defaultTime.minute
+    )
 
     Dialog(
         onDismissRequest = onDismiss
