@@ -52,7 +52,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -60,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +78,9 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import coil.compose.AsyncImage
+import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
@@ -120,6 +122,96 @@ fun EventDetailScreen(
     }
 
     val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RoundButton(
+                onClick = onBack,
+                imageVector = Icons.Outlined.ArrowBack,
+                contentDescription = "Back",
+                modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
+            )
+
+            Spacer(Modifier.size(8.dp))
+
+            // Info text
+            val waitlistFull = event.isWaitlistFull
+            val registrationClosed = !event.isRegistrationOpen
+
+            when {
+                isUserConfirmed -> {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Accept.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
+                    ) {
+                        Text(
+                            text = "You're confirmed for this event. Tap below if you need to release your spot.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Accept,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+                isUserOnWaitlist -> {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Secondary.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "You're already on this waitlist.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+                registrationClosed -> {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Muted.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            text = "Registration window has closed. Check back for future lotteries.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Muted,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+                waitlistFull -> {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Muted.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            text = "Waitlist is full. Check back after the next draw.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Muted,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    })
 
     listElements.add(ComposableItem {
         EventDetailHeroCard(
@@ -175,27 +267,10 @@ fun EventDetailScreen(
 //        }
 //    })
 
-    PluckLayeredBackground(
-        modifier = Modifier.fillMaxSize()
-    )
-    {
-        Column {
-            BackButton(onBack = onBack)
-
-            Box(
-                modifier = Modifier
-                    .weight(0.85f)
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp
-                    )
-            ) {
-                FullWidthLazyScroll(
-                    listElements = listElements
-                )
-            }
-
-            // Bottom action section - fixed at bottom
+    AutoHidingBarScroller(
+        listElements = listElements,
+        indexOfPersistentElement = 0,
+        bottomBar = {
             EventDetailBottomActions(
                 event = event,
                 isUserOnWaitlist = isUserOnWaitlist,
@@ -203,12 +278,10 @@ fun EventDetailScreen(
                 isEventOrganizer = isEventOrganizer,
                 onJoinEvent = onJoinEvent,
                 onLeaveWaitlist = onLeaveWaitlist,
-                onViewWaitlist = onViewWaitlist,
-                modifier = Modifier
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                onViewWaitlist = onViewWaitlist
             )
         }
-    }
+    )
 }
 
 /**
@@ -816,233 +889,143 @@ private fun EventDetailBottomActions(
     isEventOrganizer: Boolean,
     onJoinEvent: (Event) -> Unit,
     onLeaveWaitlist: (Event) -> Unit,
-    onViewWaitlist: (Event) -> Unit,
-    modifier: Modifier = Modifier
+    onViewWaitlist: (Event) -> Unit
 ) {
     val waitlistFull = event.isWaitlistFull
     val registrationClosed = !event.isRegistrationOpen
     val canJoinWaitlist = !isUserOnWaitlist && !isUserConfirmed && !waitlistFull && !registrationClosed
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = 460.dp),
-        shape = RoundedCornerShape(32.dp),
-        shadowElevation = 20.dp,
-        tonalElevation = 0.dp,
-        color = PluckPalette.Surface,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-    )
-    {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        )
-        {
-            // Info text
-            when {
-                isUserConfirmed -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Accept.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
-                    ) {
-                        Text(
-                            text = "You're confirmed for this event. Tap below if you need to release your spot.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Accept,
-                                fontWeight = FontWeight.Medium
-                            )
+    Row(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Hide join/leave buttons for past events
+        val modifier = Modifier.weight(0.8f)
+
+        if (!event.isPastEvent) {
+            if (isUserConfirmed) {
+                Button(
+                    onClick = { onLeaveWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Surface,
+                        contentColor = PluckPalette.Primary
+                    ),
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    Text(
+                        text = "Release My Spot",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                }
-                isUserOnWaitlist -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Secondary.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
-                    ) {
-                        Text(
-                            text = "You're already on this waitlist.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Secondary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-                registrationClosed -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
-                    ) {
-                        Text(
-                            text = "Registration window has closed. Check back for future lotteries.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-                waitlistFull -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
-                    ) {
-                        Text(
-                            text = "Waitlist is full. Check back after the next draw.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
+                    )
                 }
             }
-            Row {
-                // Hide join/leave buttons for past events
-                val modifier = Modifier.weight(0.8f)
-
-                if (!event.isPastEvent) {
-                    if (isUserConfirmed) {
-                        Button(
-                            onClick = { onLeaveWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Surface,
-                                contentColor = PluckPalette.Primary
-                            ),
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
-                            contentPadding = PaddingValues(vertical = 14.dp)
-                        ) {
-                            Text(
-                                text = "Release My Spot",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                    else if (isUserOnWaitlist) {
-                        Button(
-                            onClick = { onLeaveWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Surface,
-                                contentColor = PluckPalette.Primary
-                            ),
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
-                            contentPadding = PaddingValues(vertical = 14.dp)
-                        ) {
-                            Text(
-                                text = "Leave Waitlist",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                    else if (isEventOrganizer) {
-                        Button(
-                            onClick = { onViewWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Secondary,
-                                contentColor = PluckPalette.Surface
-                            ),
-                            border = BorderStroke(0.dp, Color.Transparent),
-                            contentPadding = PaddingValues(vertical = 14.dp)
+            else if (isUserOnWaitlist) {
+                Button(
+                    onClick = { onLeaveWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Surface,
+                        contentColor = PluckPalette.Primary
+                    ),
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    Text(
+                        text = "Leave Waitlist",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
                         )
-                        {
-                            Icon(
-                                imageVector = Icons.Outlined.PeopleOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Text(
-                                text = "View Waitlist",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
-                    }
-                    else {
-                        Button(
-                            onClick = { onJoinEvent(event) },
-                            enabled = canJoinWaitlist,
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Primary,
-                                contentColor = PluckPalette.Surface,
-                                disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
-                                disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
-                            ),
-                            contentPadding = PaddingValues(vertical = 16.dp)
-                        ) {
-                            val label = when {
-                                waitlistFull -> "Waitlist Full"
-                                else -> "Join Waitlist"
-                            }
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
+                    )
                 }
-                else {
-                    // Show read-only message for past events
-                    Surface(
-                        modifier = modifier,
-                        shape = RoundedCornerShape(24.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.1f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
-                    ) {
-                        Text(
-                            text = "This event has already occurred",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
-                            )
+            }
+            else if (isEventOrganizer) {
+                Button(
+                    onClick = { onViewWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Secondary,
+                        contentColor = PluckPalette.Surface
+                    ),
+                    border = BorderStroke(0.dp, Color.Transparent),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                )
+                {
+                    Icon(
+                        imageVector = Icons.Outlined.PeopleOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = "View Waitlist",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold
                         )
-                    }
+                    )
                 }
-
-                Spacer(Modifier.size(8.dp))
-
-                // QR Code Button
-                ShowQRCodeButton(
-                    eventId = event.id,
-                    eventTitle = event.title,
-                    modifier = Modifier
-                        .weight(0.2f)
-                        .size(56.dp)
+            }
+            else {
+                Button(
+                    onClick = { onJoinEvent(event) },
+                    enabled = canJoinWaitlist,
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Primary,
+                        contentColor = PluckPalette.Surface,
+                        disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
+                        disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
+                    ),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    val label = when {
+                        waitlistFull -> "Waitlist Full"
+                        else -> "Join Waitlist"
+                    }
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+        }
+        else {
+            // Show read-only message for past events
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(24.dp),
+                color = PluckPalette.Muted.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
+            ) {
+                Text(
+                    text = "This event has already occurred",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Muted,
+                        fontWeight = FontWeight.Medium
+                    )
                 )
             }
         }
+
+        Spacer(Modifier.size(8.dp))
+
+        // QR Code Button
+        ShowQRCodeButton(
+            eventId = event.id,
+            eventTitle = event.title,
+            modifier = Modifier
+                .weight(0.2f)
+                .size(56.dp)
+        )
     }
 }
 
