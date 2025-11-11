@@ -16,13 +16,15 @@
 package com.pluck.navigation
 
 import android.annotation.SuppressLint
+import android.net.ConnectivityManager
 import android.util.Log
 import android.widget.Toast
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,8 +38,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,26 +61,34 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
+import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
-import com.pluck.data.DeviceAuthPreferences
-import com.pluck.data.repository.AdminAccessRepository
-import com.pluck.data.repository.OrganizerAccessRepository
-import com.pluck.data.repository.AppealRepository
 import com.pluck.data.firebase.UserRole
-import com.pluck.ui.model.Event
-import com.pluck.ui.model.EntrantProfile
 import com.pluck.data.firebase.WaitlistStatus
+import com.pluck.data.firebase.checkFirebaseConnection
+import com.pluck.data.repository.AdminAccessRepository
+import com.pluck.data.repository.AppealRepository
+import com.pluck.data.repository.OrganizerAccessRepository
 import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.PluckLayeredBackground
+import com.pluck.ui.model.EntrantProfile
+import com.pluck.ui.model.Event
+import com.pluck.ui.screens.AdminDashboardScreen
+import com.pluck.ui.screens.ChosenEntrantsScreen
 import com.pluck.ui.screens.CreateAccountScreen
-import com.pluck.ui.screens.CreateEventRequest
 import com.pluck.ui.screens.CreateEventScreen
+import com.pluck.ui.screens.CustomThemeCreatorScreen
 import com.pluck.ui.screens.EditEventPosterScreen
+import com.pluck.ui.screens.EntrantLocationsMapScreen
 import com.pluck.ui.screens.EventDetailScreen
-import com.pluck.ui.screens.HomeScreen
 import com.pluck.ui.screens.EventStatus
+import com.pluck.ui.screens.HomeScreen
 import com.pluck.ui.screens.MyEventItem
 import com.pluck.ui.screens.MyEventsScreen
 import com.pluck.ui.screens.NotificationsScreen
@@ -87,29 +96,25 @@ import com.pluck.ui.screens.OrganizerDashboardScreen
 import com.pluck.ui.screens.OrganizerStats
 import com.pluck.ui.screens.PlaceholderScreen
 import com.pluck.ui.screens.ProfileScreen
+import com.pluck.ui.screens.QRScannerScreen
+import com.pluck.ui.screens.RunDrawDialog
 import com.pluck.ui.screens.SettingsScreen
+import com.pluck.ui.screens.StartupScreen
 import com.pluck.ui.screens.ThemePickerScreen
 import com.pluck.ui.screens.WaitlistScreen
 import com.pluck.ui.screens.WelcomeBackScreen
-import com.pluck.ui.screens.CustomThemeCreatorScreen
-import com.pluck.ui.screens.QRScannerScreen
-import com.pluck.ui.screens.ChosenEntrantsScreen
-import com.pluck.ui.screens.RunDrawDialog
-import com.pluck.ui.screens.AdminDashboardScreen
-import com.pluck.ui.screens.EntrantLocationsMapScreen
-import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
+import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
+
 sealed class PLuckDestination(val route: String) {
+    object Startup : PLuckDestination("startup")
     object DeviceLogin : PLuckDestination("device_login")
     object EventList : PLuckDestination("event_list")
     object EventDetail : PLuckDestination("event_detail") {
@@ -170,7 +175,7 @@ fun PLuckNavHost(
     var loginError by remember { mutableStateOf<String?>(null) }
     var initializingSession by remember { mutableStateOf(true) }
     var deviceId by remember { mutableStateOf(authenticator.currentDeviceId()) }
-    var autoLoginEnabled by rememberSaveable { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
+    var autoLoginEnabled by remember { mutableStateOf(authPreferences.isAutoLoginEnabled()) }
     var customTheme by remember { mutableStateOf(themePrefs.getCustomTheme()) }
     var profileUpdateMessage by remember { mutableStateOf<String?>(null) }
     var profileUpdateError by remember { mutableStateOf<String?>(null) }
@@ -216,6 +221,8 @@ fun PLuckNavHost(
     val inviteFeedback by notificationsViewModel.inviteFeedback.collectAsState()
     val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
     val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
+
+    var hasFirebaseConnection by remember { mutableStateOf(false) }
 
     LaunchedEffect(deviceId) {
         if (deviceId.isBlank()) return@LaunchedEffect
@@ -267,12 +274,6 @@ fun PLuckNavHost(
             .onSuccess { profile ->
                 if (profile != null) {
                     currentUser = profile
-                    val route = navController.currentBackStackEntry?.destination?.route
-                    if (autoLoginEnabled && route == PLuckDestination.DeviceLogin.route) {
-                        // Brief delay to show welcome screen before navigating
-                        delay(300)
-                        navigator.toEventList(clearBackStack = true)
-                    }
                 }
             }
         initializingSession = false
@@ -345,74 +346,91 @@ fun PLuckNavHost(
         }
     }
 
+    // Check if we can access the firebase db on startup
+    LaunchedEffect(Unit) {
+        hasFirebaseConnection = checkFirebaseConnection()
+    }
+
     NavHost(
         navController = navController,
-        startDestination = PLuckDestination.DeviceLogin.route
-    ) {
+        startDestination = PLuckDestination.Startup.route,
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() },
+        popEnterTransition = { fadeIn() },
+        popExitTransition = { fadeOut() }    )
+    {
+        // Initial loading screen shown to the user, ensures that the user has access to firebase
+        composable(PLuckDestination.Startup.route) {
+            StartupScreen(
+                hasFirebaseConnection,
+                onConnect = {
+                    if (currentUser != null && autoLoginEnabled) {
+                        navigator.toEventList(clearBackStack = true)
+                    } else {
+                        navigator.toDeviceLogin()
+                    }
+                }
+            )
+        }
+
         composable(PLuckDestination.DeviceLogin.route) {
-            // Conditional screen based on user state
-            // Note: Returning users with auto-login enabled see WelcomeBackScreen briefly
-            // before auto-navigating to HomeScreen (300ms delay for smooth transition)
-
             val user = currentUser
-            when {
-                // New user - show account creation
-                user == null -> {
-                    // Pre-fill with saved profile data if available
-                    val savedName = authPreferences.getSavedDisplayName()
-                    val savedEmail = authPreferences.getSavedEmail()
-                    val savedPhone = authPreferences.getSavedPhoneNumber()
+            // New user - show account creation
+            if (user == null) {
+                // Pre-fill with saved profile data if available
+                val savedName = authPreferences.getSavedDisplayName()
+                val savedEmail = authPreferences.getSavedEmail()
+                val savedPhone = authPreferences.getSavedPhoneNumber()
 
-                    CreateAccountScreen(
-                        deviceId = deviceId,
-                        isLoading = loginInProgress || initializingSession,
-                        errorMessage = loginError,
-                        autoLoginEnabled = autoLoginEnabled,
-                        initialDisplayName = savedName ?: "",
-                        initialEmail = savedEmail ?: "",
-                        initialPhoneNumber = savedPhone ?: "",
-                        onAutoLoginToggle = { enabled ->
-                            autoLoginEnabled = enabled
-                            authPreferences.setAutoLoginEnabled(enabled)
-                        },
-                        onCreateAccount = { displayName, email, phoneNumber ->
-                            scope.launch {
-                                if (loginInProgress) return@launch
-                                loginError = null
-                                loginInProgress = true
+                CreateAccountScreen(
+                    deviceId = deviceId,
+                    isLoading = loginInProgress || initializingSession,
+                    errorMessage = loginError,
+                    autoLoginEnabled = autoLoginEnabled,
+                    initialDisplayName = savedName ?: "",
+                    initialEmail = savedEmail ?: "",
+                    initialPhoneNumber = savedPhone ?: "",
+                    onAutoLoginToggle = { enabled ->
+                        autoLoginEnabled = enabled
+                        authPreferences.setAutoLoginEnabled(enabled)
+                    },
+                    onCreateAccount = { displayName, email, phoneNumber ->
+                        scope.launch {
+                            if (loginInProgress) return@launch
+                            loginError = null
+                            loginInProgress = true
 
-                                when (val result = authenticator.registerOrSignIn(displayName, email, phoneNumber)) {
-                                    is DeviceAuthResult.Success -> {
-                                        currentUser = result.profile
-                                        deviceId = result.profile.deviceId
-                                        navigator.toEventList(clearBackStack = true)
-                                    }
-                                    is DeviceAuthResult.Error -> {
-                                        loginError = result.message
-                                    }
+                            when (val result = authenticator.registerOrSignIn(displayName, email, phoneNumber)) {
+                                is DeviceAuthResult.Success -> {
+                                    currentUser = result.profile
+                                    deviceId = result.profile.deviceId
+                                    navigator.toEventList(clearBackStack = true)
                                 }
-                                loginInProgress = false
+                                is DeviceAuthResult.Error -> {
+                                    loginError = result.message
+                                }
                             }
+                            loginInProgress = false
                         }
-                    )
-                }
-                // Returning user - show welcome back (with or without auto-login)
-                else -> {
-                    @Suppress("KotlinConstantConditions")
-                    WelcomeBackScreen(
-                        userName = user.displayName,
-                        deviceId = deviceId,
-                        isLoading = loginInProgress || initializingSession,
-                        autoLoginEnabled = autoLoginEnabled,
-                        onAutoLoginToggle = { enabled ->
-                            autoLoginEnabled = enabled
-                            authPreferences.setAutoLoginEnabled(enabled)
-                        },
-                        onContinue = {
-                            navigator.toEventList(clearBackStack = true)
-                        }
-                    )
-                }
+                    }
+                )
+            }
+            else {
+                // Only show welcome back screen if auto login is not enabled
+                @Suppress("KotlinConstantConditions")
+                WelcomeBackScreen(
+                    userName = user.displayName,
+                    deviceId = deviceId,
+                    isLoading = loginInProgress || initializingSession,
+                    autoLoginEnabled = autoLoginEnabled,
+                    onAutoLoginToggle = { enabled ->
+                        autoLoginEnabled = enabled
+                        authPreferences.setAutoLoginEnabled(enabled)
+                    },
+                    onContinue = {
+                        navigator.toEventList(clearBackStack = true)
+                    }
+                )
             }
         }
         composable(PLuckDestination.EventList.route) {
@@ -462,7 +480,8 @@ fun PLuckNavHost(
                     type = NavType.StringType
                 }
             )
-        ) { backStackEntry ->
+        )
+        { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EventDetail.EVENT_ID_ARG)
             val currentUserId = currentUser?.deviceId.orEmpty()
 
@@ -650,7 +669,8 @@ fun PLuckNavHost(
                     type = NavType.StringType
                 }
             )
-        ) { backStackEntry ->
+        )
+        { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.Waitlist.EVENT_ID_ARG)
             val resolvedEvent = remember(eventId, events, selectedEvent) {
                 val fromList = events.firstOrNull { it.id == eventId }
@@ -1189,7 +1209,8 @@ fun PLuckNavHost(
                     type = NavType.StringType
                 }
             )
-        ) { backStackEntry ->
+        )
+        { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EditEvent.EVENT_ID_ARG)
             val resolvedEvent = remember(eventId, events, selectedEvent) {
                 val fromList = events.firstOrNull { it.id == eventId }
@@ -1590,7 +1611,8 @@ fun PLuckNavHost(
             arguments = listOf(navArgument(PLuckDestination.ChosenEntrants.EVENT_ID_ARG) {
                 type = NavType.StringType
             })
-        ) { backStackEntry ->
+        )
+        { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.ChosenEntrants.EVENT_ID_ARG) ?: return@composable
 
             // Load the event and chosen entrants
@@ -1698,7 +1720,8 @@ fun PLuckNavHost(
             arguments = listOf(navArgument(PLuckDestination.EntrantLocationsMap.EVENT_ID_ARG) {
                 type = NavType.StringType
             })
-        ) { backStackEntry ->
+        )
+        { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString(PLuckDestination.EntrantLocationsMap.EVENT_ID_ARG) ?: return@composable
 
             // Load the event and waitlist entries
@@ -1806,6 +1829,7 @@ fun PLuckNavHost(
 }
 
 class PLuckNavigator(private val navController: NavHostController) {
+    fun toDeviceLogin() = navController.navigate(PLuckDestination.DeviceLogin.route)
     fun toEventList(clearBackStack: Boolean = false) = navController.navigate(PLuckDestination.EventList.route) {
         if (clearBackStack) {
             popUpTo(PLuckDestination.DeviceLogin.route) { inclusive = true }
