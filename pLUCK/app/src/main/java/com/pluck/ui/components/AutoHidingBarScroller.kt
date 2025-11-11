@@ -53,6 +53,7 @@ fun AutoHidingBarScroller(
     listElements: List<ComposableItem>,
     indexOfPersistentElement: Int,
     bottomBar: @Composable () -> Unit,
+    spacingBetweenItems: Dp = 16.dp,
     additionalContent: @Composable () -> Unit = { }
 ) {
     // Must be a valid index
@@ -102,7 +103,7 @@ fun AutoHidingBarScroller(
                 )
                 {
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(spacingBetweenItems))
                     }
 
                     listElements.forEach { listElement ->
@@ -111,7 +112,7 @@ fun AutoHidingBarScroller(
                         }
 
                         item {
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(spacingBetweenItems))
                         }
                     }
                 }
@@ -121,7 +122,7 @@ fun AutoHidingBarScroller(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            top = 16.dp,
+                            top = spacingBetweenItems,
                             bottom = paddingValues.calculateBottomPadding(),
                             start = 16.dp,
                             end = 16.dp
@@ -134,7 +135,7 @@ fun AutoHidingBarScroller(
                                 if (i < indexOfPersistentElement) {
                                     listElements[i].content()
 
-                                    Spacer(modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.size(spacingBetweenItems))
                                 }
                             }
                         }
@@ -142,7 +143,7 @@ fun AutoHidingBarScroller(
 
                     listElements[indexOfPersistentElement].content()
 
-                    Spacer(modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.size(spacingBetweenItems))
 
                     LazyColumn(state = listState)
                     {
@@ -153,7 +154,7 @@ fun AutoHidingBarScroller(
                                 }
 
                                 item {
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(spacingBetweenItems))
                                 }
                             }
                         }
