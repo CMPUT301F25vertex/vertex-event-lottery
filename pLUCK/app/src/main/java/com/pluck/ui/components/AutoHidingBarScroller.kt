@@ -80,11 +80,10 @@ fun AutoHidingBarScroller(
             BottomAppBar(
                 modifier = Modifier.fillMaxWidth(),
                 scrollBehavior = bottomBarScrollBehavior,
-                containerColor = PluckPalette.Surface,
-                content = {
-                    bottomBar
-                },
-            )
+                containerColor = PluckPalette.Surface
+            ) {
+                bottomBar()
+            }
         }
     )
     { paddingValues  ->
