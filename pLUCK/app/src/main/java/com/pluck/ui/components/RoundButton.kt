@@ -54,8 +54,7 @@ fun RoundButton(
  */
 @Composable
 fun BackButton(
-    onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onBack: () -> Unit = {}
 ) {
     RoundButton(
         onClick = onBack,
