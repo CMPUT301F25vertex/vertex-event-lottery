@@ -122,14 +122,13 @@ fun EventDetailScreen(
 
     listElements.add(ComposableItem {
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             BackButton(
                 padding = 8.dp,
                 onBack = onBack
             )
-
-            Spacer(Modifier.size(8.dp))
 
             // Info text
             val waitlistFull = event.isWaitlistFull
