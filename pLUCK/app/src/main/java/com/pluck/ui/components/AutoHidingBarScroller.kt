@@ -59,11 +59,6 @@ import kotlin.math.roundToInt
  * @param indexOfPersistentElement An index inside the listElements list of the element you wish to
  *      always be visible
  * @param bottomBar The dynamically hiding bottom bar visible to the user
- * @param numberOfScrollableElementsForOneScrollable This is the number of elements required for the
- *      scroll system to hide all elements above the persistent element. If there are less then this
- *      number of elements, then all elements will be placed into one scrollable list, as there are
- *      few enough that the persistent element will almost always be on screen. This number should
- *      be as small as possible.
  * @param additionalContent Additional content to be added after scrollable elements
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
