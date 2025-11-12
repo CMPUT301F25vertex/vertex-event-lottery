@@ -153,55 +153,6 @@ private fun HomeScreenContent(
     onRefresh: () -> Unit,
     userJoinedEventIds: Set<String>
 ) {
-    var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
-    var confettiTrigger by remember { mutableStateOf(0) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedDateFilter by remember { mutableStateOf<LocalDate?>(null) }
-
-    val filteredEvents = remember(events, selectedCategoryId, userJoinedEventIds, searchQuery, selectedDateFilter) {
-        val today = LocalDate.now()
-        val weekFromNow = today.plusDays(7)
-
-        // US 01.01.04 - Filter by interests (search) and availability (date)
-        val categoryFiltered = when (selectedCategoryId) {
-            "past" -> events.filter { it.isPastEvent }.sortedByDescending { it.eventDateTime }
-            "all" -> events.filter { !it.isPastEvent }.sortedBy { it.eventDateTime }
-            "upcoming" -> events.filter { !it.isPastEvent && it.date >= today }.sortedBy { it.eventDateTime }
-            "today" -> events.filter { !it.isPastEvent && it.date == today }.sortedBy { it.eventDateTime }
-            "week" -> events.filter { !it.isPastEvent && it.date >= today && it.date <= weekFromNow }.sortedBy { it.eventDateTime }
-            "available" -> events.filter { event ->
-                !event.isPastEvent &&
-                !event.isFull &&
-                !userJoinedEventIds.contains(event.id) &&
-                event.isRegistrationOpen
-            }.sortedBy { it.eventDateTime }
-            "full" -> events.filter { !it.isPastEvent && it.isFull && it.isWaitlistFull }.sortedBy { it.eventDateTime }
-            "location" -> events.filter { !it.isPastEvent }.sortedBy { it.location }
-            else -> events.filter { !it.isPastEvent }.sortedBy { it.eventDateTime }
-        }
-
-        // Apply search filter (filter by interests/keywords)
-        val searchFiltered = if (searchQuery.isBlank()) {
-            categoryFiltered
-        } else {
-            categoryFiltered.filter { event ->
-                event.title.contains(searchQuery, ignoreCase = true) ||
-                event.description.contains(searchQuery, ignoreCase = true) ||
-                event.location.contains(searchQuery, ignoreCase = true) ||
-                event.organizerName.contains(searchQuery, ignoreCase = true)
-            }
-        }
-
-        // Apply date filter (filter by availability)
-        if (selectedDateFilter != null) {
-            searchFiltered.filter { event ->
-                event.date == selectedDateFilter
-            }
-        } else {
-            searchFiltered
-        }
-    }
-
     val filters = mutableListOf<EventFilter>()
 
     val today = LocalDate.now()
