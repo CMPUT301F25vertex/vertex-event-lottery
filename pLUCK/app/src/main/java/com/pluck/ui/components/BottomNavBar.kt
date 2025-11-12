@@ -181,12 +181,7 @@ fun DashboardSelector(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    if (dashboards.size < 2) {
-        Log.e("TTAG", "Not enough dashboards")
-        return
-    } else {
-        Log.e("TTAG", "ENOUGH DASHBOARDS, we have: ${dashboards.size}")
-    }
+    if (dashboards.size < 2) return
 
     Box {
         RoundButton(
@@ -212,8 +207,6 @@ fun DashboardSelector(
                         dashboard.onClick()
                     }
                 )
-
-                Log.e("TTAG", "     Option: ${dashboard.type.name}")
             }
         }
     }

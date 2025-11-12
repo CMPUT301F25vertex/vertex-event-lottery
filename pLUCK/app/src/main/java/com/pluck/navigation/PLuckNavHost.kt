@@ -383,10 +383,6 @@ fun PLuckNavHost(
                 )
             )
         }
-
-        Log.e("TTAG", "Is admin device? ${isAdminDevice}")
-        Log.e("TTAG", "currentUser?.role == UserRole.ORGANIZER?: ${currentUser?.role == UserRole.ORGANIZER}")
-        Log.e("TTAG", "Dashboards size: ${dashboards.size}")
     }
 
     NavHost(
