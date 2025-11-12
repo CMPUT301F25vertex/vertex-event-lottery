@@ -22,6 +22,7 @@
  */
 package com.pluck.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,13 +42,20 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -86,6 +94,17 @@ object NavTabs {
     val all = listOf(Home, Notifications, Settings, Profile)
 }
 
+enum class DashboardType {
+    Entrant,
+    Organizer,
+    Admin
+}
+
+data class Dashboard(
+    val type: DashboardType,
+    val onClick: () -> Unit
+)
+
 /**
  * Bottom navigation bar with centered floating action button
  *
@@ -103,8 +122,8 @@ object NavTabs {
 fun BottomNavBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
-    onCreateEvent: () -> Unit,
-    showCreateButton: Boolean = false,
+    dashboards: List<Dashboard>,
+    currentDashboard: DashboardType? = null,
     modifier: Modifier = Modifier
 ) {
     val items = mutableListOf<@Composable () -> Unit>()
@@ -119,17 +138,7 @@ fun BottomNavBar(
         })
     }
 
-    if (showCreateButton) {
-        items.add({
-            RoundButton(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Add Event",
-                circleColor = PluckPalette.Secondary,
-                iconColor = autoTextColor(PluckPalette.Secondary),
-                onClick = onCreateEvent
-            )
-        })
-    }
+    items.add({ DashboardSelector(dashboards, currentDashboard) })
 
     NavTabs.all.drop(2).forEach { tab ->
         items.add({
@@ -164,6 +173,50 @@ fun BottomNavBar(
         }
     }
 }
+
+@Composable
+fun DashboardSelector(
+    dashboards: List<Dashboard>,
+    currentDashboard: DashboardType?
+) {
+    var switching by remember { mutableStateOf(false) }
+
+    if (dashboards.size < 2) {
+        Log.e("TTAG", "Not enough dashboards")
+        return
+    } else {
+        Log.e("TTAG", "ENOUGH DASHBOARDS, we have: ${dashboards.size}")
+    }
+
+    DropdownMenu(
+        expanded = switching,
+        onDismissRequest = {
+            switching = false
+        }
+    ) {
+        for (dashboard in dashboards) {
+            if (dashboard.type == currentDashboard) continue
+
+            DropdownMenuItem(
+                text = { Text(dashboard.type.name) },
+                onClick = {
+                    dashboard.onClick()
+                }
+            )
+
+            Log.e("TTAG", "     Option: ${dashboard.type.name}")
+        }
+    }
+
+    RoundButton(
+        imageVector = Icons.Default.Add,
+        contentDescription = "Add Event",
+        circleColor = PluckPalette.Secondary,
+        iconColor = autoTextColor(PluckPalette.Secondary),
+        onClick = { switching = true }
+    )
+}
+
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)

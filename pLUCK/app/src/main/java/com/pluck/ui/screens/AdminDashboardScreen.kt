@@ -43,7 +43,10 @@ import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.OrganizerAppeal
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
@@ -114,7 +117,9 @@ fun AdminDashboardScreen(
     onRemoveOrganizer: (String) -> Unit = {},
     onApproveAppeal: (String, String?) -> Unit = { _, _ -> },
     onRejectAppeal: (String, String?) -> Unit = { _, _ -> },
-    onBack: () -> Unit = {}
+    currentRoute: String?,
+    dashboards: List<Dashboard>,
+    onNavigate: (String) -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(AdminTab.EVENTS) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -125,26 +130,24 @@ fun AdminDashboardScreen(
     val listElements = mutableListOf<ComposableItem>()
 
     listElements.add(ComposableItem {
-        RoundButton(
-            onClick = onBack,
-            imageVector = Icons.Outlined.ArrowBack,
-            contentDescription = "Back",
-            modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
-        )
-    })
-
-    listElements.add(ComposableItem {
         AdminStatsRow(stats = stats)
     })
 
     listElements.add(ComposableItem {
-        val (icon, label) = getIconLabelForTab(selectedTab)
-
-        AdminDashboardHeader(
-            imageVector = icon,
-            text = label
+        AdminTabSelector(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it }
         )
     })
+
+//    listElements.add(ComposableItem {
+//        val (icon, label) = getIconLabelForTab(selectedTab)
+//
+//        AdminDashboardHeader(
+//            imageVector = icon,
+//            text = label
+//        )
+//    })
 
     when {
         isLoading -> listElements.add(ComposableItem { LoadingState() })
@@ -196,11 +199,13 @@ fun AdminDashboardScreen(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 2,
+        indexOfPersistentElement = 1,
         bottomBar = {
-            AdminTabSelector(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                dashboards = dashboards,
+                currentDashboard = DashboardType.Admin
             )
         },
         spacingBetweenItems = 6.dp
@@ -453,45 +458,52 @@ private fun AdminTabSelector(
     selectedTab: AdminTab,
     onTabSelected: (AdminTab) -> Unit
 ) {
-    LazyRow (
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Surface(
+        color = PluckPalette.Surface,
+        shape = RoundedCornerShape(24.dp)
     ) {
-        AdminTab.values().forEach { tab ->
-            val isSelected = selectedTab == tab
-            val (icon, label) = getIconLabelForTab(tab)
-            item {
-                Surface(
-                    modifier = Modifier
-                        .clickable { onTabSelected(tab) },
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) PluckPalette.Primary else PluckPalette.Surface,
-                    tonalElevation = if (isSelected) 8.dp else 0.dp,
-                    shadowElevation = if (isSelected) 12.dp else 4.dp,
-                    border = BorderStroke(
-                        1.dp,
-                        if (isSelected) PluckPalette.Primary else PluckPalette.Primary.copy(alpha = 0.2f)
+        LazyRow (
+            modifier = Modifier.fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        )
+        {
+            AdminTab.values().forEach { tab ->
+                val isSelected = selectedTab == tab
+                val (icon, label) = getIconLabelForTab(tab)
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .clickable { onTabSelected(tab) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) PluckPalette.Primary else PluckPalette.Surface,
+                        tonalElevation = if (isSelected) 8.dp else 0.dp,
+                        shadowElevation = if (isSelected) 12.dp else 4.dp,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) PluckPalette.Primary else PluckPalette.Primary.copy(alpha = 0.2f)
+                        )
                     )
-                )
-                {
-                    Row(
-                        modifier = Modifier.padding(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = if (isSelected) Color.White else PluckPalette.Primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = if (isSelected) Color.White else PluckPalette.Primary,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    {
+                        Row(
+                            modifier = Modifier.padding(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = if (isSelected) Color.White else PluckPalette.Primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                        )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isSelected) Color.White else PluckPalette.Primary,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            )
+                        }
                     }
                 }
             }

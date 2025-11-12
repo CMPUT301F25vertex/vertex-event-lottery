@@ -356,14 +356,6 @@ fun ProfileScreen(
             )
             if (isOrganizer) {
                 ProfileActionButton(
-                    text = "Organizer Dashboard",
-                    description = "Create and manage your events.",
-                    enabled = !isLoading,
-                    containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
-                    contentColor = PluckPalette.Tertiary,
-                    onClick = onOrganizerDashboard
-                )
-                ProfileActionButton(
                     text = "Downgrade to User",
                     description = "Remove organizer status. All your events will be deleted.",
                     enabled = !isLoading,
@@ -399,16 +391,7 @@ fun ProfileScreen(
                     onClick = { showAppealDialog = true }
                 )
             }
-            if (isAdmin) {
-                ProfileActionButton(
-                    text = "Admin Dashboard",
-                    description = "Manage platform content and users.",
-                    enabled = !isLoading,
-                    containerColor = PluckPalette.Decline.copy(alpha = 0.12f),
-                    contentColor = PluckPalette.Decline,
-                    onClick = onAdminDashboard
-                )
-            } else {
+            if (!isAdmin) {
                 ProfileActionButton(
                     text = "Register as Admin",
                     description = "Unlock the admin console with a secure password.",

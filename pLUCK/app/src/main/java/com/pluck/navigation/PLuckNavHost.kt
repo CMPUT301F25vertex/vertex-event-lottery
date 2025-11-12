@@ -76,6 +76,8 @@ import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.data.repository.AppealRepository
 import com.pluck.data.repository.OrganizerAccessRepository
 import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.ui.model.Event
@@ -109,6 +111,7 @@ import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -221,6 +224,12 @@ fun PLuckNavHost(
     val inviteFeedback by notificationsViewModel.inviteFeedback.collectAsState()
     val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
     val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
+
+    // Everyone is an entrant
+    val dashboards by remember { mutableStateOf(mutableListOf(Dashboard(
+        type = DashboardType.Entrant,
+        onClick = { navigator.toEventList() }
+    ))) }
 
     var hasFirebaseConnection by remember { mutableStateOf(false) }
 
@@ -351,6 +360,35 @@ fun PLuckNavHost(
         hasFirebaseConnection = checkFirebaseConnection()
     }
 
+    // Required to ensure that users who did not sign up for organizer/admin before dashboards can
+    // still access all of the correct dashboards
+    LaunchedEffect(Unit) {
+        delay(1000)
+        var hasAdminDashboard = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Admin) hasAdminDashboard = true }
+        if (isAdminDevice && !hasAdminDashboard) {
+            dashboards.add(Dashboard(
+                    type = DashboardType.Admin,
+                    onClick = { navigator.toAdmin() }
+                )
+            )
+        }
+
+        var hasOrganizerDashboard = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Organizer) hasOrganizerDashboard = true }
+        if (currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard) {
+                dashboards.add(Dashboard(
+                    type = DashboardType.Organizer,
+                    onClick = { navigator.toOrganizer() }
+                )
+            )
+        }
+
+        Log.e("TTAG", "Is admin device? ${isAdminDevice}")
+        Log.e("TTAG", "currentUser?.role == UserRole.ORGANIZER?: ${currentUser?.role == UserRole.ORGANIZER}")
+        Log.e("TTAG", "Dashboards size: ${dashboards.size}")
+    }
+
     NavHost(
         navController = navController,
         startDestination = PLuckDestination.Startup.route,
@@ -444,7 +482,6 @@ fun PLuckNavHost(
                 events = events,
                 isLoading = eventsLoading,
                 currentRoute = navController.currentBackStackEntry?.destination?.route,
-                isOrganizer = isOrganizer,
                 onSelectEvent = { event ->
                     navigator.toEventDetail(event.id)
                 },
@@ -455,9 +492,6 @@ fun PLuckNavHost(
                         "settings" -> navigator.toSettings()
                         "profile" -> navigator.toProfile()
                     }
-                },
-                onCreateEvent = {
-                    navigator.toCreateEvent()
                 },
                 onScanQRCode = {
                     navigator.toQRScanner()
@@ -470,7 +504,8 @@ fun PLuckNavHost(
                         waitlistViewModel.loadUserEventHistory(refreshDeviceId)
                     }
                 },
-                userJoinedEventIds = userJoinedEventIds
+                userJoinedEventIds = userJoinedEventIds,
+                dashboards = dashboards
             )
         }
         composable(
@@ -812,7 +847,6 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Profile.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -825,10 +859,7 @@ fun PLuckNavHost(
                                 "profile" -> { /* Already here */ }
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
@@ -900,6 +931,12 @@ fun PLuckNavHost(
                             adminRegistrationError = null
                             adminRegistrationPassword = ""
                             showAdminRegistrationDialog = true
+                            dashboards.add(Dashboard(
+                                type = DashboardType.Admin,
+                                onClick = {
+                                    navigator.toAdmin()
+                                }
+                            ))
                         },
                         onBecomeOrganizer = {
                             scope.launch {
@@ -921,6 +958,13 @@ fun PLuckNavHost(
                                             isOrganizerBanned = false
                                         )
                                         profileUpdateMessage = "Organizer tools unlocked."
+
+                                        dashboards.add(Dashboard(
+                                            type = DashboardType.Organizer,
+                                            onClick = {
+                                                navigator.toOrganizer()
+                                            }
+                                        ))
                                     }
                                     .onFailure { error ->
                                         profileUpdateError = error.message
@@ -946,6 +990,18 @@ fun PLuckNavHost(
                                         currentUser = profile.copy(role = UserRole.ENTRANT)
                                         profileUpdateMessage =
                                             "Organizer access removed. Existing events deleted."
+                                        var dashboardToRemove = -1
+                                        var i = 0
+                                        for (board in dashboards) {
+                                            if (board.type == DashboardType.Organizer) {
+                                                dashboardToRemove = i
+                                            }
+
+                                            ++i
+                                        }
+
+                                        assert(i != -1) // Was not an organizer before being downgraded
+                                        dashboards.removeAt(dashboardToRemove)
                                     }
                                     .onFailure { error ->
                                         profileUpdateError = error.message
@@ -1051,10 +1107,7 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
@@ -1287,10 +1340,7 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
@@ -1323,10 +1373,7 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
@@ -1511,7 +1558,8 @@ fun PLuckNavHost(
                         "settings" -> navigator.toSettings()
                         "profile" -> navigator.toProfile()
                     }
-                }
+                },
+                dashboards = dashboards
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
@@ -1548,9 +1596,16 @@ fun PLuckNavHost(
                         val adminActorId = currentUser?.deviceId?.takeIf { it.isNotBlank() } ?: deviceId
                         adminViewModel.rejectAppeal(appealId, adminActorId, notes)
                     },
-                    onBack = {
-                        navController.popBackStack()
-                    }
+                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                    onNavigate = { route ->
+                        when (route) {
+                            "event_list" -> navigator.toEventList()
+                            "notifications" -> navigator.toNotifications()
+                            "settings" -> navigator.toSettings()
+                            "profile" -> navigator.toProfile()
+                        }
+                    },
+                    dashboards = dashboards
                 )
             } else {
                 PlaceholderScreen(

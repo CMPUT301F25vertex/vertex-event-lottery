@@ -63,6 +63,8 @@ import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
 import com.pluck.ui.components.RoundButton
 import com.pluck.ui.components.PluckAccentCircle
 import com.pluck.ui.components.PluckLayeredBackground
@@ -102,7 +104,8 @@ fun OrganizerDashboardScreen(
     onManageChosenEntrants: (Event) -> Unit = {},
     onViewEntrantLocations: (Event) -> Unit = {},
     currentRoute: String?,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    dashboards: List<Dashboard>
 ) {
     val listElements = mutableListOf<ComposableItem>()
 
@@ -148,8 +151,8 @@ fun OrganizerDashboardScreen(
             BottomNavBar(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
-                onCreateEvent = onCreateEvent,
-                showCreateButton = true, // Always an organizer on this page
+                dashboards = dashboards,
+                currentDashboard = DashboardType.Organizer
             )
         }
     )
@@ -702,6 +705,7 @@ private fun OrganizerDashboardScreenPreview() {
         events = previewEvents,
         isLoading = false,
         currentRoute = "",
+        dashboards = emptyList(),
         onNavigate = { }
     )
 }

@@ -77,6 +77,8 @@ import coil.compose.AsyncImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
 import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
@@ -108,28 +110,24 @@ fun HomeScreen(
     events: List<Event>,
     isLoading: Boolean,
     currentRoute: String?,
-    isOrganizer: Boolean = false,
+    dashboards: List<Dashboard>,
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
-    onCreateEvent: (() -> Unit)? = null,
     onScanQRCode: (() -> Unit)? = null,
     onRefreshEvents: (() -> Unit)? = null,
-    userJoinedEventIds: Set<String> = emptySet(),
-    modifier: Modifier = Modifier
+    userJoinedEventIds: Set<String> = emptySet()
 ) {
     HomeScreenContent(
         userName = userName,
         events = events,
         isLoading = isLoading,
         currentRoute = currentRoute,
-        isOrganizer = isOrganizer,
         onSelectEvent = onSelectEvent,
         onNavigate = onNavigate,
-        onCreateEvent = onCreateEvent ?: {},
         onScanQRCode = onScanQRCode ?: {},
         onRefresh = onRefreshEvents ?: {},
         userJoinedEventIds = userJoinedEventIds,
-        modifier = modifier
+        dashboards = dashboards
     )
 }
 
@@ -144,14 +142,12 @@ private fun HomeScreenContent(
     events: List<Event>,
     isLoading: Boolean,
     currentRoute: String?,
-    isOrganizer: Boolean,
+    dashboards: List<Dashboard>,
     onSelectEvent: (Event) -> Unit,
     onNavigate: (String) -> Unit,
-    onCreateEvent: () -> Unit,
     onScanQRCode: () -> Unit,
     onRefresh: () -> Unit,
-    userJoinedEventIds: Set<String>,
-    modifier: Modifier = Modifier
+    userJoinedEventIds: Set<String>
 ) {
     var selectedCategoryId by remember { mutableStateOf(homeCategories.first().id) }
     var confettiTrigger by remember { mutableStateOf(0) }
@@ -294,8 +290,8 @@ private fun HomeScreenContent(
             BottomNavBar(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
-                onCreateEvent = onCreateEvent,
-                showCreateButton = isOrganizer,
+                dashboards = dashboards,
+                currentDashboard = DashboardType.Entrant
             )
         }
     ) {
@@ -811,7 +807,7 @@ private fun HomeScreenPreview() {
         currentRoute = null,
         onSelectEvent = {},
         onNavigate = {},
-        onCreateEvent = {}
+        dashboards = emptyList(),
     )
 }
 
