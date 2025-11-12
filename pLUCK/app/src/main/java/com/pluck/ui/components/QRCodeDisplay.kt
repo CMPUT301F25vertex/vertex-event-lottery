@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.QrCode2
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,9 +29,6 @@ import com.pluck.ui.util.QRCodeGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 
 /**
  * QRCodeDisplay.kt
@@ -234,7 +230,7 @@ fun ShowQRCodeButton(
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
 
-    RoundButton(
+    RoundIconButton(
         onClick = { showQRDialog = true },
         imageVector = Icons.Outlined.QrCode2,
         contentDescription = "View QR Code"

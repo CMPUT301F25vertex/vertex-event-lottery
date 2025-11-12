@@ -69,7 +69,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.ShowQRCodeButton
 import com.pluck.ui.model.Event
@@ -80,10 +79,8 @@ import java.time.LocalTime
 import coil.compose.AsyncImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
-import com.pluck.ui.components.BottomNavBar
-import com.pluck.ui.components.RoundButton
+import com.pluck.ui.components.RoundIconButton
 import com.pluck.ui.components.ComposableItem
-import com.pluck.ui.components.FullWidthLazyScroll
 
 /**
  * EventDetailScreen.kt
@@ -127,12 +124,7 @@ fun EventDetailScreen(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            RoundButton(
-                onClick = onBack,
-                imageVector = Icons.Outlined.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
-            )
+            BackButton(padding = 8.dp)
 
             Spacer(Modifier.size(8.dp))
 

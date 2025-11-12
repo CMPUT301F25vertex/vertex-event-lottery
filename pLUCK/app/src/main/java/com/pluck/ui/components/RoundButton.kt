@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -20,7 +21,7 @@ import androidx.compose.ui.unit.dp
  * @param onClick Function executed when button is pressed
  */
 @Composable
-fun RoundButton(
+fun RoundIconButton(
     onClick: () -> Unit = {},
     imageVector: ImageVector,
     contentDescription: String,
@@ -54,12 +55,13 @@ fun RoundButton(
  */
 @Composable
 fun BackButton(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    padding: Dp = 16.dp
 ) {
-    RoundButton(
+    RoundIconButton(
         onClick = onBack,
         imageVector = Icons.Outlined.ArrowBack,
         contentDescription = "Back",
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
+        modifier = Modifier.padding(padding)
     )
 }

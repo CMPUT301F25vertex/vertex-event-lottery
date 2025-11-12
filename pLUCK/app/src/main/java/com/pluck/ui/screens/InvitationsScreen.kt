@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Email
@@ -64,7 +63,6 @@ import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
 import com.google.firebase.Timestamp
 import com.pluck.ui.components.BackButton
-import com.pluck.ui.components.RoundButton
 
 data class InvitationWithEvent(
     val invitation: EventInvitation,

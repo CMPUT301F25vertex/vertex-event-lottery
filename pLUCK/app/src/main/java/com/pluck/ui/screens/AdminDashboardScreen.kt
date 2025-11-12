@@ -11,17 +11,11 @@
  */
 package com.pluck.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,26 +30,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.pluck.data.firebase.AppealStatus
 import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.OrganizerAppeal
 import com.pluck.ui.components.AutoHidingBarScroller
-import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.Dashboard
 import com.pluck.ui.components.DashboardType
-import com.pluck.ui.components.RoundButton
-import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 import com.pluck.ui.viewmodel.ImageMetadata
 import com.pluck.ui.viewmodel.ImageSource
 import com.pluck.ui.viewmodel.NotificationLog
-import kotlin.compareTo
-import kotlin.div
 
 /**
  * Admin dashboard for platform moderation and content management.
