@@ -179,7 +179,7 @@ fun DashboardSelector(
     dashboards: List<Dashboard>,
     currentDashboard: DashboardType?
 ) {
-    var switching by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     if (dashboards.size < 2) {
         Log.e("TTAG", "Not enough dashboards")
@@ -188,33 +188,35 @@ fun DashboardSelector(
         Log.e("TTAG", "ENOUGH DASHBOARDS, we have: ${dashboards.size}")
     }
 
-    DropdownMenu(
-        expanded = switching,
-        onDismissRequest = {
-            switching = false
-        }
-    ) {
-        for (dashboard in dashboards) {
-            if (dashboard.type == currentDashboard) continue
+    Box {
+        RoundButton(
+            imageVector = Icons.Default.Add,
+            contentDescription = "Add Event",
+            circleColor = PluckPalette.Secondary,
+            iconColor = autoTextColor(PluckPalette.Secondary),
+            onClick = { showMenu = true }
+        )
 
-            DropdownMenuItem(
-                text = { Text(dashboard.type.name) },
-                onClick = {
-                    dashboard.onClick()
-                }
-            )
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = {
+                showMenu = false
+            }
+        ) {
+            for (dashboard in dashboards) {
+                if (dashboard.type == currentDashboard) continue
 
-            Log.e("TTAG", "     Option: ${dashboard.type.name}")
+                DropdownMenuItem(
+                    text = { Text(dashboard.type.name) },
+                    onClick = {
+                        dashboard.onClick()
+                    }
+                )
+
+                Log.e("TTAG", "     Option: ${dashboard.type.name}")
+            }
         }
     }
-
-    RoundButton(
-        imageVector = Icons.Default.Add,
-        contentDescription = "Add Event",
-        circleColor = PluckPalette.Secondary,
-        iconColor = autoTextColor(PluckPalette.Secondary),
-        onClick = { switching = true }
-    )
 }
 
 
