@@ -26,9 +26,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -170,12 +173,13 @@ fun DashboardSelector(
     if (dashboards.size < 2) return
 
     Box {
-        RoundIconButton(
-            imageVector = Icons.Default.Add,
-            contentDescription = "Add Event",
-            circleColor = PluckPalette.Secondary,
-            iconColor = autoTextColor(PluckPalette.Secondary),
-            onClick = { showMenu = true }
+        RoundedTextButton(
+            text = "Dashboard",
+            shapeColor = PluckPalette.Secondary,
+            textColor = autoTextColor(PluckPalette.Secondary),
+            onClick = { showMenu = true },
+            textSize = 16,
+            padding = 12.dp
         )
 
         DropdownMenu(
