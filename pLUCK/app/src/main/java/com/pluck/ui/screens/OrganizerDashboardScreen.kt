@@ -148,8 +148,7 @@ fun OrganizerDashboardScreen(
                 dashboards = dashboards,
                 currentDashboard = DashboardType.Organizer
             )
-        },
-        numberOfScrollableElementsForOneScrollable = 3
+        }
     )
 }
 
