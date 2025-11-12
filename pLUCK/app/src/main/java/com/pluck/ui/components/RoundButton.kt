@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -64,7 +66,8 @@ fun RoundedTextButton(
     shapeColor: Color = PluckPalette.Surface,
     textColor: Color = PluckPalette.Primary,
     textSize: Int = 24,
-    padding: Dp = 8.dp
+    padding: Dp = 8.dp,
+    style: TextStyle = LocalTextStyle.current
 ) {
     Surface(
         modifier = modifier,
@@ -73,14 +76,15 @@ fun RoundedTextButton(
         contentColor = textColor,
         tonalElevation = 0.dp,
         shadowElevation = 12.dp,
-        onClick = onClick
+        onClick = onClick,
     )
     {
         Text(
             text = text,
             modifier = Modifier.padding(padding),
             textAlign = TextAlign.Center,
-            fontSize = TextUnit(value = textSize.toFloat(), TextUnitType.Sp)
+            fontSize = TextUnit(value = textSize.toFloat(), TextUnitType.Sp),
+            style = style
         )
     }
 }
