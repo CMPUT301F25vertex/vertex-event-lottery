@@ -13,6 +13,7 @@ $dokka.location:com.pluck.data.cloudinary/CloudinaryConfig/initialize/#android.c
 $dokka.location:com.pluck.data.cloudinary/CloudinaryConfig/isInitialized/#/PointingToDeclaration/app/com.pluck.data.cloudinary/-cloudinary-config/is-initialized.html
 $dokka.location:com.pluck.data.cloudinary/CloudinaryConfig/uploadPreset/#/PointingToDeclaration/app/com.pluck.data.cloudinary/-cloudinary-config/upload-preset.html
 $dokka.location:com.pluck.data.firebase////PointingToDeclaration/app/com.pluck.data.firebase/index.html
+$dokka.location:com.pluck.data.firebase//checkFirebaseConnection/#/PointingToDeclaration/app/com.pluck.data.firebase/check-firebase-connection.html
 $dokka.location:com.pluck.data.firebase/AppealStatus.APPROVED///PointingToDeclaration/{"org.jetbrains.dokka.links.EnumEntryDRIExtra":{"key":"org.jetbrains.dokka.links.EnumEntryDRIExtra"}}app/com.pluck.data.firebase/-appeal-status/-a-p-p-r-o-v-e-d/index.html
 $dokka.location:com.pluck.data.firebase/AppealStatus.PENDING///PointingToDeclaration/{"org.jetbrains.dokka.links.EnumEntryDRIExtra":{"key":"org.jetbrains.dokka.links.EnumEntryDRIExtra"}}app/com.pluck.data.firebase/-appeal-status/-p-e-n-d-i-n-g/index.html
 $dokka.location:com.pluck.data.firebase/AppealStatus.REJECTED///PointingToDeclaration/{"org.jetbrains.dokka.links.EnumEntryDRIExtra":{"key":"org.jetbrains.dokka.links.EnumEntryDRIExtra"}}app/com.pluck.data.firebase/-appeal-status/-r-e-j-e-c-t-e-d/index.html
@@ -20,6 +21,9 @@ $dokka.location:com.pluck.data.firebase/AppealStatus///PointingToDeclaration/ap
 $dokka.location:com.pluck.data.firebase/AppealStatus/entries/#/PointingToDeclaration/app/com.pluck.data.firebase/-appeal-status/entries.html
 $dokka.location:com.pluck.data.firebase/AppealStatus/valueOf/#kotlin.String/PointingToDeclaration/app/com.pluck.data.firebase/-appeal-status/value-of.html
 $dokka.location:com.pluck.data.firebase/AppealStatus/values/#/PointingToDeclaration/app/com.pluck.data.firebase/-appeal-status/values.html
+$dokka.location:com.pluck.data.firebase/ConnectionTest///PointingToDeclaration/app/com.pluck.data.firebase/-connection-test/index.html
+$dokka.location:com.pluck.data.firebase/ConnectionTest/ConnectionTest/#kotlin.Int/PointingToDeclaration/app/com.pluck.data.firebase/-connection-test/-connection-test.html
+$dokka.location:com.pluck.data.firebase/ConnectionTest/testValue/#/PointingToDeclaration/app/com.pluck.data.firebase/-connection-test/test-value.html
 $dokka.location:com.pluck.data.firebase/EventInvitation///PointingToDeclaration/app/com.pluck.data.firebase/-event-invitation/index.html
 $dokka.location:com.pluck.data.firebase/EventInvitation/EventInvitation/#/PointingToDeclaration/app/com.pluck.data.firebase/-event-invitation/-event-invitation.html
 $dokka.location:com.pluck.data.firebase/EventInvitation/EventInvitation/#kotlin.String#kotlin.String#kotlin.String#kotlin.String#com.pluck.data.firebase.InvitationStatus#com.google.firebase.Timestamp?#com.google.firebase.Timestamp?#kotlin.Int/PointingToDeclaration/app/com.pluck.data.firebase/-event-invitation/-event-invitation.html
@@ -347,6 +351,7 @@ $dokka.location:com.pluck.navigation/PLuckDestination.OrganizerDashboard///Point
 $dokka.location:com.pluck.navigation/PLuckDestination.Profile///PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-profile/index.html
 $dokka.location:com.pluck.navigation/PLuckDestination.QRScanner///PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-q-r-scanner/index.html
 $dokka.location:com.pluck.navigation/PLuckDestination.Settings///PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-settings/index.html
+$dokka.location:com.pluck.navigation/PLuckDestination.Startup///PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-startup/index.html
 $dokka.location:com.pluck.navigation/PLuckDestination.Waitlist///PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-waitlist/index.html
 $dokka.location:com.pluck.navigation/PLuckDestination.Waitlist/EVENT_ID_ARG/#/PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-waitlist/-e-v-e-n-t_-i-d_-a-r-g.html
 $dokka.location:com.pluck.navigation/PLuckDestination.Waitlist/createRoute/#kotlin.String/PointingToDeclaration/app/com.pluck.navigation/-p-luck-destination/-waitlist/create-route.html
@@ -358,6 +363,7 @@ $dokka.location:com.pluck.navigation/PLuckNavigator/PLuckNavigator/#androidx.nav
 $dokka.location:com.pluck.navigation/PLuckNavigator/toAdmin/#/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-admin.html
 $dokka.location:com.pluck.navigation/PLuckNavigator/toChosenEntrants/#kotlin.String/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-chosen-entrants.html
 $dokka.location:com.pluck.navigation/PLuckNavigator/toCreateEvent/#/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-create-event.html
+$dokka.location:com.pluck.navigation/PLuckNavigator/toDeviceLogin/#/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-device-login.html
 $dokka.location:com.pluck.navigation/PLuckNavigator/toEditEvent/#kotlin.String/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-edit-event.html
 $dokka.location:com.pluck.navigation/PLuckNavigator/toEntrantLocationsMap/#kotlin.String/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-entrant-locations-map.html
 $dokka.location:com.pluck.navigation/PLuckNavigator/toEventDetail/#kotlin.String/PointingToDeclaration/app/com.pluck.navigation/-p-luck-navigator/to-event-detail.html
@@ -546,6 +552,7 @@ $dokka.location:com.pluck.ui.screens//QRScannerScreen/#kotlin.Function0[kotlin.U
 $dokka.location:com.pluck.ui.screens//RunDrawDialog/#kotlin.String#kotlin.Int#kotlin.Int#kotlin.Int#kotlin.Int#kotlin.Int#kotlin.Function1[kotlin.Int,kotlin.Unit]#kotlin.Function0[kotlin.Unit]/PointingToDeclaration/app/com.pluck.ui.screens/-run-draw-dialog.html
 $dokka.location:com.pluck.ui.screens//SettingsScreen/#kotlin.Boolean#kotlin.Function1[kotlin.Boolean,kotlin.Unit]#androidx.compose.ui.Modifier/PointingToDeclaration/app/com.pluck.ui.screens/-settings-screen.html
 $dokka.location:com.pluck.ui.screens//SettingsScreen/#kotlin.Boolean#kotlin.Function1[kotlin.Boolean,kotlin.Unit]#kotlin.Function0[kotlin.Unit]#kotlin.Function0[kotlin.Unit]#androidx.compose.ui.Modifier/PointingToDeclaration/app/com.pluck.ui.screens/-settings-screen.html
+$dokka.location:com.pluck.ui.screens//StartupScreen/#kotlin.Boolean#kotlin.Function0[kotlin.Unit]/PointingToDeclaration/app/com.pluck.ui.screens/-startup-screen.html
 $dokka.location:com.pluck.ui.screens//ThemePickerScreen/#kotlin.String#kotlin.collections.List[com.pluck.ui.theme.CustomTheme]#com.pluck.ui.theme.CustomTheme?#kotlin.Function1[kotlin.String,kotlin.Unit]#kotlin.Function0[kotlin.Unit]#kotlin.Function0[kotlin.Unit]#kotlin.Function0[kotlin.Unit]#androidx.compose.ui.Modifier/PointingToDeclaration/app/com.pluck.ui.screens/-theme-picker-screen.html
 $dokka.location:com.pluck.ui.screens//TooLateDialog/#kotlin.String#kotlin.Function0[kotlin.Unit]/PointingToDeclaration/app/com.pluck.ui.screens/-too-late-dialog.html
 $dokka.location:com.pluck.ui.screens//WaitlistScreen/#com.pluck.ui.model.Event#kotlin.collections.List[com.pluck.ui.screens.WaitlistEntry]#kotlin.collections.List[com.pluck.ui.screens.WaitlistEntry]#kotlin.Boolean#kotlin.Boolean#kotlin.Function0[kotlin.Unit]#kotlin.Function0[kotlin.Unit]#kotlin.Function0[kotlin.Unit]#androidx.compose.ui.Modifier/PointingToDeclaration/app/com.pluck.ui.screens/-waitlist-screen.html
