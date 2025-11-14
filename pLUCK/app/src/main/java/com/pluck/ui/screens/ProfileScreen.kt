@@ -779,7 +779,7 @@ private fun ProfileAvatarSection(
                 modifier = Modifier
                     .fillMaxSize(),
                 shape = CircleShape,
-                color = PluckPalette.Primary.copy(alpha = 0.08f),
+                color = PluckPalette.Surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 10.dp,
                 onClick = onChangePhoto,
