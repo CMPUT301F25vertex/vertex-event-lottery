@@ -22,9 +22,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.pluck.DEBUG
+import com.pluck.ui.theme.autoTextColor
 import com.pluck.ui.util.QRCodeGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -193,7 +196,10 @@ fun QRCodeDialog(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Download")
+                        Text(
+                            text = "Download",
+                            fontSize = TextUnit(value = 12f, TextUnitType.Sp)
+                        )
                     }
 
                     Button(

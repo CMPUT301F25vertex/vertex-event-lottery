@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -157,7 +159,12 @@ fun QRScannerScreen(
                 FilterChip(
                     selected = scanMode == ScanMode.CAMERA,
                     onClick = { scanMode = ScanMode.CAMERA },
-                    label = { Text("Camera") },
+                    label = {
+                        Text(
+                            text = "Camera",
+                            fontSize = TextUnit(value = 12f, TextUnitType.Sp)
+                        )
+                    },
                     leadingIcon = {
                         Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                     },
