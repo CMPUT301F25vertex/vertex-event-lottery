@@ -163,17 +163,17 @@ fun CreateEventScreen(
     val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    val dateSelectLambdaNullValue = { date: LocalDate -> }
-    var dateSelectLambda by remember { mutableStateOf(dateSelectLambdaNullValue) }
+    var hasDateSelectLambda by remember { mutableStateOf(false) }
+    var dateSelectLambda by remember { mutableStateOf({ date: LocalDate -> }) }
     var defaultDateDialogDate by remember { mutableStateOf(LocalDate.now()) }
 
-    val rangeSelectLambdaNullValue = { startDate: LocalDate, endDate: LocalDate -> }
-    var rangeSelectLambda by remember { mutableStateOf(rangeSelectLambdaNullValue) }
+    var hasRangeSelectLambda by remember { mutableStateOf(false) }
+    var rangeSelectLambda by remember { mutableStateOf({ date1: LocalDate, date2: LocalDate -> }) }
     var defaultDateRangeDialogStartDate by remember { mutableStateOf(LocalDate.now()) }
     var defaultDateRangeDialogEndDate by remember { mutableStateOf(LocalDate.now().plus(1, ChronoUnit.DAYS)) }
 
-    val timeSelectLambdaNullValue = { time: LocalTime -> }
-    var timeSelectLambda by remember { mutableStateOf(timeSelectLambdaNullValue) }
+    var hasTimeSelectLambda by remember { mutableStateOf(false) }
+    var timeSelectLambda by remember { mutableStateOf({ time: LocalTime -> }) }
     var defaultTimeDialogTime by remember { mutableStateOf(LocalTime.now()) }
 
     /**
@@ -355,6 +355,7 @@ fun CreateEventScreen(
             onClick = {
                 defaultDateDialogDate = eventDate ?: LocalDate.now()
                 dateSelectLambda = { date: LocalDate -> eventDate = date }
+                hasDateSelectLambda = true
 
                 if (eventTime == null) eventTime = LocalTime.now()
             },
@@ -371,6 +372,7 @@ fun CreateEventScreen(
             onClick = {
                 defaultTimeDialogTime = eventTime ?: LocalTime.now()
                 timeSelectLambda = { time: LocalTime -> eventTime = time }
+                hasTimeSelectLambda = true
             },
             isRequired = true
         )
@@ -419,6 +421,7 @@ fun CreateEventScreen(
                     registrationStartDate = startDate
                     registrationEndDate = endDate
                 }
+                hasRangeSelectLambda = true
 
                 if (registrationStartTime == null) registrationStartTime = LocalTime.of(8, 0)
                 if (registrationEndTime == null) registrationEndTime = LocalTime.of(18, 0)
@@ -436,6 +439,7 @@ fun CreateEventScreen(
             onClick = {
                 defaultTimeDialogTime = registrationStartTime ?: LocalTime.of(8, 0)
                 timeSelectLambda = { time: LocalTime -> registrationStartTime = time }
+                hasTimeSelectLambda = true
             },
             isRequired = true
         )
@@ -450,6 +454,7 @@ fun CreateEventScreen(
             onClick = {
                 defaultTimeDialogTime = registrationEndTime ?: LocalTime.of(18, 0)
                 timeSelectLambda = { time: LocalTime -> registrationEndTime = time }
+                hasTimeSelectLambda = true
             },
             isRequired = true
         )
@@ -647,32 +652,32 @@ fun CreateEventScreen(
         )
     }
 
-    if (dateSelectLambda != dateSelectLambdaNullValue) {
+    if (hasDateSelectLambda) {
         PLuckDatePicker(
             onDateSelected = dateSelectLambda,
             onDismiss = {
-                dateSelectLambda = dateSelectLambdaNullValue
+                hasDateSelectLambda = false
             },
             defaultDate = defaultDateDialogDate
         )
     }
 
-    if (rangeSelectLambda != rangeSelectLambdaNullValue) {
+    if (hasRangeSelectLambda) {
         PLuckDateRangePicker(
             onDateSelected = rangeSelectLambda,
             onDismiss = {
-                rangeSelectLambda = rangeSelectLambdaNullValue
+                hasRangeSelectLambda = false
             },
             defaultStartDate = defaultDateRangeDialogStartDate,
             defaultEndDate = defaultDateRangeDialogEndDate
         )
     }
 
-    if (timeSelectLambda != timeSelectLambdaNullValue) {
+    if (hasTimeSelectLambda) {
         PLuckTimePicker(
             onTimeSelected = timeSelectLambda,
             onDismiss = {
-                timeSelectLambda = timeSelectLambdaNullValue
+                hasTimeSelectLambda = false
             },
             defaultTime = defaultTimeDialogTime
         )
