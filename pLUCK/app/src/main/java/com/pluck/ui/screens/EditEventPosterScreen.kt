@@ -59,8 +59,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -179,13 +182,111 @@ fun EditEventPosterScreen(
         posterUploadError = null
     }
 
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        PosterEditorHeader(
+            eventTitle = eventTitle,
+            onBack = onBack
+        )
+    })
+
+    listElements.add(ComposableItem {
+        PosterPreview(
+            posterUrl = posterUrl,
+            isUploading = posterUploadInProgress,
+            canUploadPoster = true,  // Cloudinary is always available
+            onSelectPoster = {
+                posterPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onRemovePoster = {
+                posterUrl = null
+                manualPosterUrl = ""
+            }
+        )
+    })
+
+    listElements.add(ComposableItem {
+        posterUploadError?.let { error ->
+            ErrorCallout(message = error)
+        }
+    })
+
+    listElements.add(ComposableItem {
+        if (errorMessage != null) {
+            ErrorCallout(
+                message = errorMessage,
+                onDismiss = onClearError
+            )
+        }
+    })
+
+    listElements.add(ComposableItem {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = PluckPalette.Muted
+                )
+            ) {
+                Text("Cancel")
+            }
+            Button(
+                onClick = {
+                    val sanitizedPoster = posterUrl?.trim()?.takeIf { it.isNotBlank() }
+                    val normalizedCurrent = currentPosterUrl?.trim()
+
+                    if (sanitizedPoster == normalizedCurrent ||
+                        (sanitizedPoster == null && normalizedCurrent.isNullOrEmpty())
+                    ) {
+                        onBack()
+                    } else {
+                        onSavePoster(sanitizedPoster)
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                enabled = !posterUploadInProgress && !isSaving,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PluckPalette.Primary,
+                    contentColor = PluckPalette.Surface,
+                    disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
+                    disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
+                )
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        color = PluckPalette.Surface,
+                        modifier = Modifier
+                            .size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                }
+                Text("Save Poster")
+            }
+        }
+    })
+
+    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
+        SquircleScrollableLazyList(
+            listElements = listElements
+        )
+    }
+
+    /*
+
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             contentAlignment = Alignment.TopCenter
-        ) {
+        )
+        {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -203,113 +304,22 @@ fun EditEventPosterScreen(
                         .padding(horizontal = 28.dp, vertical = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    PosterEditorHeader(
-                        eventTitle = eventTitle,
-                        onBack = onBack
-                    )
 
-                    PosterPreview(
-                        posterUrl = posterUrl,
-                        isUploading = posterUploadInProgress,
-                        canUploadPoster = true,  // Cloudinary is always available
-                        onSelectPoster = {
-                            posterPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
-                        onRemovePoster = {
-                            posterUrl = null
-                            manualPosterUrl = ""
-                        }
-                    )
 
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Uploaded posters are stored on Cloudinary CDN. Recommended ratio 4:3, JPEG or PNG.",
-                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
-                        )
-                        OutlinedTextField(
-                            value = manualPosterUrl,
-                            onValueChange = { value ->
-                                manualPosterUrl = value
-                                posterUrl = value.trim().takeIf { it.isNotBlank() }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Poster URL") },
-                            placeholder = { Text("https://example.com/poster.jpg") },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PluckPalette.Secondary,
-                                unfocusedBorderColor = PluckPalette.Primary.copy(alpha = 0.12f),
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = PluckPalette.Primary.copy(alpha = 0.02f)
-                            )
-                        )
-                    }
 
-                    posterUploadError?.let { error ->
-                        ErrorCallout(message = error)
-                    }
 
-                    if (errorMessage != null) {
-                        ErrorCallout(
-                            message = errorMessage,
-                            onDismiss = onClearError
-                        )
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        TextButton(
-                            onClick = onBack,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = PluckPalette.Muted
-                            )
-                        ) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = {
-                                val sanitizedPoster = posterUrl?.trim()?.takeIf { it.isNotBlank() }
-                                val normalizedCurrent = currentPosterUrl?.trim()
 
-                                if (sanitizedPoster == normalizedCurrent ||
-                                    (sanitizedPoster == null && normalizedCurrent.isNullOrEmpty())
-                                ) {
-                                    onBack()
-                                } else {
-                                    onSavePoster(sanitizedPoster)
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !posterUploadInProgress && !isSaving,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Primary,
-                                contentColor = PluckPalette.Surface,
-                                disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
-                                disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
-                            )
-                        ) {
-                            if (isSaving) {
-                                CircularProgressIndicator(
-                                    color = PluckPalette.Surface,
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.size(8.dp))
-                            }
-                            Text("Save Poster")
-                        }
-                    }
+
+
+
+
+
                 }
             }
         }
     }
+    */
 }
 
 /**
@@ -329,23 +339,8 @@ private fun PosterEditorHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(48.dp),
-            shape = CircleShape,
-            color = PluckPalette.Primary.copy(alpha = 0.08f),
-            contentColor = PluckPalette.Primary,
-            tonalElevation = 0.dp,
-            shadowElevation = 4.dp,
-            onClick = onBack
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    tint = PluckPalette.Primary
-                )
-            }
-        }
+        BackButton(onBack = onBack)
+
         Text(
             text = "Update Poster",
             style = MaterialTheme.typography.headlineSmall.copy(
@@ -443,7 +438,7 @@ private fun PosterPreview(
                     contentDescription = "Select poster"
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Upload New")
+                Text("Upload")
             }
             TextButton(
                 onClick = onRemovePoster,
