@@ -276,50 +276,6 @@ fun EditEventPosterScreen(
             listElements = listElements
         )
     }
-
-    /*
-
-    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            contentAlignment = Alignment.TopCenter
-        )
-        {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-                    .align(Alignment.TopCenter),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 16.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 28.dp, vertical = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-
-
-
-
-
-
-
-
-
-
-
-                }
-            }
-        }
-    }
-    */
 }
 
 /**
