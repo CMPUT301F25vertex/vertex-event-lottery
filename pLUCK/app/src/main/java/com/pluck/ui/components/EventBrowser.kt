@@ -81,7 +81,8 @@ fun EventBrowser(
     onSelectEvent: (Event) -> Unit,
 
     overviewHero: @Composable () -> Unit,
-    bottomNavBar: @Composable () -> Unit
+    bottomNavBar: @Composable () -> Unit,
+    eventCardBonus: @Composable (Event) -> Unit = { }
 ) {
     val confettiTrigger by remember { mutableStateOf(false) }
     var activeFilter: EventFilter by remember { mutableStateOf(filters[0]) }
@@ -134,7 +135,8 @@ fun EventBrowser(
             listElements.add(ComposableItem {
                 EventCard(
                     event = event,
-                    onClick = { onSelectEvent(event) }
+                    onClick = { onSelectEvent(event) },
+                    eventCardBonus = eventCardBonus
                 )
             })
         }
@@ -160,7 +162,8 @@ fun EventBrowser(
 private fun EventCard(
     event: Event,
     accentColor: Color = PluckPalette.Secondary,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    eventCardBonus: @Composable (Event) -> Unit = { }
 ) {
     Surface(
         modifier = Modifier
@@ -222,22 +225,29 @@ private fun EventCard(
                     alignment = Alignment.Center
                 )
 
-                Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                )
-                {
-                    IconTextRow(
-                        icon = Icons.Outlined.Schedule,
-                        label = event.dateNoTimeLabel,
-                        accentColor = accentColor
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     )
-                    IconTextRow(
-                        icon = Icons.Outlined.LocationOn,
-                        label = event.location,
-                        accentColor = accentColor
-                    )
+                    {
+                        IconTextRow(
+                            icon = Icons.Outlined.Schedule,
+                            label = event.dateNoTimeLabel,
+                            accentColor = accentColor
+                        )
+                        IconTextRow(
+                            icon = Icons.Outlined.LocationOn,
+                            label = event.location,
+                            accentColor = accentColor
+                        )
+                    }
+
+                    eventCardBonus(event)
                 }
+
             }
             else {
                 Column(
@@ -252,11 +262,14 @@ private fun EventCard(
                         label = event.dateLabel,
                         accentColor = accentColor
                     )
+
                     IconTextRow(
                         icon = Icons.Outlined.LocationOn,
                         label = event.location,
                         accentColor = accentColor
                     )
+
+                    eventCardBonus(event)
                 }
             }
         }

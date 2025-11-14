@@ -119,7 +119,7 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onScanQRCode: (() -> Unit)? = null,
     onRefreshEvents: (() -> Unit)? = null,
-    userJoinedEventIds: Set<String> = emptySet()
+    userJoinedEvents: List<Event> = emptyList()
 ) {
     HomeScreenContent(
         userName = userName,
@@ -130,7 +130,7 @@ fun HomeScreen(
         onNavigate = onNavigate,
         onScanQRCode = onScanQRCode ?: {},
         onRefresh = onRefreshEvents ?: {},
-        userJoinedEventIds = userJoinedEventIds,
+        userJoinedEvents = userJoinedEvents,
         dashboards = dashboards
     )
 }
@@ -151,7 +151,7 @@ private fun HomeScreenContent(
     onNavigate: (String) -> Unit,
     onScanQRCode: () -> Unit,
     onRefresh: () -> Unit,
-    userJoinedEventIds: Set<String>
+    userJoinedEvents: List<Event> = emptyList()
 ) {
     val filters = mutableListOf<EventFilter>()
 
@@ -180,7 +180,7 @@ private fun HomeScreenContent(
 
     filters.add(EventFilter(
         label = "Available",
-        condition = { event -> !event.isPastEvent && !event.isFull && !userJoinedEventIds.contains(event.id) && event.isRegistrationOpen }
+        condition = { event -> !event.isPastEvent && !event.isFull && userJoinedEvents.find{ e -> e.id == event.id } == null && event.isRegistrationOpen }
     ))
 
     filters.add(EventFilter(

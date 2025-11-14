@@ -647,36 +647,36 @@ fun CreateEventScreen(
         )
     }
 
-    if (dateSelectLambda != dateSelectLambdaNullValue) {
-        PLuckDatePicker(
-            onDateSelected = dateSelectLambda,
-            onDismiss = {
-                dateSelectLambda = dateSelectLambdaNullValue
-            },
-            defaultDate = defaultDateDialogDate
-        )
-    }
+//    if (dateSelectLambda != dateSelectLambdaNullValue) {
+//        PLuckDatePicker(
+//            onDateSelected = dateSelectLambda,
+//            onDismiss = {
+//                dateSelectLambda = dateSelectLambdaNullValue
+//            },
+//            defaultDate = defaultDateDialogDate
+//        )
+//    }
 
-    if (rangeSelectLambda != rangeSelectLambdaNullValue) {
-        PLuckDateRangePicker(
-            onDateSelected = rangeSelectLambda,
-            onDismiss = {
-                rangeSelectLambda = rangeSelectLambdaNullValue
-            },
-            defaultStartDate = defaultDateRangeDialogStartDate,
-            defaultEndDate = defaultDateRangeDialogEndDate
-        )
-    }
-
-    if (timeSelectLambda != timeSelectLambdaNullValue) {
-        PLuckTimePicker(
-            onTimeSelected = timeSelectLambda,
-            onDismiss = {
-                timeSelectLambda = timeSelectLambdaNullValue
-            },
-            defaultTime = defaultTimeDialogTime
-        )
-    }
+//    if (rangeSelectLambda != rangeSelectLambdaNullValue) {
+//        PLuckDateRangePicker(
+//            onDateSelected = rangeSelectLambda,
+//            onDismiss = {
+//                rangeSelectLambda = rangeSelectLambdaNullValue
+//            },
+//            defaultStartDate = defaultDateRangeDialogStartDate,
+//            defaultEndDate = defaultDateRangeDialogEndDate
+//        )
+//    }
+//
+//    if (timeSelectLambda != timeSelectLambdaNullValue) {
+//        PLuckTimePicker(
+//            onTimeSelected = timeSelectLambda,
+//            onDismiss = {
+//                timeSelectLambda = timeSelectLambdaNullValue
+//            },
+//            defaultTime = defaultTimeDialogTime
+//        )
+//    }
 }
 
 @Composable

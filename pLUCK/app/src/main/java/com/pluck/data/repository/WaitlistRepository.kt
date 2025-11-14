@@ -909,7 +909,7 @@ class WaitlistRepository(
         }
     }
 
-    suspend fun getUserEventHistory(userId: String): Result<List<UserEventHistory>> {
+    suspend fun getUserEventHistory(userId: String): Result<List<Event>> {
         return try {
             val snapshot = waitlistCollection
                 .whereEqualTo("userId", userId)
@@ -919,15 +919,9 @@ class WaitlistRepository(
             val history = snapshot.documents.mapNotNull { doc ->
                 val entry = doc.toObject(FirebaseWaitlistEntry::class.java) ?: return@mapNotNull null
                 val event = eventRepository.getEvent(entry.eventId).getOrNull() ?: return@mapNotNull null
-                val joinedDate = Instant.ofEpochSecond(entry.joinedTimestamp.seconds)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
-                UserEventHistory(
-                    event = event,
-                    status = entry.status,
-                    joinedDate = joinedDate
-                )
-            }.sortedByDescending { it.joinedDate }
+
+                event
+            }.sortedByDescending { it.date }
 
             Result.success(history)
         } catch (e: Exception) {
@@ -1129,9 +1123,3 @@ private fun WaitlistStatus?.isActiveMembership(): Boolean {
         this == WaitlistStatus.SELECTED ||
         this == WaitlistStatus.ACCEPTED
 }
-
-data class UserEventHistory(
-    val event: Event,
-    val status: WaitlistStatus,
-    val joinedDate: LocalDate
-)
