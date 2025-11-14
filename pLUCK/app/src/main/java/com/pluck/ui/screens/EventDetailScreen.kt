@@ -139,14 +139,14 @@ fun EventDetailScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Accept.copy(alpha = 0.15f),
+                        color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = "You're confirmed for this event. Tap below if you need to release your spot.",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Accept,
+                                color = PluckPalette.Secondary,
                                 fontWeight = FontWeight.Medium
                             )
                         )
@@ -156,7 +156,7 @@ fun EventDetailScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Secondary.copy(alpha = 0.12f),
+                        color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
                     ) {
                         Text(
@@ -173,14 +173,14 @@ fun EventDetailScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
+                        color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
                     ) {
                         Text(
                             text = "Registration window has closed. Check back for future lotteries.",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
+                                color = PluckPalette.Secondary,
                                 fontWeight = FontWeight.Medium
                             )
                         )
@@ -190,14 +190,14 @@ fun EventDetailScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
+                        color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
                     ) {
                         Text(
                             text = "Waitlist is full. Check back after the next draw.",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
+                                color = PluckPalette.Secondary,
                                 fontWeight = FontWeight.Medium
                             )
                         )
