@@ -85,7 +85,8 @@ data class FirebaseWaitlistEntry(
                 status == WaitlistStatus.SELECTED,
             status = status,
             latitude = latitude,
-            longitude = longitude
+            longitude = longitude,
+            eventId = eventId
         )
     }
 }

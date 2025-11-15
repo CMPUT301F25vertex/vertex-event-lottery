@@ -114,6 +114,8 @@ import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import kotlin.collections.map
+import kotlin.collections.toSet
 
 
 sealed class PLuckDestination(val route: String) {
@@ -469,10 +471,6 @@ fun PLuckNavHost(
         }
         composable(PLuckDestination.EventList.route) {
             // Home screen with bottom navigation
-            val userJoinedEventIds = remember(userEventHistory) {
-                userEventHistory.map { it.event.id }.toSet()
-            }
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             HomeScreen(
                 userName = currentUser?.displayName,
                 events = events,
@@ -500,7 +498,7 @@ fun PLuckNavHost(
                         waitlistViewModel.loadUserEventHistory(refreshDeviceId)
                     }
                 },
-                userJoinedEventIds = userJoinedEventIds,
+                userJoinedEvents = userEventHistory,
                 dashboards = dashboards
             )
         }
@@ -1356,8 +1354,19 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.MyEvents.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
-            Scaffold(
+            MyEventsScreen(
+                user = currentUser,
+                events = userEventHistory,
+                isLoading = eventsLoading,
+                onEventClick = { event ->
+                    navigator.toEventDetail(event.id)
+                },
+                onBack = {
+                    val popped = navController.popBackStack()
+                    if (!popped) {
+                        navigator.toProfile()
+                    }
+                },
                 bottomBar = {
                     BottomNavBar(
                         currentRoute = navController.currentBackStackEntry?.destination?.route,
@@ -1372,96 +1381,7 @@ fun PLuckNavHost(
                         dashboards = dashboards
                     )
                 }
-            ) { paddingValues ->
-                val myEvents = remember(
-                    events,
-                    userEventHistory,
-                    currentUser?.deviceId
-                ) {
-                    val organizerId = currentUser?.deviceId.orEmpty()
-                    val activeHistory = userEventHistory.filterNot { history ->
-                        history.status == WaitlistStatus.CANCELLED ||
-                                history.status == WaitlistStatus.DECLINED
-                    }
-                    val historyByEventId = activeHistory.associateBy { it.event.id }
-
-                    // Create a map of event IDs to active events (only events that still exist)
-                    val activeEventsById = events.associateBy { it.id }
-
-                    // Only include events that the user has created or joined AND still exist
-                    val userRelatedEvents = buildMap {
-                        // Add events the user created (only if they still exist and are active)
-                        events.filter { event ->
-                            event.organizerId == organizerId
-                        }.forEach { event ->
-                            put(event.id, event)
-                        }
-
-                        // Add events the user joined (from waitlist history)
-                        // Only include if the event still exists in the active events list
-                        activeHistory.forEach { history ->
-                            val activeEvent = activeEventsById[history.event.id]
-                            if (activeEvent != null) {
-                                putIfAbsent(history.event.id, activeEvent)
-                            }
-                        }
-                    }.values
-
-                    userRelatedEvents.map { event ->
-                        val history = historyByEventId[event.id]
-                        val isCreatedByUser = event.organizerId == organizerId
-
-                        val status = when {
-                            // If user created this event, status based on date
-                            isCreatedByUser -> {
-                                if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
-                            }
-                            // If user has waitlist history, use that status
-                            history != null -> when (history.status) {
-                                WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
-                                WaitlistStatus.INVITED,
-                                WaitlistStatus.SELECTED,
-                                WaitlistStatus.WAITING -> EventStatus.WAITLIST
-                                WaitlistStatus.DECLINED,
-                                WaitlistStatus.CANCELLED -> if (event.isPastEvent) {
-                                    EventStatus.PAST
-                                } else {
-                                    EventStatus.UPCOMING
-                                }
-                            }
-                            // Default fallback
-                            else -> if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
-                        }
-
-                        MyEventItem(
-                            event = event,
-                            status = status,
-                            isCreatedByUser = isCreatedByUser,
-                            joinedDate = history?.joinedDate,
-                            historyStatus = history?.status
-                        )
-                    }.sortedWith(compareBy { it.event.eventDateTime })
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    MyEventsScreen(
-                        events = myEvents,
-                        isLoading = eventsLoading,
-                        onEventClick = { event ->
-                            navigator.toEventDetail(event.id)
-                        },
-                        onBack = {
-                            val popped = navController.popBackStack()
-                            if (!popped) {
-                                navigator.toProfile()
-                            }
-                        }
-                    )
-                }
-            }
+            )
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
             val organizerEvents = remember(events, currentUser?.deviceId, currentUser?.displayName) {

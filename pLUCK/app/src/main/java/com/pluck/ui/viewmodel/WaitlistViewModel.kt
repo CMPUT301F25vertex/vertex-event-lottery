@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.content.Intent
 import com.pluck.data.firebase.WaitlistStatus
-import com.pluck.data.repository.UserEventHistory
 import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.data.repository.WaitlistRepository
 import com.pluck.data.repository.CsvExportRepository
@@ -55,8 +54,8 @@ class WaitlistViewModel(
     private val _userWaitlistStatus = MutableStateFlow<WaitlistStatus?>(null)
     val userWaitlistStatus: StateFlow<WaitlistStatus?> = _userWaitlistStatus.asStateFlow()
 
-    private val _userEventHistory = MutableStateFlow<List<UserEventHistory>>(emptyList())
-    val userEventHistory: StateFlow<List<UserEventHistory>> = _userEventHistory.asStateFlow()
+    private val _userEventHistory = MutableStateFlow<List<Event>>(emptyList())
+    val userEventHistory: StateFlow<List<Event>> = _userEventHistory.asStateFlow()
 
     private var waitlistJob: Job? = null
     private var chosenJob: Job? = null

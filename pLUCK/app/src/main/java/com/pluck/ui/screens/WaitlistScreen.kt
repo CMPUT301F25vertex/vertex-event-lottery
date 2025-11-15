@@ -96,7 +96,8 @@ data class WaitlistEntry(
     val isChosen: Boolean = false,
     val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val eventId: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -738,21 +739,24 @@ private fun WaitlistScreenPreview() {
             userName = "Alice Johnson",
             position = 1,
             joinedDate = LocalDate.now().minusDays(5),
-            isCurrentUser = true
+            isCurrentUser = true,
+            eventId = previewEvent.id
         ),
         WaitlistEntry(
             id = "2",
             userId = "user-2",
             userName = "Bob Smith",
             position = 2,
-            joinedDate = LocalDate.now().minusDays(3)
+            joinedDate = LocalDate.now().minusDays(3),
+            eventId = previewEvent.id
         ),
         WaitlistEntry(
             id = "3",
             userId = "user-3",
             userName = "Charlie Davis",
             position = 3,
-            joinedDate = LocalDate.now().minusDays(2)
+            joinedDate = LocalDate.now().minusDays(2),
+            eventId = previewEvent.id
         )
     )
 
@@ -763,7 +767,8 @@ private fun WaitlistScreenPreview() {
             userName = "Dana Lee",
             position = 1,
             joinedDate = LocalDate.now().minusDays(4),
-            isChosen = true
+            isChosen = true,
+            eventId = previewEvent.id
         ),
         WaitlistEntry(
             id = "11",
@@ -771,7 +776,8 @@ private fun WaitlistScreenPreview() {
             userName = "Evan Torres",
             position = 2,
             joinedDate = LocalDate.now().minusDays(1),
-            isChosen = true
+            isChosen = true,
+            eventId = previewEvent.id
         )
     )
 
