@@ -35,6 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pluck.ui.components.AutoHidingBarScroller
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.CustomTheme
@@ -62,42 +65,58 @@ fun ThemePickerScreen(
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            ThemePickerHeader(
-                onBack = onBack,
-                onResetToDefault = onResetToDefault,
-                showReset = currentThemeId != "blue"
-            )
+    val listElements = mutableListOf<ComposableItem>()
 
-            // Theme list
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+    listElements.add(ComposableItem {
+        ThemePickerHeader(
+            onBack = onBack
+        )
+    })
+
+    if (currentThemeId != "blue") {
+        listElements.add(ComposableItem {
+            OutlinedButton(
+                onClick = onResetToDefault,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = PluckPalette.Primary
+                ),
+                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(themes) { theme ->
-                    ThemeCard(
-                        theme = theme,
-                        isSelected = theme.id == currentThemeId,
-                        onClick = { onThemeSelected(theme.id) }
+                Text(
+                    text = "Reset to Default (Ocean Blue)",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
-                item {
-                    CustomThemeCard(
-                        customTheme = customTheme,
-                        isSelected = currentThemeId == "custom",
-                        onApply = { onThemeSelected("custom") },
-                        onCreateOrEdit = onCreateOrEditCustomTheme
-                    )
-                }
+                )
             }
-        }
+        })
     }
+
+    for (theme in themes) {
+        listElements.add(ComposableItem {
+            ThemeCard(
+                theme = theme,
+                isSelected = theme.id == currentThemeId,
+                onClick = { onThemeSelected(theme.id) }
+            )
+        })
+    }
+
+    listElements.add(ComposableItem {
+        CustomThemeCard(
+            customTheme = customTheme,
+            isSelected = currentThemeId == "custom",
+            onApply = { onThemeSelected("custom") },
+            onCreateOrEdit = onCreateOrEditCustomTheme
+        )
+    })
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        indexOfPersistentElement = 0
+    )
 }
 
 /**
@@ -105,9 +124,7 @@ fun ThemePickerScreen(
  */
 @Composable
 private fun ThemePickerHeader(
-    onBack: () -> Unit = {},
-    onResetToDefault: () -> Unit = {},
-    showReset: Boolean = false
+    onBack: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -118,52 +135,36 @@ private fun ThemePickerHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = PluckPalette.Primary
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Choose Your Theme",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Black,
-                        color = PluckPalette.Primary,
-                        fontSize = 28.sp
-                    )
-                )
-                Text(
-                    text = "Select a color scheme that matches your style",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = PluckPalette.Muted
-                    )
-                )
-            }
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+            BackButton(
+                onBack = onBack
+            )
 
-        if (showReset) {
-            OutlinedButton(
-                onClick = onResetToDefault,
+            Surface (
+                color = PluckPalette.Surface,
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = PluckPalette.Primary
-                ),
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.3f))
+                modifier = Modifier.padding(4.dp)
             ) {
-                Text(
-                    text = "Reset to Default (Ocean Blue)",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Choose Your Theme",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            color = PluckPalette.Primary,
+                            fontSize = 28.sp
+                        )
                     )
-                )
+                    Text(
+                        text = "Select a color scheme that matches your style",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
             }
         }
     }
@@ -347,14 +348,14 @@ private fun CustomThemeCard(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text(if (hasCustomTheme) "Apply Custom Theme" else "Create Custom Theme")
+                    Text(if (hasCustomTheme) "Apply" else "Create Theme")
                 }
                 OutlinedButton(
                     onClick = onCreateOrEdit,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text(if (hasCustomTheme) "Edit Colors" else "Start Designing")
+                    Text(if (hasCustomTheme) "Edit" else "Start Designing")
                 }
             }
         }
