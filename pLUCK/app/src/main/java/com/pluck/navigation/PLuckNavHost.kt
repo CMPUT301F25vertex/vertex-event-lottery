@@ -378,7 +378,7 @@ fun PLuckNavHost(
     // Required to ensure that users who did not sign up for organizer/admin before dashboards can
     // still access all of the correct dashboards
     LaunchedEffect(isAdminDevice, hasAdminDashboard) {
-        if (isAdminDevice && !hasAdminDashboard) {
+        if (isAdminDevice && !hasAdminDashboard && !dashboards.hasDashboardWithType(DashboardType.Admin)) {
             dashboards.add(Dashboard(
                     type = DashboardType.Admin,
                     onClick = { navigator.toAdmin() }
@@ -388,7 +388,7 @@ fun PLuckNavHost(
     }
 
     LaunchedEffect(hasOrganizerDashboard, currentUser) {
-        if (currentUser?.role != null && currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard) {
+        if (currentUser?.role != null && currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard && !dashboards.hasDashboardWithType(DashboardType.Organizer)) {
             dashboards.add(Dashboard(
                     type = DashboardType.Organizer,
                     onClick = { navigator.toOrganizer() }
@@ -1094,6 +1094,14 @@ fun PLuckNavHost(
                                         loginError = "Failed to delete account"
                                     }
                                 }
+
+                                dashboards.clear()
+
+                                dashboards.add(Dashboard(
+                                    type = DashboardType.Entrant,
+                                    onClick = { navigator.toEventList() }
+                                ))
+
                                 loginInProgress = false
                             }
                         }
@@ -1895,6 +1903,14 @@ fun PLuckNavHost(
             }
         )
     }
+}
+
+private fun MutableList<Dashboard>.hasDashboardWithType(type: DashboardType): Boolean {
+    var has = false
+
+    this.forEach { if (it.type == type) has = true }
+
+    return has
 }
 
 class PLuckNavigator(private val navController: NavHostController) {
