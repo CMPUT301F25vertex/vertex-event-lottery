@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerColors
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.DateRangePicker
@@ -68,8 +69,12 @@ fun PLuckDatePicker(
         confirmButton = {
             TextButton(onClick = {
                 onDateSelected(
-                    Instant.ofEpochMilli(datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli()).atZone(
-                    ZoneId.of("UTC")).toLocalDate())
+                    Instant.ofEpochMilli(
+                        datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli()
+                    ).atZone(
+                        ZoneId.of("UTC")
+                    ).toLocalDate()
+                )
                 onDismiss()
             }) {
                 Text("Ok")
@@ -226,10 +231,7 @@ fun PLuckTimePicker(
                         periodSelectorUnselectedContainerColor = PluckPalette.Muted,
                         periodSelectorUnselectedContentColor = autoTextColor(PluckPalette.Muted),
 
-                        periodSelectorBorderColor = Color.Transparent,
-
-                        containerColor = PluckPalette.Surface,
-                        selectorColor = PluckPalette.Secondary
+                        periodSelectorBorderColor = Color.Transparent
                     )
                 )
 
