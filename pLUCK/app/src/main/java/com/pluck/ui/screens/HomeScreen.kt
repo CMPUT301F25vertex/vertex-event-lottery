@@ -153,6 +153,10 @@ private fun HomeScreenContent(
     onRefresh: () -> Unit,
     userJoinedEventIds: Set<String>
 ) {
+    LaunchedEffect(Unit) {
+        onRefresh()
+    }
+    
     val filters = mutableListOf<EventFilter>()
 
     val today = LocalDate.now()
