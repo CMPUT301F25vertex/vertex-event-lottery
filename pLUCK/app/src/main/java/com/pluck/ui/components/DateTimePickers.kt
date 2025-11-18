@@ -21,12 +21,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerColors
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.pluck.ui.theme.autoTextColor
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -208,7 +212,25 @@ fun PLuckTimePicker(
             Column {
                 TimePicker(
                     modifier = Modifier.padding(24.dp),
-                    state = timePickerState
+                    state = timePickerState,
+                    colors = TimePickerDefaults.colors().copy(
+                        // Upper hour and minute numbers
+                        timeSelectorSelectedContainerColor = PluckPalette.Secondary,
+                        timeSelectorSelectedContentColor = autoTextColor(PluckPalette.Secondary),
+                        timeSelectorUnselectedContainerColor = PluckPalette.Muted,
+                        timeSelectorUnselectedContentColor = autoTextColor(PluckPalette.Muted),
+
+                        // AM/PM selector
+                        periodSelectorSelectedContainerColor = PluckPalette.Secondary,
+                        periodSelectorSelectedContentColor = autoTextColor(PluckPalette.Secondary),
+                        periodSelectorUnselectedContainerColor = PluckPalette.Muted,
+                        periodSelectorUnselectedContentColor = autoTextColor(PluckPalette.Muted),
+
+                        periodSelectorBorderColor = Color.Transparent,
+
+                        containerColor = PluckPalette.Surface,
+                        selectorColor = PluckPalette.Secondary
+                    )
                 )
 
                 Row(
