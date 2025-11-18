@@ -66,7 +66,7 @@ import kotlin.math.roundToInt
 fun AutoHidingBarScroller(
     listElements: List<ComposableItem>,
     indexOfPersistentElement: Int,
-    bottomBar: @Composable () -> Unit,
+    bottomBar: (@Composable () -> Unit)? = null,
     spacingBetweenItems: Dp = 16.dp,
     additionalContent: @Composable () -> Unit = { },
 ) {
@@ -87,12 +87,14 @@ fun AutoHidingBarScroller(
         modifier = Modifier
             .nestedScroll(bottomBarScrollBehavior.nestedScrollConnection),
         bottomBar = {
-            BottomAppBar(
-                modifier = Modifier.fillMaxWidth(),
-                scrollBehavior = bottomBarScrollBehavior,
-                containerColor = PluckPalette.Surface
-            ) {
-                bottomBar()
+            if (bottomBar != null) {
+                BottomAppBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    scrollBehavior = bottomBarScrollBehavior,
+                    containerColor = PluckPalette.Surface
+                ) {
+                    bottomBar()
+                }
             }
         }
     )
