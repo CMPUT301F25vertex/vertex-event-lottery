@@ -129,7 +129,7 @@ class UserStoryUiTest {
         }
 
         composeRule.onNodeWithText("Community Showcase").performClick()
-        composeRule.onNodeWithText("Notifications").performClick()
+        composeRule.onNodeWithTag("test_tag_notifications").performClick()
 
         composeRule.runOnIdle {
             assertEquals("event-1", selectedEventId)

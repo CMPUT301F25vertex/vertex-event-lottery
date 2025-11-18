@@ -94,7 +94,7 @@ class HomeScreenTest {
             )
         }
 
-        composeRule.onNodeWithText("No events match your filters just yet.", substring = true).assertExists()
+        composeRule.onNodeWithText("No events match your filters", substring = true).assertExists()
     }
 
     @Test

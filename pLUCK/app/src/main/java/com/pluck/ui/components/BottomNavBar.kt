@@ -22,6 +22,7 @@
  */
 package com.pluck.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.theme.autoTextColor
 
@@ -208,16 +210,19 @@ fun DashboardSelector(
 private fun NavItem(
     tab: NavTab,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val contentColor = if (selected) PluckPalette.Primary else PluckPalette.Muted
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = if (selected) PluckPalette.Primary.copy(alpha = 0.12f) else Color.Transparent,
         contentColor = contentColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        onClick = onClick
+        onClick = onClick,
+        modifier = Modifier.testTag("test_tag_" + tab.id)
     ) {
         Column(
             modifier = Modifier

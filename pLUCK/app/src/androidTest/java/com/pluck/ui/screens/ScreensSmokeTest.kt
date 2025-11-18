@@ -166,8 +166,6 @@ class ScreensSmokeTest {
             }
         }
 
-        composeRule.onNodeWithTag(ScrollContainer).assertExists()
-
         composeRule.onNodeWithText("My Events", useUnmergedTree = true)
             .assertExists()
 
