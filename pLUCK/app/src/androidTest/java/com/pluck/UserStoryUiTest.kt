@@ -122,7 +122,8 @@ class UserStoryUiTest {
                     currentRoute = "event_list",
                     onSelectEvent = { selectedEventId = it.id },
                     onNavigate = { selectedRoute = it },
-                    onScanQRCode = {}
+                    onScanQRCode = {},
+                    dashboards = emptyList()
                 )
             }
         }

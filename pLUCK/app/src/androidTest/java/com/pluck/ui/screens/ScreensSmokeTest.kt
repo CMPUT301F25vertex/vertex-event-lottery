@@ -95,7 +95,8 @@ class ScreensSmokeTest {
                     isLoading = false,
                     currentRoute = null,
                     onSelectEvent = {},
-                    onNavigate = {}
+                    onNavigate = {},
+                    dashboards = emptyList()
                 )
             }
         }
@@ -208,7 +209,10 @@ class ScreensSmokeTest {
                         totalParticipants = 120,
                         totalRejections = 4
                     ),
-                    events = sampleEvents
+                    events = sampleEvents,
+                    currentRoute = "organizer_dashboard",
+                    dashboards = emptyList(),
+                    onNavigate = { }
                 )
             }
         }
