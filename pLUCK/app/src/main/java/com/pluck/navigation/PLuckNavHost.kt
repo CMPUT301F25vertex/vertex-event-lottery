@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -360,12 +361,23 @@ fun PLuckNavHost(
         hasFirebaseConnection = checkFirebaseConnection()
     }
 
+    val hasAdminDashboard: Boolean by remember { derivedStateOf {
+        var tmp = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Admin) tmp = true }
+
+        tmp
+    } }
+
+    val hasOrganizerDashboard: Boolean by remember { derivedStateOf {
+        var tmp = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Organizer) tmp = true }
+
+        tmp
+    } }
+
     // Required to ensure that users who did not sign up for organizer/admin before dashboards can
     // still access all of the correct dashboards
-    LaunchedEffect(Unit) {
-        delay(1000)
-        var hasAdminDashboard = false
-        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Admin) hasAdminDashboard = true }
+    LaunchedEffect(isAdminDevice, hasAdminDashboard) {
         if (isAdminDevice && !hasAdminDashboard) {
             dashboards.add(Dashboard(
                     type = DashboardType.Admin,
@@ -373,11 +385,11 @@ fun PLuckNavHost(
                 )
             )
         }
+    }
 
-        var hasOrganizerDashboard = false
-        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Organizer) hasOrganizerDashboard = true }
-        if (currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard) {
-                dashboards.add(Dashboard(
+    LaunchedEffect(hasOrganizerDashboard, currentUser) {
+        if (currentUser?.role != null && currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard) {
+            dashboards.add(Dashboard(
                     type = DashboardType.Organizer,
                     onClick = { navigator.toOrganizer() }
                 )
