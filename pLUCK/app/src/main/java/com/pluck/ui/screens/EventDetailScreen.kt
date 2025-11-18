@@ -137,7 +137,7 @@ fun EventDetailScreen(
             when {
                 isUserConfirmed -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
@@ -154,7 +154,7 @@ fun EventDetailScreen(
                 }
                 isUserOnWaitlist -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
@@ -171,7 +171,7 @@ fun EventDetailScreen(
                 }
                 registrationClosed -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
@@ -188,7 +188,7 @@ fun EventDetailScreen(
                 }
                 waitlistFull -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
