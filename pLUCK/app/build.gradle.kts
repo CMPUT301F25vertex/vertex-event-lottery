@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.services)
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
     id("org.jetbrains.dokka") version "2.1.0"
 
 }
