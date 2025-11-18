@@ -173,7 +173,7 @@ fun CustomThemeCreatorScreen(
             )
         )
     })
-    
+
     if (lightBackground != DefaultLightBackground ||
         lightPrimary != DefaultLightPrimary ||
         lightSecondary != DefaultLightSecondary ||
