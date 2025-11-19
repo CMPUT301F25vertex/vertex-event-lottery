@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
@@ -82,6 +83,8 @@ fun EventBrowser(
     onRefresh: () -> Unit,
     isRefreshing: Boolean,
 
+    currentUserId: String = "",
+
     overviewHero: @Composable () -> Unit,
     bottomNavBar: @Composable () -> Unit
 ) {
@@ -136,7 +139,8 @@ fun EventBrowser(
             listElements.add(ComposableItem {
                 EventCard(
                     event = event,
-                    onClick = { onSelectEvent(event) }
+                    onClick = { onSelectEvent(event) },
+                    currentUserId = currentUserId
                 )
             })
         }
@@ -163,6 +167,7 @@ fun EventBrowser(
 @Composable
 private fun EventCard(
     event: Event,
+    currentUserId: String,
     accentColor: Color = PluckPalette.Secondary,
     onClick: () -> Unit
 ) {
@@ -177,8 +182,7 @@ private fun EventCard(
     )
     {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Colorful header strip
             Surface(
@@ -261,6 +265,37 @@ private fun EventCard(
                         label = event.location,
                         accentColor = accentColor
                     )
+                }
+            }
+
+            if (currentUserId == event.organizerId) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = PluckPalette.Secondary.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.16f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Event,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = PluckPalette.Secondary
+                        )
+                        Text(
+                            text = "You're organizing this event",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = PluckPalette.Primary.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
                 }
             }
         }

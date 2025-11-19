@@ -112,6 +112,7 @@ private val homeCategories = listOf(
 fun HomeScreen(
     userName: String?,
     events: List<Event>,
+    currentUserId: String,
     isLoading: Boolean,
     currentRoute: String?,
     dashboards: List<Dashboard>,
@@ -133,7 +134,8 @@ fun HomeScreen(
         onRefresh = onRefreshEvents ?: {},
         isRefreshing = isRefreshing,
         userJoinedEventIds = userJoinedEventIds,
-        dashboards = dashboards
+        dashboards = dashboards,
+        currentUserId = currentUserId
     )
 }
 
@@ -146,6 +148,7 @@ fun HomeScreen(
 private fun HomeScreenContent(
     userName: String?,
     events: List<Event>,
+    currentUserId: String,
     isLoading: Boolean,
     currentRoute: String?,
     dashboards: List<Dashboard>,
@@ -215,7 +218,8 @@ private fun HomeScreenContent(
         onSelectEvent = onSelectEvent,
         filters = filters,
         onRefresh = onRefresh,
-        isRefreshing = isRefreshing
+        isRefreshing = isRefreshing,
+        currentUserId = currentUserId
     )
 }
 
@@ -313,6 +317,7 @@ private fun HomeScreenPreview() {
         onSelectEvent = {},
         onNavigate = {},
         dashboards = emptyList(),
-        isRefreshing = false
+        isRefreshing = false,
+        currentUserId = ""
     )
 }

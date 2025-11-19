@@ -5,14 +5,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.NotificationItem
 import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.model.previewNotifications
-import com.pluck.ui.screens.ProfileScreenTestTags.ScrollContainer
 import com.pluck.ui.theme.PluckTheme
 import org.junit.Rule
 import org.junit.Test
