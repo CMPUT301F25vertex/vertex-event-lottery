@@ -145,8 +145,12 @@ fun PLuckDateRangePicker(
                 val startDate: LocalDate = Instant.ofEpochMilli(dateRangePickerState.selectedStartDateMillis ?: Instant.now().toEpochMilli()).atZone(
                     ZoneId.of("UTC")).toLocalDate()
 
-                val endDate: LocalDate = Instant.ofEpochMilli(dateRangePickerState.selectedEndDateMillis ?: Instant.now().toEpochMilli()).atZone(
+                var endDate: LocalDate = Instant.ofEpochMilli(dateRangePickerState.selectedEndDateMillis ?: Instant.now().toEpochMilli()).atZone(
                     ZoneId.of("UTC")).toLocalDate()
+
+                if (endDate < startDate) {
+                    endDate = startDate.plusDays(1)
+                }
 
                 onDateSelected(startDate, endDate)
 
