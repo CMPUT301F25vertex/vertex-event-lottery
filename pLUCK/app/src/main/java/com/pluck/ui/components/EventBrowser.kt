@@ -79,6 +79,8 @@ fun EventBrowser(
     filters: List<EventFilter>,
     events: List<Event>,
     onSelectEvent: (Event) -> Unit,
+    onRefresh: () -> Unit,
+    isRefreshing: Boolean,
 
     overviewHero: @Composable () -> Unit,
     bottomNavBar: @Composable () -> Unit
@@ -146,6 +148,8 @@ fun EventBrowser(
         bottomBar = {
             bottomNavBar()
         },
+        onRefresh = onRefresh,
+        isRefreshing = isRefreshing
     ) {
         ConfettiBurst(
             trigger = confettiTrigger,

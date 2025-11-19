@@ -25,6 +25,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberBottomAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.theme.PluckTheme
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
@@ -68,6 +73,8 @@ fun AutoHidingBarScroller(
     indexOfPersistentElement: Int,
     bottomBar: (@Composable () -> Unit)? = null,
     spacingBetweenItems: Dp = 16.dp,
+    onRefresh: (() -> Unit)? = null,
+    isRefreshing: Boolean = false,
     additionalContent: @Composable () -> Unit = { },
 ) {
     // Must be a valid index
@@ -82,6 +89,8 @@ fun AutoHidingBarScroller(
     if (!listState.canScrollBackward) {
         bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior(canScroll = { false })
     }
+
+    val pullToRefreshState = rememberPullToRefreshState()
 
     Scaffold(
         modifier = Modifier
@@ -101,60 +110,79 @@ fun AutoHidingBarScroller(
     { paddingValues  ->
 
         PluckLayeredBackground(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        bottom = paddingValues.calculateBottomPadding(),
-                    ),
+
+            Box(
+                modifier = Modifier.pullToRefresh(
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh ?: { },
+                    state = pullToRefreshState,
+                    enabled = onRefresh != null
+                )
             )
             {
-                item {
-                    Spacer(modifier = Modifier.height(spacingBetweenItems))
-                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            bottom = paddingValues.calculateBottomPadding(),
+                        )
+                )
+                {
+                    item {
+                        Spacer(modifier = Modifier.height(spacingBetweenItems))
+                    }
 
-                for (i in listElements.indices) {
-                    if (i != indexOfPersistentElement) {
-                        item {
-                            Box(
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp)
-                            ) {
-                                listElements[i].content()
-                            }
-                        }
-
-                        if (i != indexOfPersistentElement - 1) {
+                    for (i in listElements.indices) {
+                        if (i != indexOfPersistentElement) {
                             item {
-                                Spacer(modifier = Modifier.height(spacingBetweenItems))
-                            }
-                        }
-
-                    } else {
-                        item {
-                            Spacer(modifier = Modifier.height(spacingBetweenItems / 2))
-                        }
-
-                        stickyHeader {
-                            Surface(
-                                color = PluckPalette.Secondary,
-                                shape = RoundedCornerShape(36.dp),
-                                modifier = Modifier.padding(spacingBetweenItems / 2)
-                            ) {
                                 Box(
-                                    modifier = Modifier
-                                        .padding(spacingBetweenItems / 2)
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp)
                                 ) {
-                                    listElements[indexOfPersistentElement].content()
+                                    listElements[i].content()
                                 }
                             }
-                        }
 
-                        item {
-                            Spacer(modifier = Modifier.height(spacingBetweenItems / 2))
+                            if (i != indexOfPersistentElement - 1) {
+                                item {
+                                    Spacer(modifier = Modifier.height(spacingBetweenItems))
+                                }
+                            }
+
+                        } else {
+                            item {
+                                Spacer(modifier = Modifier.height(spacingBetweenItems / 2))
+                            }
+
+                            stickyHeader {
+                                Surface(
+                                    color = PluckPalette.Secondary,
+                                    shape = RoundedCornerShape(36.dp),
+                                    modifier = Modifier.padding(spacingBetweenItems / 2)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(spacingBetweenItems / 2)
+                                    ) {
+                                        listElements[indexOfPersistentElement].content()
+                                    }
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(spacingBetweenItems / 2))
+                            }
                         }
                     }
                 }
+
+                PullToRefreshDefaults.Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = isRefreshing,
+                    state = pullToRefreshState,
+                    containerColor = PluckPalette.Surface,
+                    color = PluckPalette.Primary
+                )
             }
         }
 

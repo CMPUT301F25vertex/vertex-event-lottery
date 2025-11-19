@@ -397,6 +397,14 @@ fun PLuckNavHost(
         }
     }
 
+    LaunchedEffect(Unit) {
+        eventViewModel.loadEventsFast()
+        val refreshDeviceId = currentUser?.deviceId.orEmpty()
+        if (refreshDeviceId.isNotBlank()) {
+            waitlistViewModel.loadUserEventHistory(refreshDeviceId)
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = PLuckDestination.Startup.route,
@@ -485,6 +493,7 @@ fun PLuckNavHost(
                 userEventHistory.map { it.event.id }.toSet()
             }
             val isOrganizer = currentUser?.role == UserRole.ORGANIZER
+
             HomeScreen(
                 userName = currentUser?.displayName,
                 events = events,
@@ -512,6 +521,7 @@ fun PLuckNavHost(
                         waitlistViewModel.loadUserEventHistory(refreshDeviceId)
                     }
                 },
+                isRefreshing = eventsLoading,
                 userJoinedEventIds = userJoinedEventIds,
                 dashboards = dashboards
             )

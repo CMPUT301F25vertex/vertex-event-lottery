@@ -119,6 +119,7 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onScanQRCode: (() -> Unit)? = null,
     onRefreshEvents: (() -> Unit)? = null,
+    isRefreshing: Boolean,
     userJoinedEventIds: Set<String> = emptySet()
 ) {
     HomeScreenContent(
@@ -130,6 +131,7 @@ fun HomeScreen(
         onNavigate = onNavigate,
         onScanQRCode = onScanQRCode ?: {},
         onRefresh = onRefreshEvents ?: {},
+        isRefreshing = isRefreshing,
         userJoinedEventIds = userJoinedEventIds,
         dashboards = dashboards
     )
@@ -151,12 +153,9 @@ private fun HomeScreenContent(
     onNavigate: (String) -> Unit,
     onScanQRCode: () -> Unit,
     onRefresh: () -> Unit,
+    isRefreshing: Boolean,
     userJoinedEventIds: Set<String>
 ) {
-    LaunchedEffect(Unit) {
-        onRefresh()
-    }
-
     val filters = mutableListOf<EventFilter>()
 
     val today = LocalDate.now()
@@ -209,15 +208,14 @@ private fun HomeScreenContent(
         overviewHero = {
             HomeHeroCard(
                 userName = userName,
-                onScanQRCode = onScanQRCode,
-                onRefreshClick = {
-                    onRefresh()
-                }
+                onScanQRCode = onScanQRCode
             )
         },
         events = events,
         onSelectEvent = onSelectEvent,
-        filters = filters
+        filters = filters,
+        onRefresh = onRefresh,
+        isRefreshing = isRefreshing
     )
 }
 
@@ -231,8 +229,7 @@ private fun HomeScreenContent(
 @Composable
 private fun HomeHeroCard(
     userName: String?,
-    onScanQRCode: () -> Unit = {},
-    onRefreshClick: () -> Unit = {},
+    onScanQRCode: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier
@@ -273,22 +270,11 @@ private fun HomeHeroCard(
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RoundIconButton(
-                    imageVector = Icons.Outlined.QrCodeScanner,
-                    contentDescription = "QR Code Scanner",
-                    onClick = onScanQRCode
-                )
-
-                RoundIconButton(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Refresh Button",
-                    onClick = onRefreshClick
-                )
-            }
+            RoundIconButton(
+                imageVector = Icons.Outlined.QrCodeScanner,
+                contentDescription = "QR Code Scanner",
+                onClick = onScanQRCode
+            )
         }
     }
 }
@@ -327,5 +313,6 @@ private fun HomeScreenPreview() {
         onSelectEvent = {},
         onNavigate = {},
         dashboards = emptyList(),
+        isRefreshing = false
     )
 }
