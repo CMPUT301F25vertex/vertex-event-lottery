@@ -414,8 +414,8 @@ fun CreateEventScreen(
             onClick = {
                 defaultDateRangeDialogStartDate = registrationStartDate ?: LocalDate.now()
                 defaultDateRangeDialogEndDate = registrationEndDate
-                    ?: registrationStartDate?.plus(1, ChronoUnit.DAYS)
-                    ?: LocalDate.now().plus(1, ChronoUnit.DAYS)
+                    ?: registrationStartDate?.plusDays(1)
+                    ?: LocalDate.now().plusDays(1)
 
                 rangeSelectLambda = { startDate: LocalDate, endDate: LocalDate ->
                     registrationStartDate = startDate
