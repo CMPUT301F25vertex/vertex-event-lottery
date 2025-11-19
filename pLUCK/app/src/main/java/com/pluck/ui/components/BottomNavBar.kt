@@ -44,6 +44,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -188,7 +190,8 @@ fun DashboardSelector(
             expanded = showMenu,
             onDismissRequest = {
                 showMenu = false
-            }
+            },
+            containerColor = PluckPalette.Surface
         ) {
             for (dashboard in dashboards) {
                 if (dashboard.type == currentDashboard) continue
@@ -197,7 +200,10 @@ fun DashboardSelector(
                     text = { Text(dashboard.type.name) },
                     onClick = {
                         dashboard.onClick()
-                    }
+                    },
+                    colors = MenuDefaults.itemColors().copy(
+                        textColor = PluckPalette.Primary
+                    )
                 )
             }
         }
