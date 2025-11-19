@@ -195,8 +195,7 @@ fun AdminDashboardScreen(
                 dashboards = dashboards,
                 currentDashboard = DashboardType.Admin
             )
-        },
-        spacingBetweenItems = 6.dp
+        }
     )
 
     // Confirmation Dialog
