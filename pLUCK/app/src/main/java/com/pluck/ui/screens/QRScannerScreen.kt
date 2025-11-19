@@ -49,6 +49,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.util.QRCodeGenerator
@@ -133,13 +134,8 @@ fun QRScannerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = PluckPalette.Primary
-                    )
-                }
+                BackButton(onBack = onBack)
+
                 Text(
                     text = "Scan QR Code",
                     style = MaterialTheme.typography.headlineSmall.copy(
