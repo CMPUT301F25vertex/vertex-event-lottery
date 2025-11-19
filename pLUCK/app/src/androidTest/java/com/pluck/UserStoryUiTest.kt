@@ -123,7 +123,9 @@ class UserStoryUiTest {
                     onSelectEvent = { selectedEventId = it.id },
                     onNavigate = { selectedRoute = it },
                     onScanQRCode = {},
-                    dashboards = emptyList()
+                    dashboards = emptyList(),
+                    currentUserId = "",
+                    isRefreshing = false
                 )
             }
         }

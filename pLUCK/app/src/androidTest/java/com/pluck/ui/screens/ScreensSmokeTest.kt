@@ -48,19 +48,6 @@ class ScreensSmokeTest {
         )
     )
 
-    private val sampleMyEvents = listOf(
-        MyEventItem(
-            event = sampleEvent,
-            status = EventStatus.CONFIRMED,
-            isCreatedByUser = false
-        ),
-        MyEventItem(
-            event = sampleEvent.copy(id = "event-3", title = "Photography Walk", enrolled = 20),
-            status = EventStatus.UPCOMING,
-            isCreatedByUser = true
-        )
-    )
-
     private val sampleWaitlistEntries = listOf(
         WaitlistEntry(
             id = "waitlist-1",
@@ -94,7 +81,9 @@ class ScreensSmokeTest {
                     currentRoute = null,
                     onSelectEvent = {},
                     onNavigate = {},
-                    dashboards = emptyList()
+                    dashboards = emptyList(),
+                    currentUserId = "",
+                    isRefreshing = false
                 )
             }
         }
@@ -182,9 +171,16 @@ class ScreensSmokeTest {
         composeRule.setContent {
             PluckTheme {
                 MyEventsScreen(
-                    events = sampleMyEvents,
+                    events = sampleEvents,
                     isLoading = false,
-                    onEventClick = {}
+                    onEventClick = { },
+                    userId = "",
+                    historyByEventId = emptyMap(),
+                    dashboards = emptyList(),
+                    onNavigate = { str -> },
+                    currentRoute = null,
+                    onRefresh = { },
+                    isRefreshing = false
                 )
             }
         }

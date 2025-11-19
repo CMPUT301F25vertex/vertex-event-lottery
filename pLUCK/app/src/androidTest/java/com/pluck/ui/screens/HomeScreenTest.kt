@@ -90,7 +90,9 @@ class HomeScreenTest {
                 currentRoute = "home",
                 onSelectEvent = {},
                 onNavigate = {},
-                dashboards = emptyList()
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false
             )
         }
 
@@ -109,7 +111,9 @@ class HomeScreenTest {
                 currentRoute = "home",
                 onSelectEvent = { event -> clickedEvent = event },
                 onNavigate = {},
-                dashboards = emptyList()
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false
             )
         }
 
@@ -129,7 +133,9 @@ class HomeScreenTest {
                 currentRoute = "home",
                 onSelectEvent = {},
                 onNavigate = {},
-                dashboards = emptyList()
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false
             )
         }
 
@@ -149,7 +155,9 @@ class HomeScreenTest {
                 currentRoute = "home",
                 onSelectEvent = {},
                 onNavigate = {},
-                dashboards = emptyList()
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false
             )
         }
 
