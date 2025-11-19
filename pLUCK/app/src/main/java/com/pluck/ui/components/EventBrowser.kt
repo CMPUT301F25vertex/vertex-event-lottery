@@ -148,7 +148,6 @@ fun EventBrowser(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 2,
         bottomBar = {
             bottomNavBar()
         },

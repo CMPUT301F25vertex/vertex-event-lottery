@@ -62,7 +62,7 @@ import kotlin.math.roundToInt
  *
  * @param listElements The elements you wish to show the user
  * @param indexOfPersistentElement An index inside the listElements list of the element you wish to
- *      always be visible
+ *      always be visible, set to -1 to have no persistent element
  * @param bottomBar The dynamically hiding bottom bar visible to the user
  * @param additionalContent Additional content to be added after scrollable elements
  */
@@ -70,7 +70,7 @@ import kotlin.math.roundToInt
 @Composable
 fun AutoHidingBarScroller(
     listElements: List<ComposableItem>,
-    indexOfPersistentElement: Int,
+    indexOfPersistentElement: Int = -1,
     bottomBar: (@Composable () -> Unit)? = null,
     spacingBetweenItems: Dp = 16.dp,
     onRefresh: (() -> Unit)? = null,

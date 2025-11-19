@@ -189,7 +189,6 @@ fun AdminDashboardScreen(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 1,
         bottomBar = {
             BottomNavBar(
                 currentRoute = currentRoute,
