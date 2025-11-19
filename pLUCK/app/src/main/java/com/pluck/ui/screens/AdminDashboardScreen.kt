@@ -39,11 +39,13 @@ import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.Dashboard
 import com.pluck.ui.components.DashboardType
+import com.pluck.ui.components.PLuckChipRow
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 import com.pluck.ui.viewmodel.ImageMetadata
 import com.pluck.ui.viewmodel.ImageSource
 import com.pluck.ui.viewmodel.NotificationLog
+import java.util.Locale.getDefault
 
 /**
  * Admin dashboard for platform moderation and content management.
@@ -55,12 +57,12 @@ import com.pluck.ui.viewmodel.NotificationLog
 
 /** Available tabs in the admin dashboard */
 enum class AdminTab {
-    EVENTS,         // Browse and remove events
-    PROFILES,       // Browse and remove user profiles
-    IMAGES,         // Browse and remove uploaded images
-    ORGANIZERS,     // Remove organizer privileges from users
-    APPEALS,        // Review and manage organizer access appeals
-    NOTIFICATIONS   // View notification history
+    Events,         // Browse and remove events
+    Profiles,       // Browse and remove user profiles
+    Images,         // Browse and remove uploaded images
+    Organizers,     // Remove organizer privileges from users
+    Appeals,        // Review and manage organizer access appeals
+    Notifications   // View notification history
 }
 
 /**
@@ -109,7 +111,7 @@ fun AdminDashboardScreen(
     dashboards: List<Dashboard>,
     onNavigate: (String) -> Unit,
 ) {
-    var selectedTab by remember { mutableStateOf(AdminTab.EVENTS) }
+    var selectedTab by remember { mutableStateOf(AdminTab.Events) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var itemToRemove by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -141,7 +143,7 @@ fun AdminDashboardScreen(
         isLoading -> listElements.add(ComposableItem { LoadingState() })
         else -> {
             when (selectedTab) {
-                AdminTab.EVENTS -> listElements.addAll(EventsListContent(
+                AdminTab.Events -> listElements.addAll(EventsListContent(
                     events = events,
                     onRemove = { eventId ->
                         itemToRemove = "Event" to eventId
@@ -149,14 +151,14 @@ fun AdminDashboardScreen(
                     }
                 ))
 
-                AdminTab.PROFILES -> listElements.addAll(ProfilesListContent(
+                AdminTab.Profiles -> listElements.addAll(ProfilesListContent(
                     users = users,
                     onRemove = { profileId ->
                         itemToRemove = "Profile" to profileId
                         showConfirmDialog = true
                     }
                 ))
-                AdminTab.IMAGES -> listElements.addAll(ImagesListContent(
+                AdminTab.Images -> listElements.addAll(ImagesListContent(
                     images = images,
                     onRemove = { imageId ->
                         itemToRemove = "Image" to imageId
@@ -166,19 +168,19 @@ fun AdminDashboardScreen(
                         image -> previewImage = image
                     }
                 ))
-                AdminTab.ORGANIZERS -> listElements.addAll(OrganizersListContent(
+                AdminTab.Organizers -> listElements.addAll(OrganizersListContent(
                     organizers = organizers,
                     onRemove = { organizerId ->
                         itemToRemove = "Organizer" to organizerId
                         showConfirmDialog = true
                     }
                 ))
-                AdminTab.APPEALS -> listElements.addAll(AppealsListContent(
+                AdminTab.Appeals -> listElements.addAll(AppealsListContent(
                     appeals = appeals,
                     onApprove = onApproveAppeal,
                     onReject = onRejectAppeal
                 ))
-                AdminTab.NOTIFICATIONS -> listElements.addAll(NotificationLogsContent(
+                AdminTab.Notifications -> listElements.addAll(NotificationLogsContent(
                     notifications = notifications
                 ))
             }
@@ -425,77 +427,24 @@ private fun AdminStatCard(
     }
 }
 
-private fun getIconLabelForTab(
-    tab: AdminTab
-): Pair<ImageVector, String> {
-    val (icon, label) = when (tab) {
-        AdminTab.EVENTS -> Icons.Outlined.Event to "Events"
-        AdminTab.PROFILES -> Icons.Outlined.Person to "Profiles"
-        AdminTab.IMAGES -> Icons.Outlined.Image to "Images"
-        AdminTab.ORGANIZERS -> Icons.Outlined.Business to "Organizers"
-        AdminTab.APPEALS -> Icons.Outlined.Gavel to "Appeals"
-        AdminTab.NOTIFICATIONS -> Icons.Outlined.Notifications to "Logs"
-    }
-
-    return Pair(icon, label)
-}
-
 @Composable
 private fun AdminTabSelector(
     selectedTab: AdminTab,
     onTabSelected: (AdminTab) -> Unit
 ) {
-    Surface(
-        color = PluckPalette.Surface,
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        LazyRow (
-            modifier = Modifier.fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        )
-        {
-            AdminTab.values().forEach { tab ->
-                val isSelected = selectedTab == tab
-                val (icon, label) = getIconLabelForTab(tab)
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .clickable { onTabSelected(tab) },
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) PluckPalette.Primary else PluckPalette.Surface,
-                        tonalElevation = if (isSelected) 8.dp else 0.dp,
-                        shadowElevation = if (isSelected) 12.dp else 4.dp,
-                        border = BorderStroke(
-                            1.dp,
-                            if (isSelected) PluckPalette.Primary else PluckPalette.Primary.copy(alpha = 0.2f)
-                        )
-                    )
-                    {
-                        Row(
-                            modifier = Modifier.padding(6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = if (isSelected) Color.White else PluckPalette.Primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isSelected) Color.White else PluckPalette.Primary,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    val adminTabsAsStrings = mutableListOf<String>()
+
+    AdminTab.entries.forEach { tab ->
+        adminTabsAsStrings.add(tab.name)
     }
+
+    PLuckChipRow(
+        chips = adminTabsAsStrings,
+        selectedChip = selectedTab.name,
+        onSelect = {
+            chip -> onTabSelected(AdminTab.entries.find { it.name == chip } ?: AdminTab.entries[0])
+        }
+    )
 }
 
 private fun EventsListContent(
