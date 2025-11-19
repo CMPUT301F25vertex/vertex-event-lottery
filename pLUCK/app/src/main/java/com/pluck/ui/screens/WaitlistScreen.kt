@@ -68,8 +68,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.SquircleScrollableLazyList
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
@@ -123,6 +127,99 @@ fun WaitlistScreen(
     val collapseProgress = 0f
     val spacerHeight = 56.dp
 
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        BackButton(
+            onBack = onBack
+        )
+    })
+
+    listElements.add(ComposableItem {
+        WaitlistHeaderCard(
+            event = event
+        )
+    })
+
+//    listElements.add(ComposableItem {
+//        WaitlistSummaryCard(
+//            event = event,
+//            waitlistSize = waitlistSize,
+//            waitlistCapacity = event.waitlistCapacity,
+//            isUserWaiting = derivedUserWaiting,
+//            isUserConfirmed = derivedUserConfirmed,
+//            currentUserPosition = currentUserPosition,
+//            waitlistFull = waitlistFull,
+//            onJoinWaitlist = onJoinWaitlist,
+//            onLeaveWaitlist = onLeaveWaitlist,
+//            modifier = Modifier.animateContentSize()
+//        )
+//    })
+
+    listElements.add(ComposableItem {
+        WaitlistTabSelector(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            waitingCount = waitlistEntries.size,
+            chosenCount = chosenEntries.size,
+            modifier = Modifier.animateContentSize()
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .widthIn(max = 460.dp),
+            shape = RoundedCornerShape(36.dp),
+            color = PluckPalette.Surface,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+        )
+        {
+            when (selectedTab) {
+                WaitlistTab.WAITING -> {
+                    if (waitlistEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No one on the waitlist yet",
+                            description = ""
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = waitlistEntries,
+                            title = "Waitlist Queue"
+                        )
+                    }
+                }
+                WaitlistTab.CHOSEN -> {
+                    if (chosenEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No entrants chosen yet",
+                            description = "Run the lottery to randomly select entrants from the waitlist."
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = chosenEntries,
+                            title = "Chosen Entrants"
+                        )
+                    }
+                }
+            }
+        }
+    })
+
+    PluckLayeredBackground(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    )
+    {
+        FullWidthLazyScroll(
+            listElements = listElements
+        )
+    }
+
+    /*
     PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             Surface(
@@ -157,81 +254,21 @@ fun WaitlistScreen(
             ) {
                 Spacer(modifier = Modifier.height(spacerHeight))
 
-                WaitlistHeaderCard(
-                    event = event,
-                    collapseProgress = collapseProgress
-                )
 
-//                WaitlistSummaryCard(
-//                    event = event,
-//                    waitlistSize = waitlistSize,
-//                    waitlistCapacity = event.waitlistCapacity,
-//                    isUserWaiting = derivedUserWaiting,
-//                    isUserConfirmed = derivedUserConfirmed,
-//                    currentUserPosition = currentUserPosition,
-//                    waitlistFull = waitlistFull,
-//                    onJoinWaitlist = onJoinWaitlist,
-//                    onLeaveWaitlist = onLeaveWaitlist,
-//                    modifier = Modifier.animateContentSize()
-//                )
 
-                WaitlistTabSelector(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    waitingCount = waitlistEntries.size,
-                    chosenCount = chosenEntries.size,
-                    modifier = Modifier.animateContentSize()
-                )
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize()
-                        .widthIn(max = 460.dp),
-                    shape = RoundedCornerShape(36.dp),
-                    color = PluckPalette.Surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                ) {
-                    when (selectedTab) {
-                        WaitlistTab.WAITING -> {
-                            if (waitlistEntries.isEmpty()) {
-                                WaitlistEmptyState(
-                                    message = "No one on the waitlist yet",
-                                    description = ""
-                                )
-                            } else {
-                                WaitlistEntriesList(
-                                    entries = waitlistEntries,
-                                    title = "Waitlist Queue"
-                                )
-                            }
-                        }
-                        WaitlistTab.CHOSEN -> {
-                            if (chosenEntries.isEmpty()) {
-                                WaitlistEmptyState(
-                                    message = "No entrants chosen yet",
-                                    description = "Run the lottery to randomly select entrants from the waitlist."
-                                )
-                            } else {
-                                WaitlistEntriesList(
-                                    entries = chosenEntries,
-                                    title = "Chosen Entrants"
-                                )
-                            }
-                        }
-                    }
-                }
+
+
+
             }
         }
     }
+     */
 }
 
 @Composable
 private fun WaitlistHeaderCard(
-    event: Event,
-    collapseProgress: Float
+    event: Event
 ) {
     val selectionMessage = if (event.samplingCount > 0) {
         val plural = if (event.samplingCount == 1) "" else "s"
@@ -240,56 +277,27 @@ private fun WaitlistHeaderCard(
         "Lottery draws randomly select entrants from the waiting list. If you are not chosen, you remain in line for the next draw."
     }
 
-    val paddingFactor = (1f - 0.35f * collapseProgress).coerceIn(0.65f, 1f)
-    val headerPadding by animateDpAsState(
-        targetValue = 24.dp * paddingFactor,
-        label = "waitlistHeaderPadding"
-    )
-    val columnSpacing by animateDpAsState(
-        targetValue = 16.dp * (1f - 0.3f * collapseProgress).coerceIn(0.6f, 1f),
-        label = "waitlistHeaderSpacing"
-    )
-    val badgeSize by animateDpAsState(
-        targetValue = 56.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
-        label = "waitlistHeaderBadge"
-    )
-    val badgeIconSize by animateDpAsState(
-        targetValue = 40.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
-        label = "waitlistHeaderBadgeIcon"
-    )
-    val titleSize by animateFloatAsState(
-        targetValue = if (collapseProgress > 0.6f) 22f else 24f,
-        label = "waitlistHeaderTitleSize"
-    )
-    val shadowElevation by animateDpAsState(
-        targetValue = 16.dp * (1f - 0.5f * collapseProgress).coerceIn(0.5f, 1f),
-        label = "waitlistHeaderElevation"
-    )
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .widthIn(max = 460.dp)
-            .animateContentSize(),
+            .widthIn(max = 460.dp),
         shape = RoundedCornerShape(36.dp),
         color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = shadowElevation,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = headerPadding, vertical = headerPadding),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(columnSpacing)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = event.title,
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Black,
                     color = PluckPalette.Primary,
-                    fontSize = titleSize.sp
+                    fontSize = 22f.sp
                 ),
                 textAlign = TextAlign.Center
             )
@@ -304,24 +312,24 @@ private fun WaitlistHeaderCard(
                     value = "${event.enrolled}/${event.capacity}",
                     label = "Enrolled",
                     accentColor = PluckPalette.Secondary,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Groups,
                     value = "${event.waitlistCount}",
                     label = "Waitlisted",
                     accentColor = PluckPalette.Tertiary,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Schedule,
-                    value = "${event.waitlistAvailable}",
+                    value = "${if (event.waitlistAvailable == Int.MAX_VALUE) "∞" else event.waitlistAvailable}",
                     label = "Available",
                     accentColor = PluckPalette.Accept,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
             }
 
@@ -499,8 +507,6 @@ private fun WaitlistTabSelector(
             .widthIn(max = 460.dp),
         shape = RoundedCornerShape(24.dp),
         color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
         Row(
