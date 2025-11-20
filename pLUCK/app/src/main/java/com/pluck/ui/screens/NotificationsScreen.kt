@@ -419,7 +419,8 @@ private fun NotificationCard(
 ) {
     Surface(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .testTag(NotificationsTestTags.CardPrefix + item.id),
         shape = RoundedCornerShape(28.dp),
         color = PluckPalette.Surface,
         shadowElevation = 14.dp,
