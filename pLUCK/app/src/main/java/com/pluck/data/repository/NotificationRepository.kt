@@ -7,8 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.ktx.toObject
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.firestore.toObject
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.model.InviteContactType
 import com.pluck.ui.model.NotificationButtons

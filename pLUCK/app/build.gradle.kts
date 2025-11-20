@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.services)
     id("org.jetbrains.dokka") version "2.1.0"
-
+    alias(libs.plugins.compose.compiler)
 }
 dokka {
     dokkaPublications.html {
@@ -88,9 +88,6 @@ android {
     buildFeatures {
         buildConfig = false
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
     packaging {
         resources {
