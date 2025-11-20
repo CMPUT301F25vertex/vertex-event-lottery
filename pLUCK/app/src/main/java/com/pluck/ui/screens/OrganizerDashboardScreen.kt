@@ -140,7 +140,6 @@ fun OrganizerDashboardScreen(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 2,
         bottomBar = {
             BottomNavBar(
                 currentRoute = currentRoute,
@@ -593,7 +592,7 @@ private fun OrganizerActionButton(
             containerColor = backgroundColor,
             contentColor = contentColor
         ),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(8.dp)
     ) {
         Icon(
             imageVector = icon,
@@ -604,7 +603,8 @@ private fun OrganizerActionButton(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.SemiBold
-            )
+            ),
+            maxLines = 1,
         )
     }
 }
