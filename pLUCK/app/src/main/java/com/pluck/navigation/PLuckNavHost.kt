@@ -1268,15 +1268,53 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Notifications.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
-            Scaffold(
+            NotificationsScreen(
+                notifications = notifications,
+                isLoading = notificationsLoading,
+                processingNotificationIds = processingNotificationIds,
+                onEventDetails = { notification ->
+                    notificationsViewModel.markRead(notification.id)
+                    if (notification.eventId.isNotBlank()) {
+                        navigator.toEventDetail(notification.eventId)
+                    }
+                },
+                onAccept = { notification ->
+                    notificationsViewModel.acceptNotification(notification, currentUser) { eventId ->
+                        val profile = currentUser
+                        if (eventId != null && profile != null) {
+                            val deviceId = profile.deviceId
+                            waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                            waitlistViewModel.loadUserEventHistory(deviceId)
+                            eventViewModel.loadEvent(eventId)
+                        }
+                    }
+                },
+                onDecline = { notification ->
+                    notificationsViewModel.declineNotification(notification) { eventId ->
+                        val profile = currentUser
+                        if (eventId != null && profile != null) {
+                            val deviceId = profile.deviceId
+                            waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                            waitlistViewModel.loadUserEventHistory(deviceId)
+                            eventViewModel.loadEvent(eventId)
+                        }
+                    }
+                },
+                onProfileClick = {
+                    navigator.toProfile()
+                },
+                onClearAll = {
+                    notificationsViewModel.clearAllNotifications(currentUser)
+                },
                 bottomBar = {
                     BottomNavBar(
                         currentRoute = navController.currentBackStackEntry?.destination?.route,
                         onNavigate = { route ->
                             when (route) {
                                 "event_list" -> navigator.toEventList()
-                                "notifications" -> { /* Already here */ }
+                                "notifications" -> { /* Already here */
+                                }
+
                                 "settings" -> navigator.toSettings()
                                 "profile" -> navigator.toProfile()
                             }
@@ -1284,53 +1322,7 @@ fun PLuckNavHost(
                         dashboards = dashboards
                     )
                 }
-            ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    NotificationsScreen(
-                        notifications = notifications,
-                        isLoading = notificationsLoading,
-                        processingNotificationIds = processingNotificationIds,
-                        onEventDetails = { notification ->
-                            notificationsViewModel.markRead(notification.id)
-                            if (notification.eventId.isNotBlank()) {
-                                navigator.toEventDetail(notification.eventId)
-                            }
-                        },
-                        onAccept = { notification ->
-                            notificationsViewModel.acceptNotification(notification, currentUser) { eventId ->
-                                val profile = currentUser
-                                if (eventId != null && profile != null) {
-                                    val deviceId = profile.deviceId
-                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
-                                    waitlistViewModel.loadUserEventHistory(deviceId)
-                                    eventViewModel.loadEvent(eventId)
-                                }
-                            }
-                        },
-                        onDecline = { notification ->
-                            notificationsViewModel.declineNotification(notification) { eventId ->
-                                val profile = currentUser
-                                if (eventId != null && profile != null) {
-                                    val deviceId = profile.deviceId
-                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
-                                    waitlistViewModel.loadUserEventHistory(deviceId)
-                                    eventViewModel.loadEvent(eventId)
-                                }
-                            }
-                        },
-                        onProfileClick = {
-                            navigator.toProfile()
-                        },
-                        onClearAll = {
-                            notificationsViewModel.clearAllNotifications(currentUser)
-                        }
-                    )
-                }
-            }
+            )
         }
         composable(PLuckDestination.CreateEvent.route) {
             var formError by remember { mutableStateOf<String?>(null) }

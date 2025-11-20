@@ -72,8 +72,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
+import com.pluck.ui.components.AutoHidingBarScroller
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.RoundIconButton
 import com.pluck.ui.model.NotificationButtons
 import com.pluck.ui.model.NotificationCategory
 import com.pluck.ui.model.NotificationFilter
@@ -102,7 +105,8 @@ fun NotificationsScreen(
     onAccept: (NotificationItem) -> Unit = {},
     onDecline: (NotificationItem) -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onClearAll: () -> Unit = {}
+    onClearAll: () -> Unit = {},
+    bottomBar: @Composable () -> Unit
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
@@ -122,7 +126,8 @@ fun NotificationsScreen(
         onDecline = onDecline,
         onProfileClick = onProfileClick,
         hasNotifications = hasNotifications,
-        onClearAll = onClearAll
+        onClearAll = onClearAll,
+        bottomBar = bottomBar
     )
 }
 
@@ -143,88 +148,78 @@ private fun NotificationsContent(
     onDecline: (NotificationItem) -> Unit,
     onProfileClick: () -> Unit,
     hasNotifications: Boolean,
-    onClearAll: () -> Unit
+    onClearAll: () -> Unit,
+    bottomBar: @Composable () -> Unit
 ) {
-    val listState = rememberLazyListState()
-    val heroCollapseProgress by remember {
-        derivedStateOf {
-            when {
-                listState.firstVisibleItemIndex > 0 -> 1f
-                else -> (listState.firstVisibleItemScrollOffset / 250f).coerceIn(0f, 1f)
-            }
-        }
-    }
+//    val listState = rememberLazyListState()
+//    val heroCollapseProgress by remember {
+//        derivedStateOf {
+//            when {
+//                listState.firstVisibleItemIndex > 0 -> 1f
+//                else -> (listState.firstVisibleItemScrollOffset / 250f).coerceIn(0f, 1f)
+//            }
+//        }
+//    }
 
-    PluckLayeredBackground(
-        modifier = modifier
-            .fillMaxSize()
-            .testTag(NotificationsTestTags.Screen)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        NotificationsHero(
+            unreadCount = unreadCount,
+            selectedFilter = selectedFilter,
+            onFilterSelected = onFilterSelected,
+            onProfileClick = onProfileClick,
+            hasNotifications = hasNotifications,
+            onClearAll = onClearAll
+        )
+    })
+
+    if (notifications.isEmpty()) {
+        listElements.add(ComposableItem {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-                item {
-                    NotificationsHero(
-                        unreadCount = unreadCount,
-                        selectedFilter = selectedFilter,
-                        onFilterSelected = onFilterSelected,
-                        collapseProgress = heroCollapseProgress,
-                        onProfileClick = onProfileClick,
-                        hasNotifications = hasNotifications,
-                        onClearAll = onClearAll
+                Text(
+                    text = "Nothing to review right now.",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = PluckPalette.Primary
                     )
-                }
-                if (notifications.isEmpty()) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Nothing to review right now.",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PluckPalette.Primary
-                                )
-                            )
-                            Text(
-                                text = "We'll let you know when something changes.",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = PluckPalette.Muted
-                                ),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                } else {
-                    itemsIndexed(notifications, key = { _, item -> item.id }) { index, item ->
-                        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                            NotificationCard(
-                                index = index,
-                                item = item,
-                                isProcessing = processingNotificationIds.contains(item.id),
-                                onEventDetails = { onEventDetails(item) },
-                                onAccept = { onAccept(item) },
-                                onDecline = { onDecline(item) }
-                            )
-                        }
-                    }
-                }
+                )
+                Text(
+                    text = "We'll let you know when something changes.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Muted
+                    ),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
-
-            if (isLoading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            }
+        })
+    } else {
+        var i = 0
+        for (notification in notifications) {
+            listElements.add(ComposableItem {
+                NotificationCard(
+                    index = i,
+                    item = notification,
+                    isProcessing = processingNotificationIds.contains(notification.id),
+                    onEventDetails = { onEventDetails(notification) },
+                    onAccept = { onAccept(notification) },
+                    onDecline = { onDecline(notification) }
+                )
+            })
+            ++i
         }
     }
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        bottomBar = bottomBar
+    )
 }
 
 /**
@@ -238,53 +233,42 @@ private fun NotificationsHero(
     unreadCount: Int,
     selectedFilter: NotificationFilter,
     onFilterSelected: (NotificationFilter) -> Unit,
-    collapseProgress: Float,
     onProfileClick: () -> Unit,
     hasNotifications: Boolean,
     onClearAll: () -> Unit
 ) {
-    val targetHeightFactor = (1f - collapseProgress * 0.4f)
-    val targetAlpha = (1f - collapseProgress).coerceIn(0f, 1f)
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((150 * targetHeightFactor).dp)
+                .height(150.dp)
                 .zIndex(1f),
             shape = RoundedCornerShape(32.dp),
-            color = PluckPalette.Surface.copy(alpha = targetAlpha),
+            color = PluckPalette.Surface,
             tonalElevation = 0.dp,
-            shadowElevation = (16.dp * (1f - collapseProgress * 0.7f)),
-            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f * targetAlpha))
+            shadowElevation = (16.dp),
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
         ) {
             Column(
                 modifier = Modifier.padding(
                     horizontal = 22.dp,
-                    vertical = (20 * targetHeightFactor).dp
+                    vertical = 20.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy((18 * targetHeightFactor).dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 NotificationsHeaderRow(
                     unreadCount = unreadCount,
-                    collapseProgress = collapseProgress,
-                    targetAlpha = targetAlpha,
-                    onProfileClick = onProfileClick,
                     hasNotifications = hasNotifications,
                     onClearAll = onClearAll
                 )
-                if (collapseProgress < 0.9f) {
-                    NotificationFilterRow(
-                        unreadCount = unreadCount,
-                        selected = selectedFilter,
-                        onSelected = onFilterSelected,
-                        alpha = targetAlpha
-                    )
-                }
+                NotificationFilterRow(
+                    unreadCount = unreadCount,
+                    selected = selectedFilter,
+                    onSelected = onFilterSelected
+                )
             }
         }
     }
@@ -296,9 +280,6 @@ private fun NotificationsHero(
 @Composable
 private fun NotificationsHeaderRow(
     unreadCount: Int,
-    collapseProgress: Float,
-    targetAlpha: Float,
-    onProfileClick: () -> Unit,
     hasNotifications: Boolean,
     onClearAll: () -> Unit
 ) {
@@ -308,86 +289,42 @@ private fun NotificationsHeaderRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy((8 * (1f - collapseProgress * 0.5f)).dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = "Notifications",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Black,
-                    color = PluckPalette.Primary.copy(alpha = targetAlpha),
-                    fontSize = (28 - collapseProgress * 8).sp
+                    color = PluckPalette.Primary,
+                    fontSize = 28.sp
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (collapseProgress < 0.8f) {
-                Text(
-                    text = if (unreadCount > 0) "$unreadCount new updates" else "You're in the loop",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = PluckPalette.Muted.copy(alpha = targetAlpha)
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Text(
+                text = if (unreadCount > 0) "$unreadCount new updates" else "You're in the loop",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = PluckPalette.Muted
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        if (collapseProgress < 0.7f) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FloatingIconButton(
-                    icon = Icons.Outlined.Delete,
-                    backgroundColor = PluckPalette.Surface.copy(alpha = targetAlpha),
-                    contentColor = (if (hasNotifications) PluckPalette.Primary else PluckPalette.Muted).copy(alpha = targetAlpha),
-                    borderColor = PluckPalette.Primary.copy(alpha = 0.08f * targetAlpha),
-                    onClick = {
-                        if (hasNotifications) {
-                            onClearAll()
-                        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            RoundIconButton(
+                imageVector = Icons.Outlined.Delete,
+                onClick = {
+                    if (hasNotifications) {
+                        onClearAll()
                     }
-                )
-                FloatingIconButton(
-                    icon = Icons.Outlined.Person,
-                    backgroundColor = PluckPalette.Secondary.copy(alpha = targetAlpha),
-                    contentColor = autoTextColor(PluckPalette.Secondary).copy(alpha = targetAlpha),
-                    onClick = onProfileClick
-                )
-            }
-        }
-    }
-}
-
-/**
- * Small utility component that renders a floating circular icon.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-/** Rounded quick-action button used inside the hero card. */
-@Composable
-private fun FloatingIconButton(
-    icon: ImageVector,
-    backgroundColor: Color,
-    contentColor: Color,
-    borderColor: Color = Color.Transparent,
-    onClick: () -> Unit = {}
-) {
-    Surface(
-        modifier = Modifier.size(56.dp),
-        shape = CircleShape,
-        color = backgroundColor,
-        contentColor = contentColor,
-        tonalElevation = 0.dp,
-        shadowElevation = 10.dp,
-        border = if (borderColor == Color.Transparent) null else BorderStroke(1.dp, borderColor),
-        onClick = onClick
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                },
+                contentDescription = "Delete Notifications"
             )
         }
     }
 }
+
 /**
  * Segmented control row with the Unread and Read filters.
  */
@@ -397,8 +334,7 @@ private fun FloatingIconButton(
 private fun NotificationFilterRow(
     unreadCount: Int,
     selected: NotificationFilter,
-    onSelected: (NotificationFilter) -> Unit,
-    alpha: Float = 1f
+    onSelected: (NotificationFilter) -> Unit
 ) {
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
@@ -407,8 +343,7 @@ private fun NotificationFilterRow(
 
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .alpha(alpha),
+            .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         FilterChip(
@@ -492,67 +427,29 @@ private fun NotificationCard(
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .offset(x = cardOffsetFor(index))
-            .testTag("${NotificationsTestTags.CardPrefix}${item.id}")
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        shadowElevation = 14.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
     ) {
-        NotificationCardBackdrop(accentColor = item.accentColor)
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .zIndex(1f),
-            shape = RoundedCornerShape(28.dp),
-            color = PluckPalette.Surface,
-            tonalElevation = 0.dp,
-            shadowElevation = 14.dp,
-            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                NotificationCardHeader(item = item)
-                NotificationCardBody(item = item)
-                ActionRow(
-                    buttons = item.callToActionButtons,
-                    isProcessing = isProcessing,
-                    onEventDetails = onEventDetails,
-                    onAccept = onAccept,
-                    onDecline = onDecline
-                )
-            }
+            NotificationCardHeader(item = item)
+            NotificationCardBody(item = item)
+            ActionRow(
+                buttons = item.callToActionButtons,
+                isProcessing = isProcessing,
+                onEventDetails = onEventDetails,
+                onAccept = onAccept,
+                onDecline = onDecline
+            )
         }
     }
-}
-
-/**
- * Backdrop shapes that peek around each card, giving the jumbled depth effect.
- */
-@Composable
-private fun BoxScope.NotificationCardBackdrop(accentColor: Color) {
-    Surface(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .offset(x = (-18).dp, y = (-18).dp)
-            .width(120.dp)
-            .height(72.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = accentColor.copy(alpha = 0.28f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {}
-    Surface(
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .offset(x = 18.dp, y = 28.dp)
-            .size(70.dp),
-        shape = CircleShape,
-        color = PluckPalette.Primary.copy(alpha = 0.08f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {}
 }
 
 /**
@@ -777,15 +674,6 @@ private fun NotificationCategory.icon(): ImageVector = when (this) {
 }
 
 /**
- * Determines the horizontal offset used to create the staggered card layout.
- */
-private fun cardOffsetFor(index: Int): Dp = when (index % 3) {
-    0 -> (-8).dp
-    1 -> 0.dp
-    else -> 8.dp
-}
-
-/**
  * Test tags exposed for Compose UI tests.
  */
 object NotificationsTestTags {
@@ -793,10 +681,4 @@ object NotificationsTestTags {
     const val TabUnread = "notifications-tab-unread"
     const val TabRead = "notifications-tab-read"
     const val CardPrefix = "notifications-card-"
-}
-
-@Preview(showBackground = true, widthDp = 420, heightDp = 920)
-@Composable
-private fun NotificationsScreenPreview() {
-    NotificationsScreen()
 }
