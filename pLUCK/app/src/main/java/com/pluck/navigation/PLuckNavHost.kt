@@ -66,6 +66,8 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
@@ -110,6 +112,8 @@ import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDateTime
 
 
@@ -221,6 +225,28 @@ fun PLuckNavHost(
     val inviteFeedback by notificationsViewModel.inviteFeedback.collectAsState()
     val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
     val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
+
+    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val token = task.result
+            Log.e("FCM", "Token: $token")
+            val auth = DeviceAuthenticator(context)
+
+            runBlocking {
+                launch {
+                    FirebaseFirestore.getInstance().collection("entrants").document(auth.currentDeviceId())
+                        .update(
+                            mapOf(
+                                "fcmToken" to token
+                            )
+                        ).await()
+                }
+            }
+
+        } else {
+            Log.e("FCM", "Failed to fetch token", task.exception)
+        }
+    }
 
     var hasFirebaseConnection by remember { mutableStateOf(false) }
 

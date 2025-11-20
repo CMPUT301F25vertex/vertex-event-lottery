@@ -1,6 +1,7 @@
 package com.pluck
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Surface
@@ -8,13 +9,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.messaging.FirebaseMessaging
+import com.pluck.data.DeviceAuthenticator
+import com.pluck.data.firebase.UserRole
 import com.pluck.navigation.PLuckNavHost
 import com.pluck.ui.theme.PluckTheme
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * Main activity for the pLUCK lottery event management app.
