@@ -106,7 +106,7 @@ fun NotificationsScreen(
     onDecline: (NotificationItem) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onClearAll: () -> Unit = {},
-    bottomBar: @Composable () -> Unit
+    bottomBar: @Composable () -> Unit = {}
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
@@ -151,16 +151,6 @@ private fun NotificationsContent(
     onClearAll: () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
-//    val listState = rememberLazyListState()
-//    val heroCollapseProgress by remember {
-//        derivedStateOf {
-//            when {
-//                listState.firstVisibleItemIndex > 0 -> 1f
-//                else -> (listState.firstVisibleItemScrollOffset / 250f).coerceIn(0f, 1f)
-//            }
-//        }
-//    }
-
     val listElements = mutableListOf<ComposableItem>()
 
     listElements.add(ComposableItem {
