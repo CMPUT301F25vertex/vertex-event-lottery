@@ -123,6 +123,9 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
 
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+    implementation("com.google.firebase:firebase-messaging")
+
     implementation(libs.mlkit.barcode)
     implementation(libs.play.services.location)
     implementation("com.google.android.gms:play-services-maps:18.2.0")
