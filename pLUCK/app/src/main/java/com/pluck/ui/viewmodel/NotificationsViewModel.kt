@@ -1,5 +1,6 @@
 package com.pluck.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pluck.data.repository.AcceptNotificationResult
@@ -160,6 +161,8 @@ class NotificationsViewModel(
             _inviteFeedback.value = if (result.isSuccess) {
                 InviteFeedback(message = "Invite sent to $contact.")
             } else {
+                Log.e("NotificationsViewModel ERROR", "Failed to send notification")
+
                 InviteFeedback(message = result.exceptionOrNull()?.message ?: "Failed to send invite.", isError = true)
             }
             _isInviteInProgress.value = false
