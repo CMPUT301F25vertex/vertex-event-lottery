@@ -125,7 +125,8 @@ fun ProfileScreen(
     onBecomeOrganizer: () -> Unit = {},
     onDowngradeFromOrganizer: () -> Unit = {},
     onSubmitAppeal: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    debugComposable: ComposableItem? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -419,6 +420,10 @@ fun ProfileScreen(
             )
         }
     })
+
+    if (debugComposable != null) {
+        listElements.add(debugComposable)
+    }
 
     PluckLayeredBackground(
         modifier = modifier.fillMaxSize()

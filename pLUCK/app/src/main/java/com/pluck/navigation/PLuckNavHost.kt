@@ -29,12 +29,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,10 +48,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -61,9 +67,15 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.toObjects
+import com.pluck.DEBUG
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
+import com.pluck.data.firebase.FirebaseEvent
+import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.UserRole
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.firebase.checkFirebaseConnection
@@ -71,10 +83,15 @@ import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.data.repository.AppealRepository
 import com.pluck.data.repository.OrganizerAccessRepository
 import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.Dashboard
 import com.pluck.ui.components.DashboardType
+import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.InviteContactType
+import com.pluck.ui.model.NotificationCategory
+import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.screens.AdminDashboardScreen
 import com.pluck.ui.screens.ChosenEntrantsScreen
 import com.pluck.ui.screens.CreateAccountScreen
@@ -104,8 +121,15 @@ import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.Dispatcher
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 sealed class PLuckDestination(val route: String) {
@@ -873,11 +897,130 @@ fun PLuckNavHost(
                     )
                 }
             ) { paddingValues ->
+                var debugComposable: ComposableItem? = null
+                if (DEBUG) {
+                    var text by remember{ mutableStateOf("") }
+                    var text2 by remember{ mutableStateOf("") }
+                    var number by remember{ mutableStateOf("") }
+
+                    debugComposable = ComposableItem {
+                        Surface(
+                            color = Color.Red
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = "Debug Menu",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                )
+
+                                Text(
+                                    text = "Text Input 1",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = text,
+                                    onValueChange = { text = it },
+                                    label = { Text(text) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Text(
+                                    text = "Text Input 2",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = text2,
+                                    onValueChange = { text2 = it },
+                                    label = { Text(text2) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Text(
+                                    text = "Number Input",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = number,
+                                    onValueChange = { number = it },
+                                    label = { Text(number) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                TextButton(
+                                    onClick = {
+                                        if (number.toIntOrDefault(-1) == -1) {
+                                            Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
+                                        }
+
+                                        val notificationsCollection = FirebaseFirestore.getInstance().collection("notifications")
+                                        val entrantsCollection = FirebaseFirestore.getInstance().collection("entrants")
+                                        val eventsCollection = FirebaseFirestore.getInstance().collection("events")
+
+                                        runBlocking {
+                                            launch {
+                                                val users = entrantsCollection.whereEqualTo("email", text).get().await()
+
+                                                val event = eventsCollection.whereEqualTo("title", text2).get().await().toObjects<FirebaseEvent>()[0].toEvent()
+
+                                                var j = 0
+                                                users.toObjects<FirebaseUser>().forEach { user ->
+                                                    for (i in 1..number.toIntOrDefault(-1)) {
+                                                        val userId = user.id
+                                                        val docRef = notificationsCollection.document()
+                                                        val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+
+                                                        val payload = hashMapOf(
+                                                            "id" to docRef.id,
+                                                            "userId" to userId,
+                                                            "organizerId" to "SYSTEM_DEBUG",
+                                                            "eventId" to event.id,
+                                                            "waitlistEntryId" to "",
+                                                            "title" to "You're invited to ${event.title}",
+                                                            "subtitle" to event.location,
+                                                            "detail" to "Happening on $dateLabel",
+                                                            "category" to NotificationCategory.SELECTION.name,
+                                                            "status" to NotificationStatus.UNREAD.name,
+                                                            "inviteContact" to text.trim(),
+                                                            "inviteType" to "EMAIL",
+                                                            "allowAccept" to true,
+                                                            "allowDecline" to true,
+                                                            "allowEventDetails" to true,
+                                                            "createdAt" to FieldValue.serverTimestamp(),
+                                                            "updatedAt" to FieldValue.serverTimestamp()
+                                                        )
+
+                                                        docRef.set(payload, SetOptions.merge()).await()
+                                                    }
+                                                    j++
+                                                }
+
+                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} notifications sent! to $j different users", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+
+                                    },
+                                    colors = ButtonDefaults.buttonColors().copy(
+                                        containerColor = Color.Green
+                                    )
+                                ) {
+                                    Text("Send ${number.toIntOrDefault(-1)} fake notifications to all users with email: $text to event with name: $text2")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                ) {
+                )
+                {
                     ProfileScreen(
                         userName = currentUser?.displayName ?: "Anonymous",
                         userEmail = currentUser?.email,
@@ -910,7 +1053,8 @@ fun PLuckNavHost(
                                 profileUpdating = true
                                 profileUpdateMessage = null
                                 profileUpdateError = null
-                                when (val result = authenticator.updateProfile(name, email, phone)) {
+                                when (val result =
+                                    authenticator.updateProfile(name, email, phone)) {
                                     is DeviceAuthResult.Success -> {
                                         currentUser = result.profile
                                         waitlistViewModel.refreshEntrantDisplayName(
@@ -919,6 +1063,7 @@ fun PLuckNavHost(
                                         )
                                         profileUpdateMessage = "Profile updated successfully."
                                     }
+
                                     is DeviceAuthResult.Error -> {
                                         profileUpdateError = result.message
                                     }
@@ -941,24 +1086,27 @@ fun PLuckNavHost(
                             adminRegistrationError = null
                             adminRegistrationPassword = ""
                             showAdminRegistrationDialog = true
-                            dashboards.add(Dashboard(
-                                type = DashboardType.Admin,
-                                onClick = {
-                                    navigator.toAdmin()
-                                }
-                            ))
+                            dashboards.add(
+                                Dashboard(
+                                    type = DashboardType.Admin,
+                                    onClick = {
+                                        navigator.toAdmin()
+                                    }
+                                ))
                         },
                         onBecomeOrganizer = {
                             scope.launch {
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 organizerAccessRepository.registerAsOrganizer(deviceId)
@@ -969,12 +1117,13 @@ fun PLuckNavHost(
                                         )
                                         profileUpdateMessage = "Organizer tools unlocked."
 
-                                        dashboards.add(Dashboard(
-                                            type = DashboardType.Organizer,
-                                            onClick = {
-                                                navigator.toOrganizer()
-                                            }
-                                        ))
+                                        dashboards.add(
+                                            Dashboard(
+                                                type = DashboardType.Organizer,
+                                                onClick = {
+                                                    navigator.toOrganizer()
+                                                }
+                                            ))
                                     }
                                     .onFailure { error ->
                                         profileUpdateError = error.message
@@ -987,12 +1136,14 @@ fun PLuckNavHost(
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 organizerAccessRepository.downgradeToEntrant(deviceId)
@@ -1024,12 +1175,14 @@ fun PLuckNavHost(
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 appealRepository.submitAppeal(
@@ -1092,6 +1245,7 @@ fun PLuckNavHost(
                                             popUpTo(0) { inclusive = true }
                                         }
                                     }
+
                                     is DeviceAuthResult.Error -> {
                                         loginError = "Failed to delete account"
                                     }
@@ -1099,14 +1253,16 @@ fun PLuckNavHost(
 
                                 dashboards.clear()
 
-                                dashboards.add(Dashboard(
-                                    type = DashboardType.Entrant,
-                                    onClick = { navigator.toEventList() }
-                                ))
+                                dashboards.add(
+                                    Dashboard(
+                                        type = DashboardType.Entrant,
+                                        onClick = { navigator.toEventList() }
+                                    ))
 
                                 loginInProgress = false
                             }
-                        }
+                        },
+                        debugComposable = debugComposable
                     )
                 }
             }
