@@ -938,7 +938,7 @@ fun PLuckNavHost(
 
                                 Text(
                                     text = "Text Input 2",
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color)
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 )
 
                                 OutlinedTextField(
