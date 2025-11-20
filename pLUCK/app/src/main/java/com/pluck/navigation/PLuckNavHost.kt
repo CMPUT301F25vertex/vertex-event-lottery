@@ -65,6 +65,7 @@ import androidx.navigation.navArgument
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -76,6 +77,7 @@ import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
 import com.pluck.data.firebase.FirebaseEvent
 import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.firebase.FirebaseWaitlistEntry
 import com.pluck.data.firebase.UserRole
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.firebase.checkFirebaseConnection
@@ -916,6 +918,13 @@ fun PLuckNavHost(
                                 )
 
                                 Text(
+                                    text = "WARNING, all options listed here use direct writes to the database, try to press each button a minimum number of times.\n\n" +
+                                            "All buttons share the same three text entries, not all buttons will use all entries\n\n" +
+                                            "Depending on what action is used expect the UI of the app to freeze for up to 30 seconds, this is normal.",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                )
+
+                                Text(
                                     text = "Text Input 1",
                                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 )
@@ -929,7 +938,7 @@ fun PLuckNavHost(
 
                                 Text(
                                     text = "Text Input 2",
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color)
                                 )
 
                                 OutlinedTextField(
@@ -1009,6 +1018,61 @@ fun PLuckNavHost(
                                     )
                                 ) {
                                     Text("Send ${number.toIntOrDefault(-1)} fake notifications to all users with email: $text to event with name: $text2")
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        if (number.toIntOrDefault(-1) == -1) {
+                                            Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
+                                        }
+
+                                        val eventsCollection = FirebaseFirestore.getInstance().collection("events")
+                                        val waitlistCollection = FirebaseFirestore.getInstance().collection("waitlist")
+
+                                        runBlocking {
+                                            launch {
+                                                val event = eventsCollection.whereEqualTo("title", text).get().await().toObjects<FirebaseEvent>()[0].toEvent()
+
+                                                for (i in 1..number.toIntOrDefault(-1)) {
+                                                    val currentSize = waitlistCollection
+                                                            .whereEqualTo("eventId", event.id)
+                                                            .whereIn(
+                                                                "status",
+                                                                listOf(
+                                                                    WaitlistStatus.WAITING.name,
+                                                                    WaitlistStatus.INVITED.name
+                                                                )
+                                                            ).get().await().size()
+
+                                                    val entry = FirebaseWaitlistEntry(
+                                                        eventId = event.id,
+                                                        userId = "FAKE_DEBUG_USER #$i",
+                                                        userName = "FAKE_DEBUG_NAME #$i",
+                                                        position = currentSize + 1,
+                                                        joinedTimestamp = Timestamp.now(),
+                                                        status = WaitlistStatus.WAITING
+                                                    )
+
+                                                    val docRef = waitlistCollection.document()
+                                                    val entryWithId = entry.copy(id = docRef.id)
+
+                                                    docRef.set(entryWithId).await()
+
+                                                    // Update event waitlist count
+                                                    eventsCollection.document(event.id)
+                                                        .update("waitlistCount", currentSize + 1).await()
+                                                }
+
+                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} users added to waitlist!", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+
+                                    },
+                                    colors = ButtonDefaults.buttonColors().copy(
+                                        containerColor = Color.Green
+                                    )
+                                ) {
+                                    Text("Enroll ${number.toIntOrDefault(-1)} fake users to event waitlist with name: $text")
                                 }
                             }
                         }
