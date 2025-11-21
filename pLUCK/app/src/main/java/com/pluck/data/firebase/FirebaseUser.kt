@@ -44,7 +44,8 @@ data class FirebaseUser(
     @ServerTimestamp
     val createdAt: Timestamp? = null,
     @ServerTimestamp
-    val updatedAt: Timestamp? = null
+    val updatedAt: Timestamp? = null,
+    val fcmToken: String = ""
 ) {
     constructor() : this(
         id = "",

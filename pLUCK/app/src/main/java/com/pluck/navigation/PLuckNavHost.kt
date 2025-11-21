@@ -72,6 +72,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.toObjects
 import com.pluck.DEBUG
+import com.google.firebase.messaging.FirebaseMessaging
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
@@ -248,6 +249,28 @@ fun PLuckNavHost(
         type = DashboardType.Entrant,
         onClick = { navigator.toEventList() }
     ))) }
+    
+    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val token = task.result
+            Log.e("FCM", "Token: $token")
+            val auth = DeviceAuthenticator(context)
+
+            runBlocking {
+                launch {
+                    FirebaseFirestore.getInstance().collection("entrants").document(auth.currentDeviceId())
+                        .update(
+                            mapOf(
+                                "fcmToken" to token
+                            )
+                        ).await()
+                }
+            }
+
+        } else {
+            Log.e("FCM", "Failed to fetch token", task.exception)
+        }
+    }
 
     var hasFirebaseConnection by remember { mutableStateOf(false) }
 
