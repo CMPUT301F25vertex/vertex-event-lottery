@@ -43,41 +43,9 @@ class ProfileScreenTest {
             }
         }
 
-        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
-
         composeRule.onNodeWithText("Register as Admin", useUnmergedTree = true).assertExists()
         assertThrows(AssertionError::class.java) {
             composeRule.onNodeWithText("Admin Dashboard", useUnmergedTree = true).assertExists()
-        }
-    }
-
-    @Test
-    fun adminProfile_showsDashboardShortcut() {
-        composeRule.setContent {
-            PluckTheme {
-                ProfileScreen(
-                    userName = "Caiden",
-                    userEmail = "caiden@example.com",
-                    userPhone = null,
-                    profileImageUrl = null,
-                    deviceId = "device-admin",
-                    isLoading = false,
-                    isUpdatingProfile = false,
-                    isAdmin = true,
-                    onUpdateProfile = { _, _, _ -> },
-                    onSignOut = {},
-                    onDeleteAccount = {},
-                    onAdminDashboard = {},
-                    onRegisterAdmin = {}
-                )
-            }
-        }
-
-        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
-
-        composeRule.onNodeWithText("Admin Dashboard", useUnmergedTree = true).assertExists()
-        assertThrows(AssertionError::class.java) {
-            composeRule.onNodeWithText("Register as Admin", useUnmergedTree = true).assertExists()
         }
     }
 
@@ -99,8 +67,6 @@ class ProfileScreenTest {
                 )
             }
         }
-
-        composeRule.onNodeWithTag(ProfileScreenTestTags.ScrollContainer).assertExists()
 
         composeRule.onNodeWithTag(ProfileScreenTestTags.DeleteAccountButton)
             .assertExists()

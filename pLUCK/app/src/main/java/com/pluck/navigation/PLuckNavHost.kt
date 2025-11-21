@@ -16,15 +16,10 @@
 package com.pluck.navigation
 
 import android.annotation.SuppressLint
-import android.net.ConnectivityManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIn
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,26 +29,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -64,13 +65,20 @@ import androidx.navigation.navArgument
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.toObjects
+import com.pluck.DEBUG
 import com.google.firebase.messaging.FirebaseMessaging
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
+import com.pluck.data.firebase.FirebaseEvent
+import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.firebase.FirebaseWaitlistEntry
 import com.pluck.data.firebase.UserRole
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.firebase.checkFirebaseConnection
@@ -78,9 +86,15 @@ import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.data.repository.AppealRepository
 import com.pluck.data.repository.OrganizerAccessRepository
 import com.pluck.ui.components.BottomNavBar
-import com.pluck.ui.components.PluckLayeredBackground
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
+import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.EntrantProfile
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.InviteContactType
+import com.pluck.ui.model.NotificationCategory
+import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.screens.AdminDashboardScreen
 import com.pluck.ui.screens.ChosenEntrantsScreen
 import com.pluck.ui.screens.CreateAccountScreen
@@ -91,7 +105,6 @@ import com.pluck.ui.screens.EntrantLocationsMapScreen
 import com.pluck.ui.screens.EventDetailScreen
 import com.pluck.ui.screens.EventStatus
 import com.pluck.ui.screens.HomeScreen
-import com.pluck.ui.screens.MyEventItem
 import com.pluck.ui.screens.MyEventsScreen
 import com.pluck.ui.screens.NotificationsScreen
 import com.pluck.ui.screens.OrganizerDashboardScreen
@@ -111,10 +124,15 @@ import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.Dispatcher
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 sealed class PLuckDestination(val route: String) {
@@ -226,6 +244,12 @@ fun PLuckNavHost(
     val inviteInProgress by notificationsViewModel.isInviteInProgress.collectAsState()
     val navigateToEventDetails by notificationsViewModel.navigateToEventDetails.collectAsState()
 
+    // Everyone is an entrant
+    val dashboards by remember { mutableStateOf(mutableListOf(Dashboard(
+        type = DashboardType.Entrant,
+        onClick = { navigator.toEventList() }
+    ))) }
+    
     FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             val token = task.result
@@ -377,6 +401,50 @@ fun PLuckNavHost(
         hasFirebaseConnection = checkFirebaseConnection()
     }
 
+    val hasAdminDashboard: Boolean by remember { derivedStateOf {
+        var tmp = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Admin) tmp = true }
+
+        tmp
+    } }
+
+    val hasOrganizerDashboard: Boolean by remember { derivedStateOf {
+        var tmp = false
+        dashboards.forEach { dashboard -> if (dashboard.type == DashboardType.Organizer) tmp = true }
+
+        tmp
+    } }
+
+    // Required to ensure that users who did not sign up for organizer/admin before dashboards can
+    // still access all of the correct dashboards
+    LaunchedEffect(isAdminDevice, hasAdminDashboard) {
+        if (isAdminDevice && !hasAdminDashboard && !dashboards.hasDashboardWithType(DashboardType.Admin)) {
+            dashboards.add(Dashboard(
+                    type = DashboardType.Admin,
+                    onClick = { navigator.toAdmin() }
+                )
+            )
+        }
+    }
+
+    LaunchedEffect(hasOrganizerDashboard, currentUser) {
+        if (currentUser?.role != null && currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard && !dashboards.hasDashboardWithType(DashboardType.Organizer)) {
+            dashboards.add(Dashboard(
+                    type = DashboardType.Organizer,
+                    onClick = { navigator.toOrganizer() }
+                )
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        eventViewModel.loadEventsFast()
+        val refreshDeviceId = currentUser?.deviceId.orEmpty()
+        if (refreshDeviceId.isNotBlank()) {
+            waitlistViewModel.loadUserEventHistory(refreshDeviceId)
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = PLuckDestination.Startup.route,
@@ -465,12 +533,12 @@ fun PLuckNavHost(
                 userEventHistory.map { it.event.id }.toSet()
             }
             val isOrganizer = currentUser?.role == UserRole.ORGANIZER
+
             HomeScreen(
                 userName = currentUser?.displayName,
                 events = events,
                 isLoading = eventsLoading,
                 currentRoute = navController.currentBackStackEntry?.destination?.route,
-                isOrganizer = isOrganizer,
                 onSelectEvent = { event ->
                     navigator.toEventDetail(event.id)
                 },
@@ -481,9 +549,6 @@ fun PLuckNavHost(
                         "settings" -> navigator.toSettings()
                         "profile" -> navigator.toProfile()
                     }
-                },
-                onCreateEvent = {
-                    navigator.toCreateEvent()
                 },
                 onScanQRCode = {
                     navigator.toQRScanner()
@@ -496,7 +561,10 @@ fun PLuckNavHost(
                         waitlistViewModel.loadUserEventHistory(refreshDeviceId)
                     }
                 },
-                userJoinedEventIds = userJoinedEventIds
+                isRefreshing = eventsLoading,
+                userJoinedEventIds = userJoinedEventIds,
+                dashboards = dashboards,
+                currentUserId = currentUser?.deviceId.orEmpty()
             )
         }
         composable(
@@ -723,98 +791,7 @@ fun PLuckNavHost(
                         event = resolvedEvent,
                         waitlistEntries = waitlistEntries,
                         chosenEntries = chosenEntries,
-                        isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                                userWaitlistStatus == WaitlistStatus.SELECTED ||
-                                userWaitlistStatus == WaitlistStatus.INVITED,
-                        isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED,
                         onBack = { navController.popBackStack() },
-                        onJoinWaitlist = join@{
-                            val profile = currentUser
-                            if (profile == null) {
-                                Toast.makeText(context, "Please sign in to join waitlist.", Toast.LENGTH_LONG).show()
-                                return@join
-                            }
-
-                            // Capture location if event requires geolocation (US 02.02.03)
-                            // When enabled, location is MANDATORY - users cannot join without it
-                            if (resolvedEvent.requiresGeolocation) {
-                                scope.launch {
-                                    try {
-                                        @SuppressLint("MissingPermission")
-                                        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-                                        val cancellationToken = CancellationTokenSource()
-                                        @SuppressLint("MissingPermission")
-                                        val locationResult = fusedLocationClient.getCurrentLocation(
-                                            Priority.PRIORITY_HIGH_ACCURACY,
-                                            cancellationToken.token
-                                        )
-
-                                        locationResult.addOnSuccessListener { location ->
-                                            if (location == null) {
-                                                // Location is MANDATORY - block join if unavailable
-                                                Toast.makeText(context, "This event requires location sharing. Please enable location services and try again.", Toast.LENGTH_LONG).show()
-                                                return@addOnSuccessListener
-                                            }
-                                            scope.launch {
-                                                waitlistViewModel.joinWaitlist(
-                                                    eventId = resolvedEvent.id,
-                                                    userId = profile.deviceId,
-                                                    userName = profile.displayName,
-                                                    latitude = location.latitude,
-                                                    longitude = location.longitude
-                                                ) {
-                                                    // Refresh user status and event data immediately
-                                                    waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
-                                                    eventViewModel.loadEvent(resolvedEvent.id)
-                                                    waitlistViewModel.loadUserEventHistory(profile.deviceId)
-                                                }
-                                            }
-                                        }.addOnFailureListener {
-                                            // Location is MANDATORY - block join on failure
-                                            Toast.makeText(context, "Failed to get location. This event requires location sharing to join.", Toast.LENGTH_LONG).show()
-                                        }
-                                    } catch (e: SecurityException) {
-                                        // Location permission MANDATORY - block join if denied
-                                        Toast.makeText(context, "Location permission required. Please grant location access in settings to join this event.", Toast.LENGTH_LONG).show()
-                                    }
-                                }
-                            } else {
-                                // No geolocation required, join directly without location
-                                scope.launch {
-                                    waitlistViewModel.joinWaitlist(
-                                        eventId = resolvedEvent.id,
-                                        userId = profile.deviceId,
-                                        userName = profile.displayName,
-                                        latitude = null,
-                                        longitude = null
-                                    ) {
-                                        // Refresh user status and event data immediately
-                                        waitlistViewModel.checkUserWaitlistStatus(resolvedEvent.id, profile.deviceId)
-                                        eventViewModel.loadEvent(resolvedEvent.id)
-                                        waitlistViewModel.loadUserEventHistory(profile.deviceId)
-                                    }
-                                }
-                            }
-                        },
-                        onLeaveWaitlist = leave@{
-                            val entryId = userWaitlistEntryId
-                            val profile = currentUser
-                            if (entryId == null) {
-                                Toast.makeText(context, "No waitlist entry found to leave.", Toast.LENGTH_LONG).show()
-                                return@leave
-                            }
-
-                            scope.launch {
-                                waitlistViewModel.leaveWaitlist(entryId) {
-                                    if (profile != null && eventId != null) {
-                                        val deviceId = profile.deviceId
-                                        waitlistViewModel.checkUserWaitlistStatus(eventId, deviceId)
-                                        waitlistViewModel.loadUserEventHistory(deviceId)
-                                    }
-                                    eventId?.let { eventViewModel.loadEvent(it) }
-                                }
-                            }
-                        }
                     )
                 }
                 waitlistLoading || eventsLoading -> {
@@ -838,7 +815,6 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Profile.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
             Scaffold(
                 bottomBar = {
                     BottomNavBar(
@@ -851,18 +827,196 @@ fun PLuckNavHost(
                                 "profile" -> { /* Already here */ }
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
+                var debugComposable: ComposableItem? = null
+                if (DEBUG) {
+                    var text by remember{ mutableStateOf("") }
+                    var text2 by remember{ mutableStateOf("") }
+                    var number by remember{ mutableStateOf("") }
+
+                    debugComposable = ComposableItem {
+                        Surface(
+                            color = Color.Red
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = "Debug Menu",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                )
+
+                                Text(
+                                    text = "WARNING, all options listed here use direct writes to the database, try to press each button a minimum number of times.\n\n" +
+                                            "All buttons share the same three text entries, not all buttons will use all entries\n\n" +
+                                            "Depending on what action is used expect the UI of the app to freeze for up to 30 seconds, this is normal.",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                )
+
+                                Text(
+                                    text = "Text Input 1",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = text,
+                                    onValueChange = { text = it },
+                                    label = { Text(text) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Text(
+                                    text = "Text Input 2",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = text2,
+                                    onValueChange = { text2 = it },
+                                    label = { Text(text2) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Text(
+                                    text = "Number Input",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = number,
+                                    onValueChange = { number = it },
+                                    label = { Text(number) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                TextButton(
+                                    onClick = {
+                                        if (number.toIntOrDefault(-1) == -1) {
+                                            Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
+                                        }
+
+                                        val notificationsCollection = FirebaseFirestore.getInstance().collection("notifications")
+                                        val entrantsCollection = FirebaseFirestore.getInstance().collection("entrants")
+                                        val eventsCollection = FirebaseFirestore.getInstance().collection("events")
+
+                                        runBlocking {
+                                            launch {
+                                                val users = entrantsCollection.whereEqualTo("email", text).get().await()
+
+                                                val event = eventsCollection.whereEqualTo("title", text2).get().await().toObjects<FirebaseEvent>()[0].toEvent()
+
+                                                var j = 0
+                                                users.toObjects<FirebaseUser>().forEach { user ->
+                                                    for (i in 1..number.toIntOrDefault(-1)) {
+                                                        val userId = user.id
+                                                        val docRef = notificationsCollection.document()
+                                                        val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+
+                                                        val payload = hashMapOf(
+                                                            "id" to docRef.id,
+                                                            "userId" to userId,
+                                                            "organizerId" to "SYSTEM_DEBUG",
+                                                            "eventId" to event.id,
+                                                            "waitlistEntryId" to "",
+                                                            "title" to "You're invited to ${event.title}",
+                                                            "subtitle" to event.location,
+                                                            "detail" to "Happening on $dateLabel",
+                                                            "category" to NotificationCategory.SELECTION.name,
+                                                            "status" to NotificationStatus.UNREAD.name,
+                                                            "inviteContact" to text.trim(),
+                                                            "inviteType" to "EMAIL",
+                                                            "allowAccept" to true,
+                                                            "allowDecline" to true,
+                                                            "allowEventDetails" to true,
+                                                            "createdAt" to FieldValue.serverTimestamp(),
+                                                            "updatedAt" to FieldValue.serverTimestamp()
+                                                        )
+
+                                                        docRef.set(payload, SetOptions.merge()).await()
+                                                    }
+                                                    j++
+                                                }
+
+                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} notifications sent! to $j different users", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+
+                                    },
+                                    colors = ButtonDefaults.buttonColors().copy(
+                                        containerColor = Color.Green
+                                    )
+                                ) {
+                                    Text("Send ${number.toIntOrDefault(-1)} fake notifications to all users with email: $text to event with name: $text2")
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        if (number.toIntOrDefault(-1) == -1) {
+                                            Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
+                                        }
+
+                                        val eventsCollection = FirebaseFirestore.getInstance().collection("events")
+                                        val waitlistCollection = FirebaseFirestore.getInstance().collection("waitlist")
+
+                                        runBlocking {
+                                            launch {
+                                                val event = eventsCollection.whereEqualTo("title", text).get().await().toObjects<FirebaseEvent>()[0].toEvent()
+
+                                                for (i in 1..number.toIntOrDefault(-1)) {
+                                                    val currentSize = waitlistCollection
+                                                            .whereEqualTo("eventId", event.id)
+                                                            .whereIn(
+                                                                "status",
+                                                                listOf(
+                                                                    WaitlistStatus.WAITING.name,
+                                                                    WaitlistStatus.INVITED.name
+                                                                )
+                                                            ).get().await().size()
+
+                                                    val entry = FirebaseWaitlistEntry(
+                                                        eventId = event.id,
+                                                        userId = "FAKE_DEBUG_USER #$i",
+                                                        userName = "FAKE_DEBUG_NAME #$i",
+                                                        position = currentSize + 1,
+                                                        joinedTimestamp = Timestamp.now(),
+                                                        status = WaitlistStatus.WAITING
+                                                    )
+
+                                                    val docRef = waitlistCollection.document()
+                                                    val entryWithId = entry.copy(id = docRef.id)
+
+                                                    docRef.set(entryWithId).await()
+
+                                                    // Update event waitlist count
+                                                    eventsCollection.document(event.id)
+                                                        .update("waitlistCount", currentSize + 1).await()
+                                                }
+
+                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} users added to waitlist!", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+
+                                    },
+                                    colors = ButtonDefaults.buttonColors().copy(
+                                        containerColor = Color.Green
+                                    )
+                                ) {
+                                    Text("Enroll ${number.toIntOrDefault(-1)} fake users to event waitlist with name: $text")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                ) {
+                )
+                {
                     ProfileScreen(
                         userName = currentUser?.displayName ?: "Anonymous",
                         userEmail = currentUser?.email,
@@ -895,7 +1049,8 @@ fun PLuckNavHost(
                                 profileUpdating = true
                                 profileUpdateMessage = null
                                 profileUpdateError = null
-                                when (val result = authenticator.updateProfile(name, email, phone)) {
+                                when (val result =
+                                    authenticator.updateProfile(name, email, phone)) {
                                     is DeviceAuthResult.Success -> {
                                         currentUser = result.profile
                                         waitlistViewModel.refreshEntrantDisplayName(
@@ -904,6 +1059,7 @@ fun PLuckNavHost(
                                         )
                                         profileUpdateMessage = "Profile updated successfully."
                                     }
+
                                     is DeviceAuthResult.Error -> {
                                         profileUpdateError = result.message
                                     }
@@ -926,18 +1082,27 @@ fun PLuckNavHost(
                             adminRegistrationError = null
                             adminRegistrationPassword = ""
                             showAdminRegistrationDialog = true
+                            dashboards.add(
+                                Dashboard(
+                                    type = DashboardType.Admin,
+                                    onClick = {
+                                        navigator.toAdmin()
+                                    }
+                                ))
                         },
                         onBecomeOrganizer = {
                             scope.launch {
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 organizerAccessRepository.registerAsOrganizer(deviceId)
@@ -947,6 +1112,14 @@ fun PLuckNavHost(
                                             isOrganizerBanned = false
                                         )
                                         profileUpdateMessage = "Organizer tools unlocked."
+
+                                        dashboards.add(
+                                            Dashboard(
+                                                type = DashboardType.Organizer,
+                                                onClick = {
+                                                    navigator.toOrganizer()
+                                                }
+                                            ))
                                     }
                                     .onFailure { error ->
                                         profileUpdateError = error.message
@@ -959,12 +1132,14 @@ fun PLuckNavHost(
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 organizerAccessRepository.downgradeToEntrant(deviceId)
@@ -972,6 +1147,18 @@ fun PLuckNavHost(
                                         currentUser = profile.copy(role = UserRole.ENTRANT)
                                         profileUpdateMessage =
                                             "Organizer access removed. Existing events deleted."
+                                        var dashboardToRemove = -1
+                                        var i = 0
+                                        for (board in dashboards) {
+                                            if (board.type == DashboardType.Organizer) {
+                                                dashboardToRemove = i
+                                            }
+
+                                            ++i
+                                        }
+
+                                        assert(i != -1) // Was not an organizer before being downgraded
+                                        dashboards.removeAt(dashboardToRemove)
                                     }
                                     .onFailure { error ->
                                         profileUpdateError = error.message
@@ -984,12 +1171,14 @@ fun PLuckNavHost(
                                 profileUpdateMessage = null
                                 profileUpdateError = null
                                 if (deviceId.isBlank()) {
-                                    profileUpdateError = "Device ID unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Device ID unavailable. Please try again."
                                     return@launch
                                 }
                                 val profile = currentUser
                                 if (profile == null) {
-                                    profileUpdateError = "Profile unavailable. Please try again."
+                                    profileUpdateError =
+                                        "Profile unavailable. Please try again."
                                     return@launch
                                 }
                                 appealRepository.submitAppeal(
@@ -1052,84 +1241,84 @@ fun PLuckNavHost(
                                             popUpTo(0) { inclusive = true }
                                         }
                                     }
+
                                     is DeviceAuthResult.Error -> {
                                         loginError = "Failed to delete account"
                                     }
                                 }
+
+                                dashboards.clear()
+
+                                dashboards.add(
+                                    Dashboard(
+                                        type = DashboardType.Entrant,
+                                        onClick = { navigator.toEventList() }
+                                    ))
+
                                 loginInProgress = false
                             }
-                        }
+                        },
+                        debugComposable = debugComposable
                     )
                 }
             }
         }
         composable(PLuckDestination.Notifications.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
-            Scaffold(
+            NotificationsScreen(
+                notifications = notifications,
+                isLoading = notificationsLoading,
+                processingNotificationIds = processingNotificationIds,
+                onEventDetails = { notification ->
+                    notificationsViewModel.markRead(notification.id)
+                    if (notification.eventId.isNotBlank()) {
+                        navigator.toEventDetail(notification.eventId)
+                    }
+                },
+                onAccept = { notification ->
+                    notificationsViewModel.acceptNotification(notification, currentUser) { eventId ->
+                        val profile = currentUser
+                        if (eventId != null && profile != null) {
+                            val deviceId = profile.deviceId
+                            waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                            waitlistViewModel.loadUserEventHistory(deviceId)
+                            eventViewModel.loadEvent(eventId)
+                        }
+                    }
+                },
+                onDecline = { notification ->
+                    notificationsViewModel.declineNotification(notification) { eventId ->
+                        val profile = currentUser
+                        if (eventId != null && profile != null) {
+                            val deviceId = profile.deviceId
+                            waitlistViewModel.refreshUserMembership(eventId, deviceId)
+                            waitlistViewModel.loadUserEventHistory(deviceId)
+                            eventViewModel.loadEvent(eventId)
+                        }
+                    }
+                },
+                onProfileClick = {
+                    navigator.toProfile()
+                },
+                onClearAll = {
+                    notificationsViewModel.clearAllNotifications(currentUser)
+                },
                 bottomBar = {
                     BottomNavBar(
                         currentRoute = navController.currentBackStackEntry?.destination?.route,
                         onNavigate = { route ->
                             when (route) {
                                 "event_list" -> navigator.toEventList()
-                                "notifications" -> { /* Already here */ }
+                                "notifications" -> { /* Already here */
+                                }
+
                                 "settings" -> navigator.toSettings()
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
-            ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    NotificationsScreen(
-                        notifications = notifications,
-                        isLoading = notificationsLoading,
-                        processingNotificationIds = processingNotificationIds,
-                        onEventDetails = { notification ->
-                            notificationsViewModel.markRead(notification.id)
-                            if (notification.eventId.isNotBlank()) {
-                                navigator.toEventDetail(notification.eventId)
-                            }
-                        },
-                        onAccept = { notification ->
-                            notificationsViewModel.acceptNotification(notification, currentUser) { eventId ->
-                                val profile = currentUser
-                                if (eventId != null && profile != null) {
-                                    val deviceId = profile.deviceId
-                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
-                                    waitlistViewModel.loadUserEventHistory(deviceId)
-                                    eventViewModel.loadEvent(eventId)
-                                }
-                            }
-                        },
-                        onDecline = { notification ->
-                            notificationsViewModel.declineNotification(notification) { eventId ->
-                                val profile = currentUser
-                                if (eventId != null && profile != null) {
-                                    val deviceId = profile.deviceId
-                                    waitlistViewModel.refreshUserMembership(eventId, deviceId)
-                                    waitlistViewModel.loadUserEventHistory(deviceId)
-                                    eventViewModel.loadEvent(eventId)
-                                }
-                            }
-                        },
-                        onProfileClick = {
-                            navigator.toProfile()
-                        },
-                        onClearAll = {
-                            notificationsViewModel.clearAllNotifications(currentUser)
-                        }
-                    )
-                }
-            }
+            )
         }
         composable(PLuckDestination.CreateEvent.route) {
             var formError by remember { mutableStateOf<String?>(null) }
@@ -1313,10 +1502,7 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
+                        dashboards = dashboards
                     )
                 }
             ) { paddingValues ->
@@ -1336,115 +1522,77 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.MyEvents.route) {
-            val isOrganizer = currentUser?.role == UserRole.ORGANIZER
-            Scaffold(
-                bottomBar = {
-                    BottomNavBar(
-                        currentRoute = navController.currentBackStackEntry?.destination?.route,
-                        onNavigate = { route ->
-                            when (route) {
-                                "event_list" -> navigator.toEventList()
-                                "notifications" -> navigator.toNotifications()
-                                "settings" -> navigator.toSettings()
-                                "profile" -> navigator.toProfile()
-                            }
-                        },
-                        onCreateEvent = {
-                            navigator.toCreateEvent()
-                        },
-                        showCreateButton = isOrganizer
-                    )
+            val myEvents = remember(
+                events,
+                userEventHistory,
+                currentUser?.deviceId
+            ) {
+                val organizerId = currentUser?.deviceId.orEmpty()
+                val activeHistory = userEventHistory.filterNot { history ->
+                    history.status == WaitlistStatus.CANCELLED ||
+                            history.status == WaitlistStatus.DECLINED
                 }
-            ) { paddingValues ->
-                val myEvents = remember(
-                    events,
-                    userEventHistory,
-                    currentUser?.deviceId
-                ) {
-                    val organizerId = currentUser?.deviceId.orEmpty()
-                    val activeHistory = userEventHistory.filterNot { history ->
-                        history.status == WaitlistStatus.CANCELLED ||
-                                history.status == WaitlistStatus.DECLINED
+
+                // Create a map of event IDs to active events (only events that still exist)
+                val activeEventsById = events.associateBy { it.id }
+
+                // Only include events that the user has created or joined AND still exist
+                val userRelatedEvents = buildMap {
+                    // Add events the user created (only if they still exist and are active)
+                    events.filter { event ->
+                        event.organizerId == organizerId
+                    }.forEach { event ->
+                        put(event.id, event)
                     }
-                    val historyByEventId = activeHistory.associateBy { it.event.id }
 
-                    // Create a map of event IDs to active events (only events that still exist)
-                    val activeEventsById = events.associateBy { it.id }
-
-                    // Only include events that the user has created or joined AND still exist
-                    val userRelatedEvents = buildMap {
-                        // Add events the user created (only if they still exist and are active)
-                        events.filter { event ->
-                            event.organizerId == organizerId
-                        }.forEach { event ->
-                            put(event.id, event)
+                    // Add events the user joined (from waitlist history)
+                    // Only include if the event still exists in the active events list
+                    activeHistory.forEach { history ->
+                        val activeEvent = activeEventsById[history.event.id]
+                        if (activeEvent != null) {
+                            putIfAbsent(history.event.id, activeEvent)
                         }
+                    }
+                }.values
 
-                        // Add events the user joined (from waitlist history)
-                        // Only include if the event still exists in the active events list
-                        activeHistory.forEach { history ->
-                            val activeEvent = activeEventsById[history.event.id]
-                            if (activeEvent != null) {
-                                putIfAbsent(history.event.id, activeEvent)
-                            }
-                        }
-                    }.values
-
-                    userRelatedEvents.map { event ->
-                        val history = historyByEventId[event.id]
-                        val isCreatedByUser = event.organizerId == organizerId
-
-                        val status = when {
-                            // If user created this event, status based on date
-                            isCreatedByUser -> {
-                                if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
-                            }
-                            // If user has waitlist history, use that status
-                            history != null -> when (history.status) {
-                                WaitlistStatus.ACCEPTED -> EventStatus.CONFIRMED
-                                WaitlistStatus.INVITED,
-                                WaitlistStatus.SELECTED,
-                                WaitlistStatus.WAITING -> EventStatus.WAITLIST
-                                WaitlistStatus.DECLINED,
-                                WaitlistStatus.CANCELLED -> if (event.isPastEvent) {
-                                    EventStatus.PAST
-                                } else {
-                                    EventStatus.UPCOMING
-                                }
-                            }
-                            // Default fallback
-                            else -> if (event.isPastEvent) EventStatus.PAST else EventStatus.UPCOMING
-                        }
-
-                        MyEventItem(
-                            event = event,
-                            status = status,
-                            isCreatedByUser = isCreatedByUser,
-                            joinedDate = history?.joinedDate,
-                            historyStatus = history?.status
-                        )
-                    }.sortedWith(compareBy { it.event.eventDateTime })
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    MyEventsScreen(
-                        events = myEvents,
-                        isLoading = eventsLoading,
-                        onEventClick = { event ->
-                            navigator.toEventDetail(event.id)
-                        },
-                        onBack = {
-                            val popped = navController.popBackStack()
-                            if (!popped) {
-                                navigator.toProfile()
-                            }
-                        }
-                    )
-                }
+                userRelatedEvents.map { event ->
+                    event
+                }.sortedWith(compareBy { it.eventDateTime })
             }
+
+            val activeHistory = userEventHistory.filterNot { history ->
+                history.status == WaitlistStatus.CANCELLED ||
+                        history.status == WaitlistStatus.DECLINED
+            }
+
+            MyEventsScreen(
+                events = myEvents,
+                userId = currentUser?.deviceId.orEmpty(),
+                historyByEventId = activeHistory.associateBy { it.event.id },
+                isLoading = eventsLoading,
+                onEventClick = { event ->
+                    navigator.toEventDetail(event.id)
+                },
+                dashboards = dashboards,
+                currentRoute = navController.currentBackStackEntry?.destination?.route,
+                onNavigate = { route ->
+                    when (route) {
+                        "event_list" -> navigator.toEventList()
+                        "notifications" -> navigator.toNotifications()
+                        "settings" -> navigator.toSettings()
+                        "profile" -> navigator.toProfile()
+                    }
+                },
+                onRefresh = {
+                    // Pull the latest events and the user's joined history on demand.
+                    eventViewModel.loadEvents()
+                    val refreshDeviceId = currentUser?.deviceId.orEmpty()
+                    if (refreshDeviceId.isNotBlank()) {
+                        waitlistViewModel.loadUserEventHistory(refreshDeviceId)
+                    }
+                },
+                isRefreshing = eventsLoading,
+            )
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
             val organizerEvents = remember(events, currentUser?.deviceId, currentUser?.displayName) {
@@ -1529,9 +1677,16 @@ fun PLuckNavHost(
                 onViewEntrantLocations = { event ->
                     navigator.toEntrantLocationsMap(event.id)
                 },
-                onBack = {
-                    navController.popBackStack()
-                }
+                currentRoute = navController.currentBackStackEntry?.destination?.route,
+                onNavigate = { route ->
+                    when (route) {
+                        "event_list" -> navigator.toEventList()
+                        "notifications" -> navigator.toNotifications()
+                        "settings" -> navigator.toSettings()
+                        "profile" -> navigator.toProfile()
+                    }
+                },
+                dashboards = dashboards
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
@@ -1568,9 +1723,16 @@ fun PLuckNavHost(
                         val adminActorId = currentUser?.deviceId?.takeIf { it.isNotBlank() } ?: deviceId
                         adminViewModel.rejectAppeal(appealId, adminActorId, notes)
                     },
-                    onBack = {
-                        navController.popBackStack()
-                    }
+                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                    onNavigate = { route ->
+                        when (route) {
+                            "event_list" -> navigator.toEventList()
+                            "notifications" -> navigator.toNotifications()
+                            "settings" -> navigator.toSettings()
+                            "profile" -> navigator.toProfile()
+                        }
+                    },
+                    dashboards = dashboards
                 )
             } else {
                 PlaceholderScreen(
@@ -1852,6 +2014,14 @@ fun PLuckNavHost(
             }
         )
     }
+}
+
+private fun MutableList<Dashboard>.hasDashboardWithType(type: DashboardType): Boolean {
+    var has = false
+
+    this.forEach { if (it.type == type) has = true }
+
+    return has
 }
 
 class PLuckNavigator(private val navController: NavHostController) {

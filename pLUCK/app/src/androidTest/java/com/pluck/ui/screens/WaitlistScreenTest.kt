@@ -168,7 +168,7 @@ class WaitlistScreenTest {
             )
         }
 
-        composeRule.onNodeWithContentDescription("Go back").performClick()
+        composeRule.onNodeWithContentDescription("Back").performClick()
 
         assert(backCalled) { "onBack callback was not called" }
     }
