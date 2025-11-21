@@ -30,7 +30,8 @@ package com.pluck.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material.ripple.RippleTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -151,6 +152,7 @@ fun PluckTheme(
 /**
  * Full-featured theming entry point that accepts both the mode and palette identifier.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluckTheme(
     darkTheme: Boolean,
@@ -204,7 +206,7 @@ fun PluckTheme(
 
     CompositionLocalProvider(
         LocalPluckColors provides pluckColors,
-        LocalRippleTheme provides PluckRippleTheme
+        LocalRippleConfiguration provides null
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -222,20 +224,3 @@ object PluckThemeColors {
         get() = LocalPluckColors.current
 }
 
-private object PluckRippleTheme : RippleTheme {
-    @Composable
-    override fun defaultColor(): Color {
-        val colors = PluckThemeColors.current
-        val alpha = if (colors.isDark) 0.35f else 0.2f
-        return colors.primary.copy(alpha = alpha)
-    }
-
-    @Composable
-    override fun rippleAlpha(): RippleAlpha {
-        val colors = PluckThemeColors.current
-        return RippleTheme.defaultRippleAlpha(
-            defaultColor(),
-            lightTheme = !colors.isDark
-        )
-    }
-}

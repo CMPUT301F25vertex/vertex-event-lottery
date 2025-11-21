@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -47,6 +49,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.util.QRCodeGenerator
@@ -131,13 +134,8 @@ fun QRScannerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = PluckPalette.Primary
-                    )
-                }
+                BackButton(onBack = onBack)
+
                 Text(
                     text = "Scan QR Code",
                     style = MaterialTheme.typography.headlineSmall.copy(
@@ -157,7 +155,12 @@ fun QRScannerScreen(
                 FilterChip(
                     selected = scanMode == ScanMode.CAMERA,
                     onClick = { scanMode = ScanMode.CAMERA },
-                    label = { Text("Camera") },
+                    label = {
+                        Text(
+                            text = "Camera",
+                            fontSize = TextUnit(value = 12f, TextUnitType.Sp)
+                        )
+                    },
                     leadingIcon = {
                         Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                     },

@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.QrCode2
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,16 +22,16 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.pluck.DEBUG
+import com.pluck.ui.theme.autoTextColor
 import com.pluck.ui.util.QRCodeGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 
 /**
  * QRCodeDisplay.kt
@@ -197,7 +196,10 @@ fun QRCodeDialog(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Download")
+                        Text(
+                            text = "Download",
+                            fontSize = TextUnit(value = 12f, TextUnitType.Sp)
+                        )
                     }
 
                     Button(
@@ -234,17 +236,11 @@ fun ShowQRCodeButton(
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
 
-    OutlinedButton(
+    RoundIconButton(
         onClick = { showQRDialog = true },
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.3f))
-    ) {
-        Icon(
-            Icons.Outlined.QrCode2,
-            contentDescription = null,
-        )
-    }
+        imageVector = Icons.Outlined.QrCode2,
+        contentDescription = "View QR Code"
+    )
 
     if (showQRDialog) {
         QRCodeDialog(

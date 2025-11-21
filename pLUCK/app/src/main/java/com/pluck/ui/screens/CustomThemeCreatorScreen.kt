@@ -65,8 +65,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.pluck.ui.components.AutoHidingBarScroller
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.SquircleScrollableLazyList
 import com.pluck.ui.theme.CustomTheme
 
 /**
@@ -115,67 +119,68 @@ fun CustomThemeCreatorScreen(
         darkSecondary = DefaultDarkSecondary
     }
 
-    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Header(onBack = onBack)
+    val listElements = mutableListOf<ComposableItem>()
 
-            ThemePreviewCard(
-                lightBackground = lightBackground,
-                lightPrimary = lightPrimary,
-                darkBackground = darkBackground,
-                darkPrimary = darkPrimary
+    listElements.add(ComposableItem {
+        Header(onBack = onBack)
+    })
+
+    listElements.add(ComposableItem {
+        ThemePreviewCard(
+            lightBackground = lightBackground,
+            lightPrimary = lightPrimary,
+            darkBackground = darkBackground,
+            darkPrimary = darkPrimary
+        )
+    })
+
+    listElements.add(ComposableItem {
+        ThemeColorSection(
+            title = "Light Mode",
+            colors = listOf(
+                ColorItem("Background", lightBackground) {
+                    editingColor = ColorField.LIGHT_BACKGROUND
+                    showColorPicker = true
+                },
+                ColorItem("Primary", lightPrimary) {
+                    editingColor = ColorField.LIGHT_PRIMARY
+                    showColorPicker = true
+                },
+                ColorItem("Secondary", lightSecondary) {
+                    editingColor = ColorField.LIGHT_SECONDARY
+                    showColorPicker = true
+                }
             )
+        )
+    })
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                ThemeColorSection(
-                    title = "Light Mode",
-                    description = "Controls surfaces and action colors when light mode is active.",
-                    colors = listOf(
-                        ColorItem("Background", lightBackground) {
-                            editingColor = ColorField.LIGHT_BACKGROUND
-                            showColorPicker = true
-                        },
-                        ColorItem("Primary", lightPrimary) {
-                            editingColor = ColorField.LIGHT_PRIMARY
-                            showColorPicker = true
-                        },
-                        ColorItem("Secondary", lightSecondary) {
-                            editingColor = ColorField.LIGHT_SECONDARY
-                            showColorPicker = true
-                        }
-                    )
-                )
+    listElements.add(ComposableItem {
+        ThemeColorSection(
+            title = "Dark Mode",
+            colors = listOf(
+                ColorItem("Background", darkBackground) {
+                    editingColor = ColorField.DARK_BACKGROUND
+                    showColorPicker = true
+                },
+                ColorItem("Primary", darkPrimary) {
+                    editingColor = ColorField.DARK_PRIMARY
+                    showColorPicker = true
+                },
+                ColorItem("Secondary", darkSecondary) {
+                    editingColor = ColorField.DARK_SECONDARY
+                    showColorPicker = true
+                }
+            )
+        )
+    })
 
-                ThemeColorSection(
-                    title = "Dark Mode",
-                    description = "Tune the deep surfaces and highlight colors for dark mode.",
-                    colors = listOf(
-                        ColorItem("Background", darkBackground) {
-                            editingColor = ColorField.DARK_BACKGROUND
-                            showColorPicker = true
-                        },
-                        ColorItem("Primary", darkPrimary) {
-                            editingColor = ColorField.DARK_PRIMARY
-                            showColorPicker = true
-                        },
-                        ColorItem("Secondary", darkSecondary) {
-                            editingColor = ColorField.DARK_SECONDARY
-                            showColorPicker = true
-                        }
-                    )
-                )
-            }
-
+    if (lightBackground != DefaultLightBackground ||
+        lightPrimary != DefaultLightPrimary ||
+        lightSecondary != DefaultLightSecondary ||
+        darkBackground != DefaultDarkBackground ||
+        darkPrimary != DefaultDarkPrimary ||
+        darkSecondary != DefaultDarkSecondary) {
+        listElements.add(ComposableItem {
             OutlinedButton(
                 onClick = resetToDefault,
                 modifier = Modifier.fillMaxWidth(),
@@ -187,76 +192,83 @@ fun CustomThemeCreatorScreen(
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
                 )
             }
-
-            Button(
-                onClick = {
-                    val customTheme = CustomTheme(
-                        id = "custom",
-                        name = "Custom Theme",
-                        lightBackground = lightBackground.toThemeLong(),
-                        lightSurface = lightBackground.blendToward(Color.White, 0.15f).toThemeLong(),
-                        lightPrimary = lightPrimary.toThemeLong(),
-                        lightMuted = lightPrimary.blendToward(lightBackground, 0.35f).toThemeLong(),
-                        lightSecondary = lightSecondary.toThemeLong(),
-                        lightTertiary = lightSecondary.blendToward(lightPrimary, 0.4f).toThemeLong(),
-                        darkBackground = darkBackground.toThemeLong(),
-                        darkSurface = darkBackground.blendToward(Color.White, 0.12f).toThemeLong(),
-                        darkPrimary = darkPrimary.toThemeLong(),
-                        darkMuted = darkPrimary.blendToward(darkBackground, 0.25f).toThemeLong(),
-                        darkSecondary = darkSecondary.toThemeLong(),
-                        darkTertiary = darkSecondary.blendToward(darkPrimary, 0.35f).toThemeLong(),
-                        isCustom = true
-                    )
-                    onSave(customTheme)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PluckPalette.Primary)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = PluckPalette.Surface
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = "Save Custom Theme",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        }
+        })
     }
 
-    if (showColorPicker && editingColor != null) {
-        SimpleColorPickerDialog(
-            currentColor = when (editingColor) {
-                ColorField.LIGHT_BACKGROUND -> lightBackground
-                ColorField.LIGHT_PRIMARY -> lightPrimary
-                ColorField.LIGHT_SECONDARY -> lightSecondary
-                ColorField.DARK_BACKGROUND -> darkBackground
-                ColorField.DARK_PRIMARY -> darkPrimary
-                ColorField.DARK_SECONDARY -> darkSecondary
-                else -> Color.White
+    listElements.add(ComposableItem {
+        Button(
+            onClick = {
+                val customTheme = CustomTheme(
+                    id = "custom",
+                    name = "Custom Theme",
+                    lightBackground = lightBackground.toThemeLong(),
+                    lightSurface = lightBackground.blendToward(Color.White, 0.15f).toThemeLong(),
+                    lightPrimary = lightPrimary.toThemeLong(),
+                    lightMuted = lightPrimary.blendToward(lightBackground, 0.35f).toThemeLong(),
+                    lightSecondary = lightSecondary.toThemeLong(),
+                    lightTertiary = lightSecondary.blendToward(lightPrimary, 0.4f).toThemeLong(),
+                    darkBackground = darkBackground.toThemeLong(),
+                    darkSurface = darkBackground.blendToward(Color.White, 0.12f).toThemeLong(),
+                    darkPrimary = darkPrimary.toThemeLong(),
+                    darkMuted = darkPrimary.blendToward(darkBackground, 0.25f).toThemeLong(),
+                    darkSecondary = darkSecondary.toThemeLong(),
+                    darkTertiary = darkSecondary.blendToward(darkPrimary, 0.35f).toThemeLong(),
+                    isCustom = true
+                )
+                onSave(customTheme)
             },
-            onColorSelected = { picked ->
-                when (editingColor) {
-                    ColorField.LIGHT_BACKGROUND -> lightBackground = picked
-                    ColorField.LIGHT_PRIMARY -> lightPrimary = picked
-                    ColorField.LIGHT_SECONDARY -> lightSecondary = picked
-                    ColorField.DARK_BACKGROUND -> darkBackground = picked
-                    ColorField.DARK_PRIMARY -> darkPrimary = picked
-                    ColorField.DARK_SECONDARY -> darkSecondary = picked
-                    else -> Unit
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PluckPalette.Primary)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = PluckPalette.Surface
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = "Save Custom Theme",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+        }
+    })
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        indexOfPersistentElement = 1
+    ) {
+        if (showColorPicker && editingColor != null) {
+            SimpleColorPickerDialog(
+                currentColor = when (editingColor) {
+                    ColorField.LIGHT_BACKGROUND -> lightBackground
+                    ColorField.LIGHT_PRIMARY -> lightPrimary
+                    ColorField.LIGHT_SECONDARY -> lightSecondary
+                    ColorField.DARK_BACKGROUND -> darkBackground
+                    ColorField.DARK_PRIMARY -> darkPrimary
+                    ColorField.DARK_SECONDARY -> darkSecondary
+                    else -> Color.White
+                },
+                onColorSelected = { picked ->
+                    when (editingColor) {
+                        ColorField.LIGHT_BACKGROUND -> lightBackground = picked
+                        ColorField.LIGHT_PRIMARY -> lightPrimary = picked
+                        ColorField.LIGHT_SECONDARY -> lightSecondary = picked
+                        ColorField.DARK_BACKGROUND -> darkBackground = picked
+                        ColorField.DARK_PRIMARY -> darkPrimary = picked
+                        ColorField.DARK_SECONDARY -> darkSecondary = picked
+                        else -> Unit
+                    }
+                    showColorPicker = false
+                    editingColor = null
+                },
+                onDismiss = {
+                    showColorPicker = false
+                    editingColor = null
                 }
-                showColorPicker = false
-                editingColor = null
-            },
-            onDismiss = {
-                showColorPicker = false
-                editingColor = null
-            }
-        )
+            )
+        }
     }
 }
 
@@ -267,13 +279,10 @@ private fun Header(onBack: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = PluckPalette.Primary
-            )
-        }
+        BackButton(
+            onBack = onBack
+        )
+
         Text(
             text = "Custom Theme Builder",
             style = MaterialTheme.typography.headlineSmall.copy(
@@ -282,7 +291,6 @@ private fun Header(onBack: () -> Unit) {
                 fontSize = 24.sp
             )
         )
-        Spacer(modifier = Modifier.size(48.dp))
     }
 }
 
@@ -394,7 +402,6 @@ private fun PreviewTile(
 @Composable
 private fun ThemeColorSection(
     title: String,
-    description: String,
     colors: List<ColorItem>
 ) {
     Surface(
@@ -412,19 +419,13 @@ private fun ThemeColorSection(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = PluckPalette.Primary
-                    )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
                 )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
-                )
-            }
+            )
 
             colors.forEach { item ->
                 ColorPickerRow(
@@ -497,125 +498,129 @@ private fun SimpleColorPickerDialog(
     }
     var previewColor by remember(currentColor) { mutableStateOf(currentColor) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    val presets = listOf(
+        // Blues
+        Color(0xFF3B80AB), Color(0xFF216A97), Color(0xFF0D47A1),
+        // Purples
+        Color(0xFF7E0297), Color(0xFFA43AB0), Color(0xFF6A1B9A),
+        // Greens
+        Color(0xFF2E7D32), Color(0xFF388E3C), Color(0xFF1B5E20),
+        // Oranges
+        Color(0xFFE65100), Color(0xFFFF6F00), Color(0xFFBF360C),
+        // Reds
+        Color(0xFFC62828), Color(0xFFD32F2F), Color(0xFFB71C1C),
+        // Greys / Neutrals
+        Color(0xFFEBF1F5), Color(0xFFFFFFFF), Color(0xFF04090B),
+        Color(0xFF0D1419), Color(0xFF1A111C), Color(0xFF2E2E2E)
+    )
+
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Pick a Color",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                color = PluckPalette.Primary
+            )
+        )
+    })
+
+    listElements.add(ComposableItem {
         Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = PluckPalette.Surface,
-            shadowElevation = 24.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .widthIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Pick a Color",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = PluckPalette.Primary
-                    )
-                )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = previewColor,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.2f))
+        ) {}
+    })
 
-                val presets = listOf(
-                    // Blues
-                    Color(0xFF3B80AB), Color(0xFF216A97), Color(0xFF0D47A1),
-                    // Purples
-                    Color(0xFF7E0297), Color(0xFFA43AB0), Color(0xFF6A1B9A),
-                    // Greens
-                    Color(0xFF2E7D32), Color(0xFF388E3C), Color(0xFF1B5E20),
-                    // Oranges
-                    Color(0xFFE65100), Color(0xFFFF6F00), Color(0xFFBF360C),
-                    // Reds
-                    Color(0xFFC62828), Color(0xFFD32F2F), Color(0xFFB71C1C),
-                    // Greys / Neutrals
-                    Color(0xFFEBF1F5), Color(0xFFFFFFFF), Color(0xFF04090B),
-                    Color(0xFF0D1419), Color(0xFF1A111C), Color(0xFF2E2E2E)
-                )
-
-                OutlinedTextField(
-                    value = hexValue,
-                    onValueChange = { value ->
-                        val sanitized = value.uppercase().filter { it in HEX_CHARS }.take(8)
-                        hexValue = sanitized
-                        parseHexColor(sanitized)?.let { previewColor = it }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("Hex") },
-                    prefix = { Text("#") },
-                    supportingText = {
-                        Text(text = if (hexValue.length == 6 || hexValue.length == 8) " " else "6 or 8 digits")
-                    }
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = previewColor,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.2f))
-                ) {}
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    presets.chunked(3).forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            row.forEach { color ->
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .clickable {
-                                            previewColor = color
-                                            hexValue = color.toHexString(includeHash = false)
-                                        },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = color,
-                                    border = if (color == previewColor) {
-                                        BorderStroke(3.dp, PluckPalette.Primary)
-                                    } else {
-                                        BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
-                                    }
-                                ) {}
-                            }
-                        }
-                    }
-                }
-
-                val canApply = hexValue.length == 6 || hexValue.length == 8
-
+    listElements.add(ComposableItem {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            presets.chunked(3).forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("Cancel", fontWeight = FontWeight.SemiBold)
-                    }
-
-                    Button(
-                        onClick = {
-                            if (canApply) {
-                                onColorSelected(previewColor)
+                    row.forEach { color ->
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clickable {
+                                    previewColor = color
+                                    hexValue = color.toHexString(includeHash = false)
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = color,
+                            border = if (color == previewColor) {
+                                BorderStroke(3.dp, PluckPalette.Primary)
+                            } else {
+                                BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
                             }
-                        },
-                        enabled = canApply,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("Select", fontWeight = FontWeight.Bold)
+                        ) { }
                     }
                 }
             }
         }
+    })
+
+    listElements.add(ComposableItem {
+        OutlinedTextField(
+            value = hexValue,
+            onValueChange = { value ->
+                val sanitized = value.uppercase().filter { it in HEX_CHARS }.take(8)
+                hexValue = sanitized
+                parseHexColor(sanitized)?.let { previewColor = it }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Hex") },
+            prefix = { Text("#") },
+            supportingText = {
+                Text(text = if (hexValue.length == 6 || hexValue.length == 8) " " else "6 or 8 digits")
+            }
+        )
+    })
+
+    val canApply = hexValue.length == 6 || hexValue.length == 8
+
+    listElements.add(ComposableItem {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.SemiBold)
+            }
+
+            Button(
+                onClick = {
+                    if (canApply) {
+                        onColorSelected(previewColor)
+                    }
+                },
+                enabled = canApply,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text("Select", fontWeight = FontWeight.Bold)
+            }
+        }
+    })
+
+    Dialog(
+        onDismissRequest = onDismiss,
+    ) {
+        SquircleScrollableLazyList(
+            listElements = listElements
+        )
     }
 }
 

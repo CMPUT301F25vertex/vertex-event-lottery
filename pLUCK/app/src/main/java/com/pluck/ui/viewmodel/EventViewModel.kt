@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pluck.data.repository.EventRepository
 import com.pluck.ui.model.Event
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,6 +69,27 @@ class EventViewModel(
      * Load all active events
      */
     fun loadEvents() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            eventRepository.getAllEvents()
+                .onSuccess { eventList ->
+                    _events.value = eventList
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to load events"
+                }
+
+            // Has to be here in order for pull to refresh to work correctly
+            delay(1000)
+            _isLoading.value = false
+        }
+    }
+
+    // Loads events without the delay needed for pulling to refresh
+    // TODO Look for better ways to do this
+    fun loadEventsFast() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
