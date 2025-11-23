@@ -537,7 +537,7 @@ private fun OrganizerEventCard(
                         } else {
                             OrganizerActionButton(
                                 icon = Icons.Outlined.PlayArrow,
-                                label = "Run Draw",
+                                label = "Pluck Entrants",
                                 onClick = onRunDraw,
                                 backgroundColor = PluckPalette.Secondary,
                                 modifier = Modifier.weight(1f),

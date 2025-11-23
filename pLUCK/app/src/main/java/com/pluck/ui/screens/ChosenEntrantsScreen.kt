@@ -202,7 +202,7 @@ private fun ChosenEntrantsHeader(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Chosen Entrants",
+                    text = "Plucked Entrants",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Black,
                         color = PluckPalette.Primary,
