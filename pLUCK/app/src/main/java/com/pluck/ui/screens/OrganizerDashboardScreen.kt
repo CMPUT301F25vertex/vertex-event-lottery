@@ -440,7 +440,8 @@ private fun OrganizerEventCard(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            )
+            {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = event.title,
@@ -464,7 +465,8 @@ private fun OrganizerEventCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                )
+                {
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
@@ -511,7 +513,8 @@ private fun OrganizerEventCard(
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                )
+                {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -544,7 +547,7 @@ private fun OrganizerEventCard(
                     }
                     if (!event.isDrawComplete && !event.canRunDrawEarly) {
                         Text(
-                            text = "Add at least one entrant to the waitlist and ensure a sampling count is set to enable the draw.",
+                            text = "Cannot run draw until someone joins the waitlist.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = PluckPalette.Muted
                             )
@@ -552,7 +555,7 @@ private fun OrganizerEventCard(
                     }
                     OrganizerActionButton(
                         icon = Icons.Outlined.Edit,
-                        label = "Edit Event",
+                        label = "Edit Poster",
                         onClick = onEditEvent,
                         modifier = Modifier.fillMaxWidth()
                     )
