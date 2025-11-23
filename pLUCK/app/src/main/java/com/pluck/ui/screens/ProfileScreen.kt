@@ -348,7 +348,7 @@ fun ProfileScreen(
         )
         {
             ProfileActionButton(
-                text = "My Events",
+                text = "Event History",
                 description = "View your joined and created events.",
                 enabled = !isLoading,
                 containerColor = PluckPalette.Secondary.copy(alpha = 0.12f),

@@ -198,7 +198,7 @@ private fun MyEventsHero(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "My Events",
+                        text = "Event History",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Black,
                             color = PluckPalette.Primary,
