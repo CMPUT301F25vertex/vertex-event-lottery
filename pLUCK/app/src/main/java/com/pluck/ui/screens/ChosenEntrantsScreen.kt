@@ -62,8 +62,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.repository.WaitlistDecisionStats
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.SquircleScrollableLazyList
 import com.pluck.ui.model.Event
 import java.time.LocalDate
 import com.pluck.ui.theme.autoTextColor
@@ -99,54 +102,66 @@ fun ChosenEntrantsScreen(
     onRemoveEntrant: (ChosenEntrant) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                ChosenEntrantsHeader(
-                    eventTitle = event.title,
-                    samplingCount = event.samplingCount,
-                    capacity = event.capacity,
-                    onBackClick = onBackClick,
-                    onExportCSV = onExportCSV
-                )
+    val listElements = mutableListOf<ComposableItem>()
 
-                DrawActionsRow(
-                    waitingCount = waitingCount,
-                    availableSpots = availableSpots,
-                    onRunDraw = onRunDraw
-                )
+    listElements.add(ComposableItem {
+        ChosenEntrantsHeader(
+            eventTitle = event.title,
+            samplingCount = event.samplingCount,
+            capacity = event.capacity,
+            onBackClick = onBackClick,
+            onExportCSV = onExportCSV
+        )
+    })
 
-                ChosenEntrantsStats(
-                    stats = decisionStats,
-                    capacity = event.capacity
-                )
+    listElements.add(ComposableItem {
+        DrawActionsRow(
+            waitingCount = waitingCount,
+            availableSpots = availableSpots,
+            onRunDraw = onRunDraw
+        )
+    })
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(1f),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
-            ) {
-                when {
-                    isLoading -> ChosenEntrantsLoadingState()
-                    chosenEntrants.isEmpty() -> ChosenEntrantsEmptyState()
-                    else -> ChosenEntrantsList(
-                        chosenEntrants = chosenEntrants,
-                        onRemoveEntrant = onRemoveEntrant
+    listElements.add(ComposableItem {
+        ChosenEntrantsStats(
+            stats = decisionStats,
+            capacity = event.capacity
+        )
+    })
+
+    when {
+        isLoading -> listElements.add(ComposableItem { ChosenEntrantsLoadingState() })
+        chosenEntrants.isEmpty() -> listElements.add(ComposableItem { ChosenEntrantsEmptyState() })
+        else -> {
+            listElements.add(ComposableItem {
+                Text(
+                    text = "Selected Entrants",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = PluckPalette.Primary
                     )
-                }
+                )
+            })
+
+            for (entrant in chosenEntrants) {
+                listElements.add(ComposableItem {
+                    ChosenEntrantCard(
+                        entrant = entrant,
+                        onRemove = { onRemoveEntrant(entrant) }
+                    )
+                })
             }
         }
+    }
+
+    PluckLayeredBackground(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        FullWidthLazyScroll(
+            listElements = listElements
+        )
     }
 }
 
@@ -277,9 +292,10 @@ private fun DrawActionsRow(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (canRunDraw) PluckPalette.Secondary else PluckPalette.Muted.copy(alpha = 0.2f),
                         contentColor = if (canRunDraw) autoTextColor(PluckPalette.Secondary) else PluckPalette.Muted
-                    )
+                    ),
+                    modifier = Modifier.padding(4.dp)
                 ) {
-                    Text("Run Draw")
+                    Text(text = "Pluck", maxLines = 1)
                 }
             }
 
@@ -441,34 +457,6 @@ private fun ChosenEntrantsStatCard(
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = PluckPalette.Muted
                 )
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChosenEntrantsList(
-    chosenEntrants: List<ChosenEntrant>,
-    onRemoveEntrant: (ChosenEntrant) -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text(
-                text = "Selected Entrants",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = PluckPalette.Primary
-                )
-            )
-        }
-
-        items(chosenEntrants, key = { it.id }) { entrant ->
-            ChosenEntrantCard(
-                entrant = entrant,
-                onRemove = { onRemoveEntrant(entrant) }
             )
         }
     }
