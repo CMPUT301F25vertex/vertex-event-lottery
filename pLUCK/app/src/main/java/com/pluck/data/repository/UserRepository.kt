@@ -24,7 +24,25 @@ class UserRepository(
 ) {
     private val usersCollection = firestore.collection("entrants")
 
+    /**
+     * Set the FCM token of a user
+     *
+     * @param token The token to be given to the user
+     */
+    suspend fun setFCMToken(userId: String, token: String): Result<Unit> {
+        return try {
+            usersCollection.document(userId)
+                .update(
+                    mapOf(
+                        "fcmToken" to token
+                    )
+                ).await()
 
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     /**
      * Get all users in the system

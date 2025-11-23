@@ -23,8 +23,6 @@ class PLuckFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-//        val title = message.data.getValue("title")
-//        val body = message.data.getValue("body")
         Log.e("FCM", "NOTIF Received")
         message.data.forEach { p0, p1 -> Log.e("FCM", "p1: $p0, p2: $p1") }
         showNotification("TITLE", "BODY")
@@ -34,11 +32,10 @@ class PLuckFirebaseMessagingService : FirebaseMessagingService() {
         val channelId = "default_channel"
         val channelName = "Default Channel"
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
-            notificationManager.createNotificationChannel(channel)
-        }
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
+        notificationManager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title)
