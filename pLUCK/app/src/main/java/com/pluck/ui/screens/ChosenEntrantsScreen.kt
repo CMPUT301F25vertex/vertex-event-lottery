@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.HourglassEmpty
@@ -64,6 +65,7 @@ import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
+import com.pluck.ui.components.NotificationWriter
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.SquircleScrollableLazyList
@@ -102,6 +104,8 @@ fun ChosenEntrantsScreen(
     onRemoveEntrant: (ChosenEntrant) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showNotificationWriterDialog by remember { mutableStateOf(false) }
+
     val listElements = mutableListOf<ComposableItem>()
 
     listElements.add(ComposableItem {
@@ -112,6 +116,36 @@ fun ChosenEntrantsScreen(
             onBackClick = onBackClick,
             onExportCSV = onExportCSV
         )
+    })
+
+    listElements.add(ComposableItem {
+        Button(
+            onClick = {
+                showNotificationWriterDialog = true
+            },
+            modifier = modifier
+                .height(40.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PluckPalette.Secondary,
+                contentColor = autoTextColor(PluckPalette.Secondary)
+            ),
+            contentPadding = PaddingValues(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Notify Everyone Plucked",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = 1,
+            )
+        }
     })
 
     listElements.add(ComposableItem {
@@ -161,6 +195,24 @@ fun ChosenEntrantsScreen(
     ) {
         FullWidthLazyScroll(
             listElements = listElements
+        )
+    }
+
+    if (showNotificationWriterDialog) {
+        val waitlistUserIds = mutableListOf<String>()
+
+        for (wait in chosenEntrants) {
+            waitlistUserIds.add(wait.userId)
+        }
+
+        NotificationWriter(
+            users = waitlistUserIds,
+            onDismiss = {
+                showNotificationWriterDialog = false
+            },
+            onConfirm = {
+                showNotificationWriterDialog = false
+            }
         )
     }
 }
