@@ -529,7 +529,7 @@ private fun OrganizerEventCard(
                         if (event.isDrawComplete) {
                             OrganizerActionButton(
                                 icon = Icons.Outlined.CheckCircle,
-                                label = "Chosen Entrants",
+                                label = "Plucked Entrants",
                                 onClick = onManageChosenEntrants,
                                 backgroundColor = PluckPalette.Accept,
                                 modifier = Modifier.weight(1f)
