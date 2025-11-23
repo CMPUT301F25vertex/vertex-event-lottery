@@ -1657,12 +1657,7 @@ fun PLuckNavHost(
                 },
                 onRunDraw = { event ->
                     // Run the draw for this event
-                    eventViewModel.runDraw(event, waitlistViewModel, onSuccess = {
-                        // Refresh the event after draw
-                        currentUser?.deviceId?.let { orgId ->
-                            eventViewModel.loadEventsByOrganizer(orgId)
-                        }
-                    })
+                    navigator.toChosenEntrants(event.id)
                 },
                 onViewWaitlist = { event ->
                     navigator.toWaitlist(event.id)
