@@ -16,8 +16,10 @@
 package com.pluck.navigation
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
@@ -123,6 +125,7 @@ import com.pluck.ui.theme.ThemePreferences
 import com.pluck.ui.viewmodel.AdminViewModel
 import com.pluck.ui.viewmodel.EventViewModel
 import com.pluck.ui.viewmodel.NotificationsViewModel
+import com.pluck.ui.viewmodel.UserViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -213,6 +216,7 @@ fun PLuckNavHost(
     val waitlistViewModel: WaitlistViewModel = viewModel()
     val notificationsViewModel: NotificationsViewModel = viewModel()
     val adminViewModel: AdminViewModel = viewModel()
+    val userViewModel: UserViewModel = viewModel()
 
     val events by eventViewModel.events.collectAsState()
     val selectedEvent by eventViewModel.selectedEvent.collectAsState()
@@ -253,19 +257,11 @@ fun PLuckNavHost(
     FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             val token = task.result
-            Log.e("FCM", "Token: $token")
-            val auth = DeviceAuthenticator(context)
 
-//            runBlocking {
-//                launch {
-//                    FirebaseFirestore.getInstance().collection("entrants").document(auth.currentDeviceId())
-//                        .update(
-//                            mapOf(
-//                                "fcmToken" to token
-//                            )
-//                        ).await()
-//                }
-//            }
+            Log.e("FCM", "Token: $token")
+
+            val auth = DeviceAuthenticator(context)
+            userViewModel.setFCMToken(auth.currentDeviceId(), token)
 
         } else {
             Log.e("FCM", "Failed to fetch token", task.exception)
@@ -1661,12 +1657,7 @@ fun PLuckNavHost(
                 },
                 onRunDraw = { event ->
                     // Run the draw for this event
-                    eventViewModel.runDraw(event, waitlistViewModel, onSuccess = {
-                        // Refresh the event after draw
-                        currentUser?.deviceId?.let { orgId ->
-                            eventViewModel.loadEventsByOrganizer(orgId)
-                        }
-                    })
+                    navigator.toChosenEntrants(event.id)
                 },
                 onViewWaitlist = { event ->
                     navigator.toWaitlist(event.id)

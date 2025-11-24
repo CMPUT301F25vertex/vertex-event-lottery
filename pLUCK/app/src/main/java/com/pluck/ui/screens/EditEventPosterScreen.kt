@@ -96,7 +96,6 @@ fun EditEventPosterScreen(
 ) {
     // State for poster URL management
     var posterUrl by remember { mutableStateOf(currentPosterUrl) }
-    var manualPosterUrl by remember { mutableStateOf(currentPosterUrl.orEmpty()) }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
 
@@ -116,7 +115,7 @@ fun EditEventPosterScreen(
     ) { uri: Uri? ->
         // Validate that an image was actually selected
         if (uri == null) {
-            posterUploadError = "No image selected. Pick an image or paste a direct URL."
+            posterUploadError = "No image selected."
             return@rememberLauncherForActivityResult
         }
 
@@ -155,13 +154,12 @@ fun EditEventPosterScreen(
                     is CloudinaryUploadResult.Success -> {
                         // Successfully uploaded - store the Cloudinary URL
                         posterUrl = result.url
-                        manualPosterUrl = result.url
                         posterUploadError = null
                         android.util.Log.d("EditEventPosterScreen", "Poster uploaded successfully: ${result.url}")
                     }
                     is CloudinaryUploadResult.Error -> {
                         // Upload failed - show user-friendly error message
-                        posterUploadError = "Failed to upload poster: ${result.message}. Please try again or paste a direct image URL."
+                        posterUploadError = "Failed to upload poster: ${result.message}. Please try again"
                         posterUrl = null
                         android.util.Log.e("EditEventPosterScreen", "Failed to upload poster: ${result.message}")
                     }
@@ -169,7 +167,7 @@ fun EditEventPosterScreen(
             } catch (t: Throwable) {
                 // Catch any unexpected exceptions
                 android.util.Log.e("EditEventPosterScreen", "Unexpected error during poster upload", t)
-                posterUploadError = "Failed to upload poster: ${t.message ?: "unknown error"}. Paste a direct image URL below."
+                posterUploadError = "Failed to upload poster: ${t.message ?: "unknown error"}."
                 posterUrl = null
             } finally {
                 // Always reset upload progress state
@@ -201,25 +199,24 @@ fun EditEventPosterScreen(
             },
             onRemovePoster = {
                 posterUrl = null
-                manualPosterUrl = ""
             }
         )
     })
 
-    listElements.add(ComposableItem {
-        posterUploadError?.let { error ->
+    posterUploadError?.let { error ->
+        listElements.add(ComposableItem {
             ErrorCallout(message = error)
-        }
-    })
+        })
+    }
 
-    listElements.add(ComposableItem {
-        if (errorMessage != null) {
+    if (errorMessage != null) {
+        listElements.add(ComposableItem {
             ErrorCallout(
                 message = errorMessage,
                 onDismiss = onClearError
             )
-        }
-    })
+        })
+    }
 
     listElements.add(ComposableItem {
         Row(
@@ -410,7 +407,7 @@ private fun PosterPreview(
 
         if (!canUploadPoster) {
             Text(
-                text = "Uploads unavailable in this environment. Paste a direct URL instead.",
+                text = "Uploads unavailable in this environment.",
                 style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Decline)
             )
         }

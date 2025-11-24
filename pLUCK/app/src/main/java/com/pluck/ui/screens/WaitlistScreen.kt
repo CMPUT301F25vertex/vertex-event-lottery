@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Person
@@ -71,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
+import com.pluck.ui.components.NotificationWriter
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.SquircleScrollableLazyList
@@ -78,7 +80,6 @@ import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
 private enum class WaitlistTab {
     WAITING,
     CHOSEN
@@ -115,6 +116,8 @@ fun WaitlistScreen(
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
     val waitlistSize = waitlistEntries.size
 
+    var showNotificationWriterDialog by remember { mutableStateOf(false) }
+
     val listElements = mutableListOf<ComposableItem>()
 
     listElements.add(ComposableItem {
@@ -127,6 +130,36 @@ fun WaitlistScreen(
         WaitlistHeaderCard(
             event = event
         )
+    })
+
+    listElements.add(ComposableItem {
+        Button(
+            onClick = {
+                showNotificationWriterDialog = true
+            },
+            modifier = modifier
+                .height(40.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PluckPalette.Secondary,
+                contentColor = autoTextColor(PluckPalette.Secondary)
+            ),
+            contentPadding = PaddingValues(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Notify Everyone Waiting",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = 1,
+            )
+        }
     })
 
     listElements.add(ComposableItem {
@@ -189,6 +222,24 @@ fun WaitlistScreen(
     {
         FullWidthLazyScroll(
             listElements = listElements
+        )
+    }
+
+    if (showNotificationWriterDialog) {
+        val waitlistUserIds = mutableListOf<String>()
+
+        for (wait in waitlistEntries) {
+            waitlistUserIds.add(wait.userId)
+        }
+
+        NotificationWriter(
+            users = waitlistUserIds,
+            onDismiss = {
+                showNotificationWriterDialog = false
+            },
+            onConfirm = {
+                showNotificationWriterDialog = false
+            }
         )
     }
 }
