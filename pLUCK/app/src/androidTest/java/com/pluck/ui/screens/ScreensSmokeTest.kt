@@ -153,10 +153,10 @@ class ScreensSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText("My Events", useUnmergedTree = true)
+        composeRule.onNodeWithText("Event History", useUnmergedTree = true)
             .assertExists()
 
-        composeRule.onNodeWithText("My Events")
+        composeRule.onNodeWithText("Event History")
             .assertHasClickAction()
 
         composeRule.onNodeWithText("Delete Account", useUnmergedTree = true)
@@ -185,7 +185,7 @@ class ScreensSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText("My Events").assertIsDisplayed()
+        composeRule.onNodeWithText("Event History").assertIsDisplayed()
         composeRule.onAllNodesWithText("Upcoming")[0].assertIsDisplayed()
     }
 

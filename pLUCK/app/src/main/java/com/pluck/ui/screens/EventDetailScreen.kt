@@ -701,11 +701,13 @@ private fun EventLotteryInfoCard(
                 label = samplingLabel,
                 accentColor = PluckPalette.Tertiary
             )
-            EventInfoRow(
-                icon = Icons.Outlined.Groups,
-                label = "Waitlist capped at ${event.waitlistCapacity} entrants.",
-                accentColor = PluckPalette.Pink
-            )
+            if (event.waitlistCapacity != Int.MAX_VALUE) {
+                EventInfoRow(
+                    icon = Icons.Outlined.Groups,
+                    label = "Waitlist capped at ${event.waitlistCapacity} entrants.",
+                    accentColor = PluckPalette.Pink
+                )
+            }
         }
     }
 }
