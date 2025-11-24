@@ -69,12 +69,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import com.pluck.data.firebase.FirebaseUser
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
 import com.pluck.ui.components.NotificationWriter
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.ProfileCircle
 import com.pluck.ui.components.SquircleScrollableLazyList
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
@@ -111,6 +113,7 @@ fun WaitlistScreen(
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
     onBack: () -> Unit = {},
+    users: List<FirebaseUser>,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
@@ -193,7 +196,8 @@ fun WaitlistScreen(
                     } else {
                         WaitlistEntriesList(
                             entries = waitlistEntries,
-                            title = "Waitlist Queue"
+                            title = "Waitlist Queue",
+                            users = users
                         )
                     }
                 }
@@ -206,7 +210,8 @@ fun WaitlistScreen(
                     } else {
                         WaitlistEntriesList(
                             entries = chosenEntries,
-                            title = "Chosen Entrants"
+                            title = "Chosen Entrants",
+                            users = users
                         )
                     }
                 }
@@ -435,7 +440,8 @@ private fun WaitlistTabSelector(
 @Composable
 private fun WaitlistEntriesList(
     entries: List<WaitlistEntry>,
-    title: String
+    title: String,
+    users: List<FirebaseUser>,
 ) {
     Column(
         modifier = Modifier
@@ -455,14 +461,26 @@ private fun WaitlistEntriesList(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             entries.forEach { entry ->
-                WaitlistEntryCard(entry = entry)
+                val usr: FirebaseUser? = users.find{ user ->
+                    user.id == entry.userId
+                }
+
+                val userProfileURL = usr?.profileImageUrl ?: ""
+
+                WaitlistEntryCard(
+                    entry = entry,
+                    userProfileURL = userProfileURL
+                )
             }
         }
     }
 }
 
 @Composable
-private fun WaitlistEntryCard(entry: WaitlistEntry) {
+private fun WaitlistEntryCard(
+    entry: WaitlistEntry,
+    userProfileURL: String
+) {
     val accentColor = when (entry.status) {
         com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
         com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
@@ -491,37 +509,19 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .height(48.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accentColor.copy(alpha = 0.9f))
-            )
-
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
+                ProfileCircle(
+                    userName = entry.userName,
+                    profileImageUrl = userProfileURL,
+                    isUploading = false,
+                    size = 48,
                     modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = accentColor,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 4.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "#${entry.position}",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Black,
-                                color = PluckPalette.Surface,
-                                fontSize = 16.sp
-                            )
-                        )
-                    }
-                }
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -660,6 +660,7 @@ private fun WaitlistScreenPreview() {
         event = previewEvent,
         waitlistEntries = waitlistEntries,
         chosenEntries = chosenEntries,
-        onBack = {}
+        onBack = {},
+        users = emptyList()
     )
 }

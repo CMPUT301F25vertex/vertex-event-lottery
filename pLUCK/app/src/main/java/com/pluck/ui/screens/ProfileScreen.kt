@@ -69,6 +69,7 @@ import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.ProfileCircle
 import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
 
@@ -203,7 +204,7 @@ fun ProfileScreen(
     })
 
     listElements.add(ComposableItem {
-        ProfileAvatarSection(
+        ProfileCircle(
             userName = userName,
             profileImageUrl = profileImageUrl,
             isUploading = profileImageUploading,
@@ -747,114 +748,6 @@ private fun ProfileDestructiveActionButton(
                     color = PluckPalette.Decline.copy(alpha = 0.85f)
                 )
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileAvatarSection(
-    /**
-     * User's display name used for the textual fallback when no image is available.
-     */
-    userName: String,
-    /**
-     * Cloudinary URL for the current profile photo.
-     */
-    profileImageUrl: String?,
-    /**
-     * Whether an image upload is in progress to display the loading indicator.
-     */
-    isUploading: Boolean,
-    /**
-     * Callback invoked when the user taps the avatar or change photo action.
-     */
-    onChangePhoto: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(140.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize(),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 10.dp,
-                onClick = onChangePhoto,
-                enabled = !isUploading
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!profileImageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = profileImageUrl,
-                            contentDescription = "Profile photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = userName.trim()
-                                .takeIf { it.isNotEmpty() }
-                                ?.first()
-                                ?.uppercaseChar()
-                                ?.toString()
-                                ?: "?",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                color = PluckPalette.Primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    if (isUploading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(PluckPalette.Primary.copy(alpha = 0.45f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = PluckPalette.Surface)
-                        }
-                    }
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .padding(end = 4.dp, bottom = 4.dp)
-                    .size(40.dp),
-                shape = CircleShape,
-                color = PluckPalette.Primary,
-                shadowElevation = 8.dp,
-                tonalElevation = 0.dp,
-                onClick = onChangePhoto,
-                enabled = !isUploading
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.PhotoCamera,
-                        contentDescription = "Change profile photo",
-                        tint = PluckPalette.Surface
-                    )
-                }
-            }
-        }
-
-        TextButton(
-            onClick = onChangePhoto,
-            enabled = !isUploading
-        ) {
-            Text(if (isUploading) "Uploading…" else "Change Photo")
         }
     }
 }
