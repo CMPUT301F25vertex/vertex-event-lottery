@@ -194,16 +194,51 @@ class EventRepository(
     }
 
     /**
-     * Delete an event (soft delete by setting isActive = false)
+     * Delete an event (hard delete - permanently removes from database)
+     * Also cleans up related data: waitlist entries, notifications, and invitations
      *
      * @param eventId The event ID to delete
      * @return Result indicating success or error
      */
     suspend fun deleteEvent(eventId: String): Result<Unit> {
         return try {
-            eventsCollection.document(eventId)
-                .update("isActive", false)
+            // Delete the event document
+            eventsCollection.document(eventId).delete().await()
+
+            // Clean up related waitlist entries
+            val waitlistSnapshot = firestore.collection("waitlists")
+                .whereEqualTo("eventId", eventId)
+                .get()
                 .await()
+
+            val batch = firestore.batch()
+            waitlistSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up related notifications
+            val notificationSnapshot = firestore.collection("notifications")
+                .whereEqualTo("eventId", eventId)
+                .get()
+                .await()
+
+            notificationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up related invitations
+            val invitationSnapshot = firestore.collection("invitations")
+                .whereEqualTo("eventId", eventId)
+                .get()
+                .await()
+
+            invitationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Commit all deletions in a single batch
+            batch.commit().await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

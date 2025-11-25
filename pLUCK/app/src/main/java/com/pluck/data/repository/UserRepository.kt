@@ -111,13 +111,50 @@ class UserRepository(
 
     /**
      * Delete a user profile (US 03.02.01)
+     * Also cleans up related data: waitlist entries, notifications, and invitations
      *
      * @param userId The user ID to delete
      * @return Result with success or error
      */
     suspend fun deleteUser(userId: String): Result<Unit> {
         return try {
+            // Delete the user profile document
             usersCollection.document(userId).delete().await()
+
+            // Clean up related waitlist entries
+            val waitlistSnapshot = firestore.collection("waitlists")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            val batch = firestore.batch()
+            waitlistSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up notifications for this user
+            val notificationSnapshot = firestore.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            notificationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up invitations sent to this user
+            val invitationSnapshot = firestore.collection("invitations")
+                .whereEqualTo("inviteeId", userId)
+                .get()
+                .await()
+
+            invitationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Commit all deletions in a single batch
+            batch.commit().await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
