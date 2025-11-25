@@ -113,7 +113,7 @@ fun WaitlistScreen(
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
     onBack: () -> Unit = {},
-    users: List<FirebaseUser>,
+    users: List<FirebaseUser> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
