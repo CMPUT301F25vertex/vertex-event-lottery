@@ -10,35 +10,36 @@
  */
 package com.pluck.ui.screens
 
+import android.Manifest
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.impl.utils.ContextUtil.getApplicationContext
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,15 +56,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.FileProvider
+import androidx.viewbinding.BuildConfig
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.ComposableItem
@@ -72,6 +76,13 @@ import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.ProfileCircle
 import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
+
 
 /**
  * Displays the profile management screen allowing entrants to review and update their information.
@@ -98,6 +109,7 @@ import kotlinx.coroutines.launch
  * @param onRegisterAdmin Invoked to open the admin registration dialog.
  * @param modifier Optional modifier for styling.
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -135,8 +147,20 @@ fun ProfileScreen(
     val imageRequest = remember { PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly) }
     var profileImageUploading by remember { mutableStateOf(false) }
 
+    var imageUri by remember { mutableStateOf(Uri.EMPTY) }
+
+    val createTempImageURI = {
+        val tempFile = File.createTempFile(
+            "picture_${System.currentTimeMillis()}", ".png", context.cacheDir
+        ).apply {
+            createNewFile()
+        }
+
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
+        contract = ActivityResultContracts.PickVisualMedia(),
     )
     { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -171,7 +195,55 @@ fun ProfileScreen(
         }
     }
 
-    val onChangePhoto = on@{
+    val imageTakerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+
+    ) { saved: Boolean ->
+        if (!saved) return@rememberLauncherForActivityResult
+        if (deviceId.isNullOrBlank()) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@rememberLauncherForActivityResult
+        }
+
+        onProfileImageUploadStarted()
+        profileImageUploading = true
+
+        scope.launch {
+            val result = runCatching {
+                uploadRepository.uploadProfileImage(imageUri, deviceId)
+            }.getOrElse { throwable ->
+                Log.e(PROFILE_SCREEN_TAG, "Profile photo upload failed", throwable)
+                val message = throwable.message ?: throwable.localizedMessage ?: "Failed to upload profile photo."
+                onProfileImageUploadFailed(message)
+                profileImageUploading = false
+                return@launch
+            }
+
+            when (result) {
+                is CloudinaryUploadResult.Success -> onProfileImageUploaded(result.url)
+                is CloudinaryUploadResult.Error -> {
+                    val message = result.message.ifBlank { "Failed to upload profile photo." }
+                    onProfileImageUploadFailed(message)
+                }
+            }
+
+            profileImageUploading = false
+        }
+    }
+
+    val cameraPermissionState = rememberPermissionState(
+        permission = Manifest.permission.CAMERA,
+        onPermissionResult = { granted ->
+            if (granted && !isLoading && !profileImageUploading && !deviceId.isNullOrBlank()) {
+                imageUri = createTempImageURI()
+                imageTakerLauncher.launch(imageUri)
+            } else Log.e("ProfileScreen", "camera permission is denied")
+        }
+    )
+
+    var pickProfilePhotoDialog by remember { mutableStateOf(false) }
+
+    val pickPhotoFromGallery = on@{
         if (isLoading || profileImageUploading) return@on
         if (deviceId.isNullOrBlank()) {
             onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
@@ -208,7 +280,9 @@ fun ProfileScreen(
             userName = userName,
             profileImageUrl = profileImageUrl,
             isUploading = profileImageUploading,
-            onChangePhoto = onChangePhoto
+            onChangePhoto = {
+                pickProfilePhotoDialog = true
+            }
         )
     })
 
@@ -633,6 +707,175 @@ fun ProfileScreen(
             }
         )
     }
+
+    if (pickProfilePhotoDialog) {
+        AlertDialog(
+            onDismissRequest = { pickProfilePhotoDialog = false },
+            title = {
+                Text(
+                    text = "Take or Choose Photo?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = {
+                            (cameraPermissionState::launchPermissionRequest)()
+                            pickProfilePhotoDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Take")
+                    }
+
+                    Button(
+                        onClick = {
+                            pickPhotoFromGallery()
+                            pickProfilePhotoDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choose")
+                    }
+                }
+
+            },
+            confirmButton = { },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pickProfilePhotoDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+//    if (showTakePictureDialog) {
+//        TakePicture(
+//            onPictureTaken = { uri ->
+//                // TODO
+//            },
+//            onDismiss = {
+//                showTakePictureDialog = false
+//            }
+//        )
+//    }
+}
+
+@Composable
+private fun TakePicture(
+    modifier: Modifier = Modifier,
+    onPictureTaken: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    // Track last scan time to debounce rapid scanning (prevent duplicate scans)
+    var lastScannedTime by remember { mutableStateOf(0L) }
+
+    AlertDialog(
+        onDismissRequest = {
+            onDismiss()
+        },
+        text = {
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(24.dp),
+                color = PluckPalette.Surface,
+                border = BorderStroke(2.dp, PluckPalette.Primary.copy(alpha = 0.3f))
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx)
+                        val cameraProvider = cameraProviderFuture.get()
+
+                        // Set up camera preview use case
+                        val preview = androidx.camera.core.Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+                        // Set up image analysis use case for QR code detection
+//                val imageAnalyzer = ImageAnalysis.Builder()
+//                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+//                    .build()
+//                    .also {
+//                        it.setAnalyzer(executor) { imageProxy ->
+//                            // Process each camera frame with ML Kit barcode scanner
+////                            processImageProxy(imageProxy) { code ->
+////                                // Debounce: Only scan once every 2 seconds to prevent duplicates
+////                                val currentTime = System.currentTimeMillis()
+////                                if (currentTime - lastScannedTime > 2000) {
+////                                    lastScannedTime = currentTime
+////                                    onQRCodeScanned(code)
+////                                }
+////                            }
+//                        }
+//                    }
+
+                        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+                        try {
+                            // Unbind previous use cases before binding new ones
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                preview
+                            )
+                        } catch (exc: Exception) {
+                            Log.e("QRScannerScreen", "Failed to bind camera use cases", exc)
+                        }
+
+                        previewView
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { view ->
+                        view.clipToOutline = true
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = {
+//                        onPictureTaken() // TODO
+                        onDismiss()
+                    }
+                ) {
+                    Text("Take Picture!")
+                }
+
+                Button(
+                    onClick = {
+                        // TODO
+                    }
+                ) {
+                    Text("Flip")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
