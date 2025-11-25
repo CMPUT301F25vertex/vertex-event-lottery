@@ -3,10 +3,7 @@ package com.pluck.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -32,6 +29,8 @@ import com.pluck.ui.theme.autoTextColor
 @Composable
 fun NotificationWriter(
     users: List<String>,
+    eventId: String? = null,
+    organizerId: String? = null,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -86,7 +85,13 @@ fun NotificationWriter(
         confirmButton = {
             Button(
                 onClick = {
-                    SendNotification(users, body = notifBody, title = notifTitle)
+                    SendNotification(
+                        users = users,
+                        body = notifBody,
+                        title = notifTitle,
+                        eventId = eventId,
+                        organizerId = organizerId
+                    )
                     onConfirm()
                 },
                 enabled = notifBody != "" && notifTitle != "",

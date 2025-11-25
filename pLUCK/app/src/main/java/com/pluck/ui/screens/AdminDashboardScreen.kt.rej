@@ -1,0 +1,113 @@
+diff a/pLUCK/app/src/main/java/com/pluck/ui/screens/AdminDashboardScreen.kt b/pLUCK/app/src/main/java/com/pluck/ui/screens/AdminDashboardScreen.kt	(rejected hunks)
+@@ -568,15 +573,109 @@ private fun ImagesListContent(
+             }
+         } else {
+             items(images, key = { it.id }) { image ->
++                val sourceLabel = when (image.source) {
++                    ImageSource.STORAGE -> "Firebase Storage"
++                    ImageSource.EVENT_LINK -> "External Link"
++                    ImageSource.PROFILE -> "Profile Photo"
++                }
++                val sizeLabel = if (image.sizeBytes > 0) {
++                    "${image.sizeBytes / 1024} KB"
++                } else {
++                    "N/A"
++                }
++                val detailParts = mutableListOf<String>()
++                detailParts += "Size: $sizeLabel"
++                detailParts += "Path: ${image.path}"
++                image.eventTitle?.let { detailParts += "Event: $it" }
++                image.userName?.let { detailParts += "User: $it" }
++                if (image.userName == null && image.userId != null) {
++                    detailParts += "User ID: ${image.userId}"
++                }
++
+                 AdminItemCard(
+                     title = image.name,
+-                    subtitle = "Type: ${image.contentType}",
+-                    detail = "Size: ${image.sizeBytes / 1024} KB ΓÇó Path: ${image.path}",
++                    subtitle = "Type: ${image.contentType} ΓÇó Source: $sourceLabel",
++                    detail = detailParts.joinToString(" ΓÇó "),
++                    onView = { previewImage = image },
+                     onRemove = { onRemove(image.id) }
+                 )
+             }
+         }
+     }
++
++    previewImage?.let { image ->
++        AlertDialog(
++            onDismissRequest = { previewImage = null },
++            title = {
++                Text(
++                    text = image.name,
++                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
++                )
++            },
++            text = {
++                Column(
++                    modifier = Modifier.fillMaxWidth(),
++                    verticalArrangement = Arrangement.spacedBy(12.dp),
++                    horizontalAlignment = Alignment.CenterHorizontally
++                ) {
++                    AsyncImage(
++                        model = image.url,
++                        contentDescription = image.name,
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .height(220.dp)
++                            .clip(RoundedCornerShape(16.dp))
++                    )
++                    image.eventTitle?.let { title ->
++                        Text(
++                            text = "Event: $title",
++                            style = MaterialTheme.typography.bodyMedium.copy(
++                                color = PluckPalette.Primary,
++                                fontWeight = FontWeight.SemiBold
++                            )
++                        )
++                    }
++                    image.userName?.let { user ->
++                        Text(
++                            text = "Profile: $user",
++                            style = MaterialTheme.typography.bodyMedium.copy(
++                                color = PluckPalette.Primary,
++                                fontWeight = FontWeight.SemiBold
++                            )
++                        )
++                    } ?: image.userId?.let { id ->
++                        Text(
++                            text = "Profile ID: $id",
++                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
++                        )
++                    }
++                    Text(
++                        text = "Source: ${when (image.source) {
++                            ImageSource.STORAGE -> "Firebase Storage"
++                            ImageSource.EVENT_LINK -> "External Link"
++                            ImageSource.PROFILE -> "Profile Photo"
++                        }}",
++                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
++                    )
++                    if (image.sizeBytes > 0) {
++                        Text(
++                            text = "Size: ${image.sizeBytes / 1024} KB",
++                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
++                        )
++                    }
++                    Text(
++                        text = "URL: ${image.url}",
++                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Secondary)
++                    )
++                }
++            },
++            confirmButton = {
++                TextButton(onClick = { previewImage = null }) {
++                    Text("Close")
++                }
++            }
++        )
++    }
+ }
+ 
+ @Composable

@@ -40,12 +40,21 @@ class MainActivity : ComponentActivity() {
     /** Tracks the currently selected theme (default is blue) */
     private val selectedThemeIdFlow = MutableStateFlow("blue")
 
+    private val requestNotificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (!isGranted) {
+                Log.w("Notifications", "POST_NOTIFICATIONS permission denied by user")
+            }
+        }
+
     /**
      * Sets up theme preferences and initializes the navigation host.
      * Loads saved user preferences and applies them to the UI.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        requestNotificationPermissionIfNeeded()
 
         // Load saved theme preferences
         val prefs = ThemePreferences(this)
@@ -81,6 +90,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        val permissionStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        )
+
+        if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

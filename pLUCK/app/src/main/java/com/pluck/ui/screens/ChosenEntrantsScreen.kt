@@ -207,6 +207,8 @@ fun ChosenEntrantsScreen(
 
         NotificationWriter(
             users = waitlistUserIds,
+            eventId = event.id,
+            organizerId = event.organizerId,
             onDismiss = {
                 showNotificationWriterDialog = false
             },

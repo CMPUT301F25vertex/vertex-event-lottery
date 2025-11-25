@@ -23,6 +23,7 @@
 package com.pluck.ui.components
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -44,6 +46,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Surface
@@ -58,6 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.pluck.ui.theme.autoTextColor
 
@@ -174,35 +180,88 @@ fun DashboardSelector(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    if (dashboards.size < 2) return
+    val uniqueDashboards = dashboards.distinctBy { it.type }
 
-    Box {
-        RoundedTextButton(
-            text = "Dashboard",
-            shapeColor = PluckPalette.Secondary,
-            textColor = autoTextColor(PluckPalette.Secondary),
-            onClick = { showMenu = true },
-            textSize = 16,
-            padding = 12.dp
-        )
+    if (uniqueDashboards.size < 2) return
+
+    Box(
+        modifier = Modifier
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color.Transparent,
+            contentColor = PluckPalette.Muted,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            onClick = { showMenu = true }
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .width(80.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Dashboard,
+                    contentDescription = "Dashboard",
+                    tint = PluckPalette.Muted,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Dashboard",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PluckPalette.Muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
 
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = {
                 showMenu = false
             },
-            containerColor = PluckPalette.Surface
+            offset = DpOffset(-15.dp, (40).dp),
+            modifier = Modifier.width(150.dp),
+            shape = RoundedCornerShape(16.dp),
+            containerColor = PluckPalette.Surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 12.dp
         ) {
-            for (dashboard in dashboards) {
+            for (dashboard in uniqueDashboards) {
                 if (dashboard.type == currentDashboard) continue
 
                 DropdownMenuItem(
-                    text = { Text(dashboard.type.name) },
+                    text = {
+                        Text(
+                            text = dashboard.type.name,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = PluckPalette.Primary
+                        )
+                    },
                     onClick = {
                         dashboard.onClick()
+                        showMenu = false
                     },
-                    colors = MenuDefaults.itemColors().copy(
-                        textColor = PluckPalette.Primary
+                    leadingIcon = {
+                        Icon(
+                            imageVector = when (dashboard.type) {
+                                DashboardType.Entrant -> Icons.Default.Person
+                                DashboardType.Organizer -> Icons.Default.Settings
+                                DashboardType.Admin -> Icons.Default.Settings
+                            },
+                            contentDescription = null,
+                            tint = PluckPalette.Secondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    colors = MenuDefaults.itemColors(
+                        textColor = PluckPalette.Primary,
+                        leadingIconColor = PluckPalette.Secondary
                     )
                 )
             }
@@ -230,11 +289,10 @@ private fun NavItem(
         onClick = onClick,
         modifier = Modifier.testTag("test_tag_" + tab.id)
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = tab.icon,
