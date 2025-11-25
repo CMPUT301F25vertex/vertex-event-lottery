@@ -158,6 +158,32 @@ class UserRepository(
     }
 
     /**
+     * Observes users in real time
+     *
+     * @return Flow emitting user lists whenever Firestore changes.
+     */
+    fun observeUsers(): Flow<List<FirebaseUser>> = callbackFlow {
+        val listenerRegistration = usersCollection
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    // Handle permission errors gracefully (e.g., when user loses admin access)
+                    trySend(emptyList())
+                    close()
+                    return@addSnapshotListener
+                }
+
+                val users = snapshot?.documents
+                    ?.mapNotNull { doc -> doc.toObject(FirebaseUser::class.java) }
+                    ?.sortedByDescending { it.createdAt }
+                    ?: emptyList()
+
+                trySend(users)
+            }
+
+        awaitClose { listenerRegistration.remove() }
+    }
+
+    /**
      * Observes organizers in real time for admin dashboard updates.
      *
      * @return Flow emitting organizer lists whenever Firestore changes.

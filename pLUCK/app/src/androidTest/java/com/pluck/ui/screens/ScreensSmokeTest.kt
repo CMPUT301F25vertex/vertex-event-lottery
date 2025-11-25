@@ -219,7 +219,8 @@ class ScreensSmokeTest {
             PluckTheme {
                 WaitlistScreen(
                     event = sampleEvent,
-                    waitlistEntries = sampleWaitlistEntries
+                    waitlistEntries = sampleWaitlistEntries,
+                    users = emptyList()
                 )
             }
         }
