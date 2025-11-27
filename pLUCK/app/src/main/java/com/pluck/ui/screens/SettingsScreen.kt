@@ -124,17 +124,20 @@ fun SettingsScreen(
             iconColor = PluckPalette.Secondary
         )
         {
-            Spacer(modifier = Modifier.size(4.dp))
-            SettingsToggleItem(
-                label = "In App Notifications",
-                description = "Enable or disable in app notifications",
-                checked = notificationsEnabled,
-                onCheckedChange = {
-                    notificationsEnabled = it
-                    notificationPrefs.setAllNotificationsEnabled(it)
-                }
-            )
-            Spacer(modifier = Modifier.size(8.dp))
+//            SettingsToggleItem(
+//                label = "In App Notifications",
+//                description = "Enable or disable in app notifications",
+//                checked = notificationsEnabled,
+//                onCheckedChange = {
+//                    notificationsEnabled = it
+//                    notificationPrefs.setAllNotificationsEnabled(it)
+//
+//                    if (!notificationsEnabled) {
+//                        pushNotifications = false
+//                        notificationPrefs.setPushNotificationsEnabled(false)
+//                    }
+//                }
+//            )
             SettingsToggleItem(
                 label = "Push Notifications",
                 description = "Receive push notifications for updates",
@@ -145,7 +148,6 @@ fun SettingsScreen(
                 },
                 enabled = notificationsEnabled
             )
-            Spacer(modifier = Modifier.size(4.dp))
         }
     })
 
@@ -243,7 +245,7 @@ private fun SettingsSection(
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             shape = RoundedCornerShape(24.dp),
             color = PluckPalette.Primary.copy(alpha = 0.02f),
             border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
@@ -251,7 +253,8 @@ private fun SettingsSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 content()
             }
@@ -270,7 +273,6 @@ private fun SettingsToggleItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
             .clickable(
                 enabled = enabled,
                 indication = null,
