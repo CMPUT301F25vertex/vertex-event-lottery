@@ -7,11 +7,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.pluck.MainActivity
 import com.pluck.R
+import com.pluck.data.NotificationPreferences
 
 class PLuckFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
@@ -37,6 +39,8 @@ class PLuckFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun showNotification(title: String, body: String) {
+        if (!NotificationPreferences(applicationContext).arePushNotificationsEnabled()) return;
+
         val channelId = "pluck_default_channel"
         val channelName = "General notifications"
 

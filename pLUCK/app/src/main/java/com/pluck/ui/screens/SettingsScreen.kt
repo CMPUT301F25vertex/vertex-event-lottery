@@ -124,15 +124,17 @@ fun SettingsScreen(
             iconColor = PluckPalette.Secondary
         )
         {
+            Spacer(modifier = Modifier.size(4.dp))
             SettingsToggleItem(
-                label = "All Notifications",
-                description = "Enable or disable all notifications",
+                label = "In App Notifications",
+                description = "Enable or disable in app notifications",
                 checked = notificationsEnabled,
                 onCheckedChange = {
                     notificationsEnabled = it
                     notificationPrefs.setAllNotificationsEnabled(it)
                 }
             )
+            Spacer(modifier = Modifier.size(8.dp))
             SettingsToggleItem(
                 label = "Push Notifications",
                 description = "Receive push notifications for updates",
@@ -143,17 +145,7 @@ fun SettingsScreen(
                 },
                 enabled = notificationsEnabled
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            SettingsToggleItem(
-                label = "Email Notifications",
-                description = "Receive email summaries",
-                checked = emailNotifications,
-                onCheckedChange = {
-                    emailNotifications = it
-                    notificationPrefs.setEmailNotificationsEnabled(it)
-                },
-                enabled = notificationsEnabled
-            )
+            Spacer(modifier = Modifier.size(4.dp))
         }
     })
 
@@ -313,6 +305,7 @@ private fun SettingsToggleItem(
                     )
                 )
             }
+            Spacer(modifier = Modifier.size(4.dp))
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
