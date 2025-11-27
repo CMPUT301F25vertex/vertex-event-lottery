@@ -76,7 +76,7 @@ import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.RoundIconButton

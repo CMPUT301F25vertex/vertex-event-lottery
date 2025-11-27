@@ -73,7 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem

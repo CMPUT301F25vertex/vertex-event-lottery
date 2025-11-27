@@ -1,5 +1,6 @@
 package com.pluck.ui.components
 
+import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,10 +22,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
 
 @Composable
 fun ProfileCircle(
@@ -72,6 +77,15 @@ fun ProfileCircle(
                     contentAlignment = Alignment.Center
                 ) {
                     if (!profileImageUrl.isNullOrBlank()) {
+//                        val imageLoader = ImageLoader.Builder(LocalContext.current)
+//                            .components {
+//                                if (SDK_INT >= 28) {
+//                                    add(AnimatedImageDecoder.Factory())
+//                                } else {
+//                                    add(GifDecoder.Factory())
+//                                }
+//                            }
+//                            .build()
                         AsyncImage(
                             model = profileImageUrl,
                             contentDescription = "Profile photo",

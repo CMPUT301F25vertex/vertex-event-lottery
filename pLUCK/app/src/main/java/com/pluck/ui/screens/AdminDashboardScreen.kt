@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.pluck.data.firebase.AppealStatus
 import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.OrganizerAppeal
