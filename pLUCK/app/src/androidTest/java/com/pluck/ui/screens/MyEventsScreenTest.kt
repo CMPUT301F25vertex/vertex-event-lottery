@@ -66,7 +66,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -87,7 +88,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -107,7 +109,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -128,7 +131,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -152,7 +156,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -175,7 +180,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -202,7 +208,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -225,7 +232,8 @@ class MyEventsScreenTest {
                 onNavigate = { str -> },
                 currentRoute = null,
                 onRefresh = { },
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 

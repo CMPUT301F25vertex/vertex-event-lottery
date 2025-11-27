@@ -83,7 +83,8 @@ class ScreensSmokeTest {
                     onNavigate = {},
                     dashboards = emptyList(),
                     currentUserId = "",
-                    isRefreshing = false
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }
@@ -180,7 +181,8 @@ class ScreensSmokeTest {
                     onNavigate = { str -> },
                     currentRoute = null,
                     onRefresh = { },
-                    isRefreshing = false
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }
@@ -204,7 +206,8 @@ class ScreensSmokeTest {
                     events = sampleEvents,
                     currentRoute = "organizer_dashboard",
                     dashboards = emptyList(),
-                    onNavigate = { }
+                    onNavigate = { },
+                    notificationCount = 0
                 )
             }
         }
