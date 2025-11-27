@@ -87,6 +87,7 @@ import com.pluck.data.firebase.checkFirebaseConnection
 import com.pluck.data.repository.AdminAccessRepository
 import com.pluck.data.repository.AppealRepository
 import com.pluck.data.repository.OrganizerAccessRepository
+import com.pluck.notifications.SendNotification
 import com.pluck.ui.components.BottomNavBar
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.Dashboard
@@ -129,6 +130,7 @@ import com.pluck.ui.viewmodel.UserViewModel
 import com.pluck.ui.viewmodel.WaitlistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
@@ -832,9 +834,10 @@ fun PLuckNavHost(
             ) { paddingValues ->
                 var debugComposable: ComposableItem? = null
                 if (DEBUG) {
-                    var text by remember{ mutableStateOf("") }
+                    var text1 by remember{ mutableStateOf("") }
                     var text2 by remember{ mutableStateOf("") }
-                    var number by remember{ mutableStateOf("") }
+                    var text3 by remember{ mutableStateOf("") }
+                    var text4 by remember{ mutableStateOf("") }
 
                     debugComposable = ComposableItem {
                         Surface(
@@ -851,7 +854,7 @@ fun PLuckNavHost(
                                 Text(
                                     text = "WARNING, all options listed here use direct writes to the database, try to press each button a minimum number of times.\n\n" +
                                             "All buttons share the same three text entries, not all buttons will use all entries\n\n" +
-                                            "Depending on what action is used expect the UI of the app to freeze for up to 30 seconds, this is normal.",
+                                            "These buttons have little to no error checking, expect a crash if you enter something wrong",
                                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                                 )
 
@@ -861,9 +864,9 @@ fun PLuckNavHost(
                                 )
 
                                 OutlinedTextField(
-                                    value = text,
-                                    onValueChange = { text = it },
-                                    label = { Text(text) },
+                                    value = text1,
+                                    onValueChange = { text1 = it },
+                                    label = { Text(text1) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
@@ -880,20 +883,32 @@ fun PLuckNavHost(
                                 )
 
                                 Text(
-                                    text = "Number Input",
+                                    text = "Text Input 3",
                                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 )
 
                                 OutlinedTextField(
-                                    value = number,
-                                    onValueChange = { number = it },
-                                    label = { Text(number) },
+                                    value = text3,
+                                    onValueChange = { text3 = it },
+                                    label = { Text(text3) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Text(
+                                    text = "Text Input 4",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                )
+
+                                OutlinedTextField(
+                                    value = text4,
+                                    onValueChange = { text4 = it },
+                                    label = { Text(text4) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
                                 TextButton(
                                     onClick = {
-                                        if (number.toIntOrDefault(-1) == -1) {
+                                        if (text1.toIntOrDefault(0) < 0) {
                                             Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
                                         }
 
@@ -901,109 +916,122 @@ fun PLuckNavHost(
                                         val entrantsCollection = FirebaseFirestore.getInstance().collection("entrants")
                                         val eventsCollection = FirebaseFirestore.getInstance().collection("events")
 
-                                        runBlocking {
-                                            launch {
-                                                val users = entrantsCollection.whereEqualTo("email", text).get().await()
-
-                                                val event = eventsCollection.whereEqualTo("title", text2).get().await().toObjects<FirebaseEvent>()[0].toEvent()
-
-                                                var j = 0
-                                                users.toObjects<FirebaseUser>().forEach { user ->
-                                                    for (i in 1..number.toIntOrDefault(-1)) {
-                                                        val userId = user.id
-                                                        val docRef = notificationsCollection.document()
-                                                        val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
-
-                                                        val payload = hashMapOf(
-                                                            "id" to docRef.id,
-                                                            "userId" to userId,
-                                                            "organizerId" to "SYSTEM_DEBUG",
-                                                            "eventId" to event.id,
-                                                            "waitlistEntryId" to "",
-                                                            "title" to "You're invited to ${event.title}",
-                                                            "subtitle" to event.location,
-                                                            "detail" to "Happening on $dateLabel",
-                                                            "category" to NotificationCategory.SELECTION.name,
-                                                            "status" to NotificationStatus.UNREAD.name,
-                                                            "inviteContact" to text.trim(),
-                                                            "inviteType" to "EMAIL",
-                                                            "allowAccept" to true,
-                                                            "allowDecline" to true,
-                                                            "allowEventDetails" to true,
-                                                            "createdAt" to FieldValue.serverTimestamp(),
-                                                            "updatedAt" to FieldValue.serverTimestamp()
-                                                        )
-
-                                                        docRef.set(payload, SetOptions.merge()).await()
-                                                    }
-                                                    j++
-                                                }
-
-                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} notifications sent! to $j different users", Toast.LENGTH_LONG).show()
+                                        scope.launch {
+                                            if (text4.toIntOrDefault(0) != 0) {
+                                                Toast.makeText(context, "Starting the timer!", Toast.LENGTH_SHORT).show()
                                             }
-                                        }
 
+                                            delay(text4.toIntOrDefault(0) * 1000L)
+                                            val users = entrantsCollection.whereEqualTo("email", text2).get().await()
+
+                                            val events = eventsCollection.whereEqualTo("title", text3 ).get().await().toObjects<FirebaseEvent>()
+
+                                            if (events.isEmpty()) {
+                                                Toast.makeText(context, "ERROR: Could not find event with name: $text3", Toast.LENGTH_LONG).show()
+
+                                                return@launch
+                                            }
+
+                                            val event = events[0].toEvent()
+
+                                            val userIds = mutableListOf<String>()
+
+                                            var j = 0
+                                            users.toObjects<FirebaseUser>().forEach { user ->
+                                                for (i in 1..text1.toIntOrDefault(0)) {
+                                                    userIds.add(user.id)
+
+                                                    val userId = user.id
+                                                    val docRef = notificationsCollection.document()
+                                                    val dateLabel = event.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+
+                                                    val payload = hashMapOf(
+                                                        "id" to docRef.id,
+                                                        "userId" to userId,
+                                                        "organizerId" to "SYSTEM_DEBUG",
+                                                        "eventId" to event.id,
+                                                        "waitlistEntryId" to "",
+                                                        "title" to "You're invited to ${event.title}",
+                                                        "subtitle" to event.location,
+                                                        "detail" to "Happening on $dateLabel",
+                                                        "category" to NotificationCategory.SELECTION.name,
+                                                        "status" to NotificationStatus.UNREAD.name,
+                                                        "inviteContact" to text2.trim(),
+                                                        "inviteType" to "EMAIL",
+                                                        "allowAccept" to true,
+                                                        "allowDecline" to true,
+                                                        "allowEventDetails" to true,
+                                                        "createdAt" to FieldValue.serverTimestamp(),
+                                                        "updatedAt" to FieldValue.serverTimestamp()
+                                                    )
+
+                                                    docRef.set(payload, SetOptions.merge()).await()
+                                                }
+                                                j++
+                                            }
+
+                                            SendNotification(userIds, "This is a notification created by a debug system", "You're invited to ${event.title}")
+
+                                            Toast.makeText(context, "${text1.toIntOrDefault(0)} notifications sent! to $j different users", Toast.LENGTH_LONG).show()
+                                        }
                                     },
                                     colors = ButtonDefaults.buttonColors().copy(
                                         containerColor = Color.Green
                                     )
                                 ) {
-                                    Text("Send ${number.toIntOrDefault(-1)} fake notifications to all users with email: $text to event with name: $text2")
+                                    Text("Send ${text1.toIntOrDefault(0)} fake notifications to all users with email: $text2 to event with name: $text3 with delay of ${text4.toIntOrDefault(0)} seconds")
                                 }
 
                                 TextButton(
                                     onClick = {
-                                        if (number.toIntOrDefault(-1) == -1) {
+                                        if (text1.toIntOrDefault(0) < 0) {
                                             Toast.makeText(context, "INVALID NUMBER", Toast.LENGTH_LONG).show()
                                         }
 
                                         val eventsCollection = FirebaseFirestore.getInstance().collection("events")
                                         val waitlistCollection = FirebaseFirestore.getInstance().collection("waitlist")
 
-                                        runBlocking {
-                                            launch {
-                                                val event = eventsCollection.whereEqualTo("title", text).get().await().toObjects<FirebaseEvent>()[0].toEvent()
+                                        scope.launch {
+                                            val event = eventsCollection.whereEqualTo("title", text2).get().await().toObjects<FirebaseEvent>()[0].toEvent()
 
-                                                for (i in 1..number.toIntOrDefault(-1)) {
-                                                    val currentSize = waitlistCollection
-                                                            .whereEqualTo("eventId", event.id)
-                                                            .whereIn(
-                                                                "status",
-                                                                listOf(
-                                                                    WaitlistStatus.WAITING.name,
-                                                                    WaitlistStatus.INVITED.name
-                                                                )
-                                                            ).get().await().size()
+                                            for (i in 1..text1.toIntOrDefault(0)) {
+                                                val currentSize = waitlistCollection
+                                                        .whereEqualTo("eventId", event.id)
+                                                        .whereIn(
+                                                            "status",
+                                                            listOf(
+                                                                WaitlistStatus.WAITING.name,
+                                                                WaitlistStatus.INVITED.name
+                                                            )
+                                                        ).get().await().size()
 
-                                                    val entry = FirebaseWaitlistEntry(
-                                                        eventId = event.id,
-                                                        userId = "FAKE_DEBUG_USER #$i",
-                                                        userName = "FAKE_DEBUG_NAME #$i",
-                                                        position = currentSize + 1,
-                                                        joinedTimestamp = Timestamp.now(),
-                                                        status = WaitlistStatus.WAITING
-                                                    )
+                                                val entry = FirebaseWaitlistEntry(
+                                                    eventId = event.id,
+                                                    userId = "FAKE_DEBUG_USER #$i",
+                                                    userName = "FAKE_DEBUG_NAME #$i",
+                                                    position = currentSize + 1,
+                                                    joinedTimestamp = Timestamp.now(),
+                                                    status = WaitlistStatus.WAITING
+                                                )
 
-                                                    val docRef = waitlistCollection.document()
-                                                    val entryWithId = entry.copy(id = docRef.id)
+                                                val docRef = waitlistCollection.document()
+                                                val entryWithId = entry.copy(id = docRef.id)
 
-                                                    docRef.set(entryWithId).await()
+                                                docRef.set(entryWithId).await()
 
-                                                    // Update event waitlist count
-                                                    eventsCollection.document(event.id)
-                                                        .update("waitlistCount", currentSize + 1).await()
-                                                }
-
-                                                Toast.makeText(context, "${number.toIntOrDefault(-1)} users added to waitlist!", Toast.LENGTH_LONG).show()
+                                                // Update event waitlist count
+                                                eventsCollection.document(event.id)
+                                                    .update("waitlistCount", currentSize + 1).await()
                                             }
-                                        }
 
+                                            Toast.makeText(context, "${text1.toIntOrDefault(-1)} users added to waitlist!", Toast.LENGTH_LONG).show()
+                                        }
                                     },
                                     colors = ButtonDefaults.buttonColors().copy(
                                         containerColor = Color.Green
                                     )
                                 ) {
-                                    Text("Enroll ${number.toIntOrDefault(-1)} fake users to event waitlist with name: $text")
+                                    Text("Enroll ${text1.toIntOrDefault(0)} fake users to event waitlist with name: $text2")
                                 }
                             }
                         }
