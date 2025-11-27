@@ -56,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.BackButton

@@ -92,7 +92,8 @@ class HomeScreenTest {
                 onNavigate = {},
                 dashboards = emptyList(),
                 currentUserId = "",
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -113,7 +114,8 @@ class HomeScreenTest {
                 onNavigate = {},
                 dashboards = emptyList(),
                 currentUserId = "",
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -135,7 +137,8 @@ class HomeScreenTest {
                 onNavigate = {},
                 dashboards = emptyList(),
                 currentUserId = "",
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -157,7 +160,8 @@ class HomeScreenTest {
                 onNavigate = {},
                 dashboards = emptyList(),
                 currentUserId = "",
-                isRefreshing = false
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 

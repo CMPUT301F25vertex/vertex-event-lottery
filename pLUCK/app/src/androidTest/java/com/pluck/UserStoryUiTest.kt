@@ -125,7 +125,8 @@ class UserStoryUiTest {
                     onScanQRCode = {},
                     dashboards = emptyList(),
                     currentUserId = "",
-                    isRefreshing = false
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }

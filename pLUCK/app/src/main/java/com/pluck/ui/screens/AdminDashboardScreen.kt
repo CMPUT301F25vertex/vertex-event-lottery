@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.pluck.data.firebase.AppealStatus
 import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.OrganizerAppeal
@@ -110,6 +110,7 @@ fun AdminDashboardScreen(
     currentRoute: String?,
     dashboards: List<Dashboard>,
     onNavigate: (String) -> Unit,
+    notificationCount: Int
 ) {
     var selectedTab by remember { mutableStateOf(AdminTab.Events) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -194,7 +195,8 @@ fun AdminDashboardScreen(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
                 dashboards = dashboards,
-                currentDashboard = DashboardType.Admin
+                currentDashboard = DashboardType.Admin,
+                notificationCount = notificationCount
             )
         }
     )

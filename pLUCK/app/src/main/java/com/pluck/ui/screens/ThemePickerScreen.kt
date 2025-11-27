@@ -114,8 +114,7 @@ fun ThemePickerScreen(
     })
 
     AutoHidingBarScroller(
-        listElements = listElements,
-        indexOfPersistentElement = 0
+        listElements = listElements
     )
 }
 
@@ -139,32 +138,26 @@ private fun ThemePickerHeader(
                 onBack = onBack
             )
 
-            Surface (
-                color = PluckPalette.Surface,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.padding(4.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Choose Your Theme",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Black,
-                            color = PluckPalette.Primary,
-                            fontSize = 28.sp
-                        )
+                Text(
+                    text = "Choose Your Theme",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        color = PluckPalette.Primary,
+                        fontSize = 28.sp
                     )
-                    Text(
-                        text = "Select a color scheme that matches your style",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = PluckPalette.Muted
-                        )
+                )
+                Text(
+                    text = "Select a color scheme that matches your style",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Muted
                     )
-                }
+                )
             }
         }
     }

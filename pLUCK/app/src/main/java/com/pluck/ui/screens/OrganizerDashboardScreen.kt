@@ -99,7 +99,8 @@ fun OrganizerDashboardScreen(
     onViewEntrantLocations: (Event) -> Unit = {},
     currentRoute: String?,
     onNavigate: (String) -> Unit,
-    dashboards: List<Dashboard>
+    dashboards: List<Dashboard>,
+    notificationCount: Int
 ) {
     val listElements = mutableListOf<ComposableItem>()
 
@@ -145,7 +146,8 @@ fun OrganizerDashboardScreen(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
                 dashboards = dashboards,
-                currentDashboard = DashboardType.Organizer
+                currentDashboard = DashboardType.Organizer,
+                notificationCount = notificationCount
             )
         }
     )
@@ -703,7 +705,8 @@ private fun OrganizerDashboardScreenPreview() {
         isLoading = false,
         currentRoute = "",
         dashboards = emptyList(),
-        onNavigate = { }
+        onNavigate = { },
+        notificationCount = 0
     )
 }
 

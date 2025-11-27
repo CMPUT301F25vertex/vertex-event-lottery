@@ -124,15 +124,20 @@ fun SettingsScreen(
             iconColor = PluckPalette.Secondary
         )
         {
-            SettingsToggleItem(
-                label = "All Notifications",
-                description = "Enable or disable all notifications",
-                checked = notificationsEnabled,
-                onCheckedChange = {
-                    notificationsEnabled = it
-                    notificationPrefs.setAllNotificationsEnabled(it)
-                }
-            )
+//            SettingsToggleItem(
+//                label = "In App Notifications",
+//                description = "Enable or disable in app notifications",
+//                checked = notificationsEnabled,
+//                onCheckedChange = {
+//                    notificationsEnabled = it
+//                    notificationPrefs.setAllNotificationsEnabled(it)
+//
+//                    if (!notificationsEnabled) {
+//                        pushNotifications = false
+//                        notificationPrefs.setPushNotificationsEnabled(false)
+//                    }
+//                }
+//            )
             SettingsToggleItem(
                 label = "Push Notifications",
                 description = "Receive push notifications for updates",
@@ -140,17 +145,6 @@ fun SettingsScreen(
                 onCheckedChange = {
                     pushNotifications = it
                     notificationPrefs.setPushNotificationsEnabled(it)
-                },
-                enabled = notificationsEnabled
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            SettingsToggleItem(
-                label = "Email Notifications",
-                description = "Receive email summaries",
-                checked = emailNotifications,
-                onCheckedChange = {
-                    emailNotifications = it
-                    notificationPrefs.setEmailNotificationsEnabled(it)
                 },
                 enabled = notificationsEnabled
             )
@@ -251,7 +245,7 @@ private fun SettingsSection(
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             shape = RoundedCornerShape(24.dp),
             color = PluckPalette.Primary.copy(alpha = 0.02f),
             border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
@@ -259,7 +253,8 @@ private fun SettingsSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 content()
             }
@@ -278,7 +273,6 @@ private fun SettingsToggleItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
             .clickable(
                 enabled = enabled,
                 indication = null,
@@ -313,6 +307,7 @@ private fun SettingsToggleItem(
                     )
                 )
             }
+            Spacer(modifier = Modifier.size(4.dp))
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,

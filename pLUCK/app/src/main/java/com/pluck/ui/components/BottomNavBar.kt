@@ -31,12 +31,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
@@ -123,7 +126,8 @@ fun BottomNavBar(
     onNavigate: (String) -> Unit,
     dashboards: List<Dashboard>,
     currentDashboard: DashboardType? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    notificationCount: Int
 ) {
     val items = mutableListOf<@Composable () -> Unit>()
 
@@ -132,7 +136,8 @@ fun BottomNavBar(
             NavItem(
                 tab = tab,
                 selected = currentRoute == tab.route,
-                onClick = { onNavigate(tab.route) }
+                onClick = { onNavigate(tab.route) },
+                notificationCount = notificationCount
             )
         })
     }
@@ -144,7 +149,8 @@ fun BottomNavBar(
             NavItem(
                 tab = tab,
                 selected = currentRoute == tab.route,
-                onClick = { onNavigate(tab.route) }
+                onClick = { onNavigate(tab.route) },
+                notificationCount = notificationCount
             )
         })
     }
@@ -197,8 +203,8 @@ fun DashboardSelector(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .width(80.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+//                    .width(80.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -251,7 +257,7 @@ fun DashboardSelector(
                         Icon(
                             imageVector = when (dashboard.type) {
                                 DashboardType.Entrant -> Icons.Default.Person
-                                DashboardType.Organizer -> Icons.Default.Settings
+                                DashboardType.Organizer -> Icons.Default.CalendarMonth
                                 DashboardType.Admin -> Icons.Default.Settings
                             },
                             contentDescription = null,
@@ -276,30 +282,44 @@ private fun NavItem(
     tab: NavTab,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    notificationCount: Int
 ) {
     val contentColor = if (selected) PluckPalette.Primary else PluckPalette.Muted
 
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) PluckPalette.Primary.copy(alpha = 0.12f) else Color.Transparent,
-        contentColor = contentColor,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        onClick = onClick,
-        modifier = Modifier.testTag("test_tag_" + tab.id)
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
+    Box {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected) PluckPalette.Primary.copy(alpha = 0.12f) else Color.Transparent,
+            contentColor = contentColor,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            onClick = onClick,
+            modifier = Modifier.testTag("test_tag_" + tab.id)
         ) {
-            Icon(
-                imageVector = tab.icon,
-                contentDescription = tab.label,
-                tint = contentColor,
-                modifier = Modifier.size(32.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = tab.icon,
+                    contentDescription = tab.label,
+                    tint = contentColor,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        // Unread Notification Indicator
+        if (tab == NavTabs.Notifications && notificationCount > 0) {
+            Surface(
+                shape = CircleShape,
+                color = PluckPalette.Decline,
+                modifier = Modifier
+                    .size(8.dp)
+                    .offset(x = 31.dp, y = 13.dp)
+            ) { }
         }
     }
 }
