@@ -23,7 +23,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace = "com.pluck"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.pluck"
@@ -130,6 +130,7 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.zxing:core:3.5.3")
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt.coil3:coil-gif:3.2.0")
 
     // Cloudinary for image uploads
     implementation("com.cloudinary:cloudinary-android:2.5.0")

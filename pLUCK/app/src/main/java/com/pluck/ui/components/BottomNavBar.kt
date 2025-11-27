@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
@@ -256,7 +257,7 @@ fun DashboardSelector(
                         Icon(
                             imageVector = when (dashboard.type) {
                                 DashboardType.Entrant -> Icons.Default.Person
-                                DashboardType.Organizer -> Icons.Default.Settings
+                                DashboardType.Organizer -> Icons.Default.CalendarMonth
                                 DashboardType.Admin -> Icons.Default.Settings
                             },
                             contentDescription = null,
