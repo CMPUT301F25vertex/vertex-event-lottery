@@ -31,11 +31,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Person
@@ -84,7 +87,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 private enum class WaitlistTab {
     WAITING,
-    CHOSEN
+    CHOSEN,
+    CANCELED
 }
 
 /**
@@ -112,6 +116,7 @@ fun WaitlistScreen(
     event: Event,
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
+    cancelEntries: List<WaitlistEntry> = emptyList(),
     onBack: () -> Unit = {},
     users: List<FirebaseUser> = emptyList(),
     modifier: Modifier = Modifier
@@ -136,6 +141,17 @@ fun WaitlistScreen(
     })
 
     listElements.add(ComposableItem {
+        WaitlistTabSelector(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            waitingCount = waitlistEntries.size,
+            chosenCount = chosenEntries.size,
+            canceledCount = cancelEntries.size,
+            modifier = Modifier.animateContentSize()
+        )
+    })
+
+    listElements.add(ComposableItem {
         Button(
             onClick = {
                 showNotificationWriterDialog = true
@@ -155,24 +171,21 @@ fun WaitlistScreen(
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
+
+            val contextString = when (selectedTab) {
+                WaitlistTab.WAITING -> "Waiting"
+                WaitlistTab.CANCELED -> "Canceled"
+                WaitlistTab.CHOSEN -> "Plucked"
+            }
+
             Text(
-                text = "Notify Everyone Waiting",
+                text = "Notify Everyone $contextString",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
                 maxLines = 1,
             )
         }
-    })
-
-    listElements.add(ComposableItem {
-        WaitlistTabSelector(
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
-            waitingCount = waitlistEntries.size,
-            chosenCount = chosenEntries.size,
-            modifier = Modifier.animateContentSize()
-        )
     })
 
     listElements.add(ComposableItem {
@@ -191,7 +204,7 @@ fun WaitlistScreen(
                     if (waitlistEntries.isEmpty()) {
                         WaitlistEmptyState(
                             message = "No one on the waitlist yet",
-                            description = ""
+                            description = "Go promote your event!"
                         )
                     } else {
                         WaitlistEntriesList(
@@ -204,13 +217,27 @@ fun WaitlistScreen(
                 WaitlistTab.CHOSEN -> {
                     if (chosenEntries.isEmpty()) {
                         WaitlistEmptyState(
-                            message = "No entrants chosen yet",
+                            message = "No entrants plucked yet",
                             description = "Run the lottery to randomly select entrants from the waitlist."
                         )
                     } else {
                         WaitlistEntriesList(
                             entries = chosenEntries,
-                            title = "Chosen Entrants",
+                            title = "Plucked Entrants",
+                            users = users
+                        )
+                    }
+                }
+                WaitlistTab.CANCELED -> {
+                    if (cancelEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No entrants canceled yet",
+                            description = "That's a relief!"
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = cancelEntries,
+                            title = "Canceled Entrants",
                             users = users
                         )
                     }
@@ -259,7 +286,7 @@ private fun WaitlistHeaderCard(
         val plural = if (event.samplingCount == 1) "" else "s"
         "Lottery draws randomly select ${event.samplingCount} entrant$plural each time. Everyone else keeps their waitlist spot for the next draw."
     } else {
-        "Lottery draws randomly select entrants from the waiting list. If you are not chosen, you remain in line for the next draw."
+        "Lottery draws randomly select entrants from the waiting list. If you are not plucked, you remain in line for the next draw."
     }
 
     Surface(
@@ -381,6 +408,7 @@ private fun WaitlistTabSelector(
     onTabSelected: (WaitlistTab) -> Unit,
     waitingCount: Int,
     chosenCount: Int,
+    canceledCount: Int,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -391,50 +419,79 @@ private fun WaitlistTabSelector(
         color = PluckPalette.Surface,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
-        Row(
+        LazyRow(
+            state = rememberLazyListState(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FilterChip(
-                selected = selectedTab == WaitlistTab.WAITING,
-                onClick = { onTabSelected(WaitlistTab.WAITING) },
-                label = { Text("Waiting ($waitingCount)") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.WAITING,
+                    onClick = { onTabSelected(WaitlistTab.WAITING) },
+                    label = { Text("Waiting ($waitingCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.WAITING) autoTextColor(
+                            PluckPalette.Tertiary
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Tertiary,
+                        selectedLabelColor = autoTextColor(PluckPalette.Tertiary)
                     )
-                },
-                modifier = Modifier.weight(1f),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
-                    labelColor = if (selectedTab == WaitlistTab.WAITING) autoTextColor(PluckPalette.Tertiary) else PluckPalette.Primary,
-                    selectedContainerColor = PluckPalette.Tertiary,
-                    selectedLabelColor = autoTextColor(PluckPalette.Tertiary)
                 )
-            )
-            FilterChip(
-                selected = selectedTab == WaitlistTab.CHOSEN,
-                onClick = { onTabSelected(WaitlistTab.CHOSEN) },
-                label = { Text("Chosen ($chosenCount)") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+            }
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.CHOSEN,
+                    onClick = { onTabSelected(WaitlistTab.CHOSEN) },
+                    label = { Text("Plucked ($chosenCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.CHOSEN) autoTextColor(
+                            PluckPalette.Accept
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Accept,
+                        selectedLabelColor = autoTextColor(PluckPalette.Accept)
                     )
-                },
-                modifier = Modifier.weight(1f),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
-                    labelColor = if (selectedTab == WaitlistTab.CHOSEN) autoTextColor(PluckPalette.Accept) else PluckPalette.Primary,
-                    selectedContainerColor = PluckPalette.Accept,
-                    selectedLabelColor = autoTextColor(PluckPalette.Accept)
                 )
-            )
+            }
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.CANCELED,
+                    onClick = { onTabSelected(WaitlistTab.CANCELED) },
+                    label = { Text("Canceled ($canceledCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Cancel,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.CANCELED) PluckPalette.Decline else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.CANCELED) autoTextColor(
+                            PluckPalette.Decline
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Decline,
+                        selectedLabelColor = autoTextColor(PluckPalette.Decline)
+                    )
+                )
+            }
         }
     }
 }
@@ -574,7 +631,7 @@ private fun WaitlistEmptyState(message: String, description: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

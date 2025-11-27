@@ -40,6 +40,9 @@ class WaitlistViewModel(
     private val _chosenEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
     val chosenEntries: StateFlow<List<WaitlistEntry>> = _chosenEntries.asStateFlow()
 
+    private val _cancelEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
+    val cancelEntries: StateFlow<List<WaitlistEntry>> = _cancelEntries.asStateFlow()
+
     private val _chosenStats = MutableStateFlow(WaitlistDecisionStats())
     val chosenStats: StateFlow<WaitlistDecisionStats> = _chosenStats.asStateFlow()
 
@@ -60,6 +63,8 @@ class WaitlistViewModel(
 
     private var waitlistJob: Job? = null
     private var chosenJob: Job? = null
+
+    private var canceledJob: Job? = null
     private var chosenStatsJob: Job? = null
 
     /**
@@ -126,6 +131,32 @@ class WaitlistViewModel(
                 }
                 .collect { stats ->
                     _chosenStats.value = stats
+                }
+        }
+    }
+
+    /**
+     * Observe real-time cancelled entries for an event
+     */
+    fun observeCancelledEntries(eventId: String, currentUserId: String = "") {
+        if (eventId.isBlank()) return
+        canceledJob?.cancel()
+        _cancelEntries.value = emptyList()
+        canceledJob = viewModelScope.launch {
+            waitlistRepository.observeCanceledEntries(eventId, currentUserId)
+                .catch { throwable ->
+                    _error.value = throwable.message ?: "Failed to load selected entrants"
+                }
+                .collect { entries ->
+                    _cancelEntries.value = entries
+                    updateStatusFromEntries(
+                        entries,
+                        setOf(
+                            WaitlistStatus.INVITED,
+                            WaitlistStatus.SELECTED,
+                            WaitlistStatus.ACCEPTED
+                        )
+                    )
                 }
         }
     }

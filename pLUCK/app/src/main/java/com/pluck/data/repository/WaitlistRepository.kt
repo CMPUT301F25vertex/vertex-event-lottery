@@ -1032,6 +1032,40 @@ class WaitlistRepository(
         }
 
     /**
+     * Observe real-time canceled entries for an event
+     *
+     * @param eventId The event ID
+     * @param currentUserId Optional user ID
+     * @return Flow of canceled entries
+     */
+    fun observeCanceledEntries(eventId: String, currentUserId: String = ""): Flow<List<WaitlistEntry>> =
+        callbackFlow {
+            val listener = waitlistCollection
+                .whereEqualTo("eventId", eventId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        // Handle permission errors gracefully
+                        trySend(emptyList())
+                        close()
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null) {
+                        val entries = snapshot.documents.mapNotNull { doc ->
+                            doc.toObject(FirebaseWaitlistEntry::class.java)
+                                ?.takeIf {
+                                    it.status == WaitlistStatus.CANCELLED
+                                }
+                                ?.toWaitlistEntry(currentUserId)
+                        }
+                        trySend(entries.dedupeByUser().sortedBy { it.position })
+                    }
+                }
+
+            awaitClose { listener.remove() }
+        }
+
+    /**
      * Observe aggregated decision stats (accepted, pending, declined, cancelled) for an event.
      */
     fun observeChosenStats(eventId: String): Flow<WaitlistDecisionStats> = callbackFlow {

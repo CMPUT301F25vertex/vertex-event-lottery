@@ -229,6 +229,7 @@ fun PLuckNavHost(
 
     val waitlistEntries by waitlistViewModel.waitlistEntries.collectAsState()
     val chosenEntries by waitlistViewModel.chosenEntries.collectAsState()
+    val cancelEntries by waitlistViewModel.cancelEntries.collectAsState()
     val chosenStats by waitlistViewModel.chosenStats.collectAsState()
     val waitlistLoading by waitlistViewModel.isLoading.collectAsState()
     val waitlistError by waitlistViewModel.error.collectAsState()
@@ -792,6 +793,7 @@ fun PLuckNavHost(
                         event = resolvedEvent,
                         waitlistEntries = waitlistEntries,
                         chosenEntries = chosenEntries,
+                        cancelEntries = cancelEntries,
                         onBack = { navController.popBackStack() },
                         users = users
                     )
