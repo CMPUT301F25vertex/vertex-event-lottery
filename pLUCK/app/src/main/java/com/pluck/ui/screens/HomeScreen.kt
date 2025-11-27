@@ -189,7 +189,7 @@ private fun HomeScreenContent(
 
     filters.add(EventFilter(
         label = "Available",
-        condition = { event -> !event.isPastEvent && !event.isFull && !userJoinedEventIds.contains(event.id) && event.isRegistrationOpen }
+        condition = { event -> !event.isPastEvent && !event.isFull && !userJoinedEventIds.contains(event.id) && event.isRegistrationOpen && event.organizerId != currentUserId }
     ))
 
     filters.add(EventFilter(
