@@ -117,6 +117,7 @@ fun MyEventsScreen(
     currentRoute: String?,
     onRefresh: () -> Unit,
     isRefreshing: Boolean,
+    notificationCount: Int
 ) {
     val filters = mutableListOf<EventFilter>()
 
@@ -152,7 +153,8 @@ fun MyEventsScreen(
             BottomNavBar(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
-                dashboards = dashboards
+                dashboards = dashboards,
+                notificationCount = notificationCount
             )
         },
         overviewHero = {

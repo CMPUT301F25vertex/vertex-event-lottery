@@ -110,6 +110,7 @@ fun AdminDashboardScreen(
     currentRoute: String?,
     dashboards: List<Dashboard>,
     onNavigate: (String) -> Unit,
+    notificationCount: Int
 ) {
     var selectedTab by remember { mutableStateOf(AdminTab.Events) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -194,7 +195,8 @@ fun AdminDashboardScreen(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
                 dashboards = dashboards,
-                currentDashboard = DashboardType.Admin
+                currentDashboard = DashboardType.Admin,
+                notificationCount = notificationCount
             )
         }
     )

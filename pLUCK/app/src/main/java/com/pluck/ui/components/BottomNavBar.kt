@@ -126,7 +126,7 @@ fun BottomNavBar(
     dashboards: List<Dashboard>,
     currentDashboard: DashboardType? = null,
     modifier: Modifier = Modifier,
-    notificationCount: Int = 5 // TODO
+    notificationCount: Int
 ) {
     val items = mutableListOf<@Composable () -> Unit>()
 

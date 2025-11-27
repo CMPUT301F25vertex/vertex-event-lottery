@@ -564,7 +564,8 @@ fun PLuckNavHost(
                 isRefreshing = eventsLoading,
                 userJoinedEventIds = userJoinedEventIds,
                 dashboards = dashboards,
-                currentUserId = currentUser?.deviceId.orEmpty()
+                currentUserId = currentUser?.deviceId.orEmpty(),
+                notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
             )
         }
         composable(
@@ -828,7 +829,8 @@ fun PLuckNavHost(
                                 "profile" -> { /* Already here */ }
                             }
                         },
-                        dashboards = dashboards
+                        dashboards = dashboards,
+                        notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
                     )
                 }
             ) { paddingValues ->
@@ -1342,7 +1344,8 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        dashboards = dashboards
+                        dashboards = dashboards,
+                        notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
                     )
                 }
             )
@@ -1529,7 +1532,8 @@ fun PLuckNavHost(
                                 "profile" -> navigator.toProfile()
                             }
                         },
-                        dashboards = dashboards
+                        dashboards = dashboards,
+                        notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
                     )
                 }
             ) { paddingValues ->
@@ -1619,6 +1623,7 @@ fun PLuckNavHost(
                     }
                 },
                 isRefreshing = eventsLoading,
+                notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
             )
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
@@ -1708,7 +1713,8 @@ fun PLuckNavHost(
                         "profile" -> navigator.toProfile()
                     }
                 },
-                dashboards = dashboards
+                dashboards = dashboards,
+                notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
@@ -1754,7 +1760,8 @@ fun PLuckNavHost(
                             "profile" -> navigator.toProfile()
                         }
                     },
-                    dashboards = dashboards
+                    dashboards = dashboards,
+                    notificationCount = notifications.count { it.status == NotificationStatus.UNREAD }
                 )
             } else {
                 PlaceholderScreen(

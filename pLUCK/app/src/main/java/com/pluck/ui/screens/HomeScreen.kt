@@ -121,7 +121,8 @@ fun HomeScreen(
     onScanQRCode: (() -> Unit)? = null,
     onRefreshEvents: (() -> Unit)? = null,
     isRefreshing: Boolean,
-    userJoinedEventIds: Set<String> = emptySet()
+    userJoinedEventIds: Set<String> = emptySet(),
+    notificationCount: Int
 ) {
     HomeScreenContent(
         userName = userName,
@@ -135,7 +136,8 @@ fun HomeScreen(
         isRefreshing = isRefreshing,
         userJoinedEventIds = userJoinedEventIds,
         dashboards = dashboards,
-        currentUserId = currentUserId
+        currentUserId = currentUserId,
+        notificationCount = notificationCount
     )
 }
 
@@ -157,7 +159,8 @@ private fun HomeScreenContent(
     onScanQRCode: () -> Unit,
     onRefresh: () -> Unit,
     isRefreshing: Boolean,
-    userJoinedEventIds: Set<String>
+    userJoinedEventIds: Set<String>,
+    notificationCount: Int
 ) {
     val filters = mutableListOf<EventFilter>()
 
@@ -205,7 +208,8 @@ private fun HomeScreenContent(
                 currentRoute = currentRoute,
                 onNavigate = onNavigate,
                 dashboards = dashboards,
-                currentDashboard = DashboardType.Entrant
+                currentDashboard = DashboardType.Entrant,
+                notificationCount = notificationCount
             )
         },
         overviewHero = {
@@ -318,6 +322,7 @@ private fun HomeScreenPreview() {
         onNavigate = {},
         dashboards = emptyList(),
         isRefreshing = false,
-        currentUserId = ""
+        currentUserId = "",
+        notificationCount = 0
     )
 }
