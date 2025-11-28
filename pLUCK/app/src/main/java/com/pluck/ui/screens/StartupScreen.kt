@@ -36,7 +36,7 @@ fun StartupScreen(
     var giveUpConnecting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(5000)
+        delay(20000)
         giveUpConnecting = true
     }
 
