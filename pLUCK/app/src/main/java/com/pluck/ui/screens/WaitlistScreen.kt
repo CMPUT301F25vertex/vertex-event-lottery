@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -129,6 +130,7 @@ fun WaitlistScreen(
     onBack: () -> Unit = {},
     onRunDraw: () -> Unit = {},
     users: List<FirebaseUser> = emptyList(),
+    onExportCSV: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
@@ -237,7 +239,8 @@ fun WaitlistScreen(
                             title = "Waitlist Queue",
                             users = users,
                             showRemoveButton = false,
-                            onRemoveEntrant = onRemoveEntrant
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
                         )
                     }
                 }
@@ -253,7 +256,9 @@ fun WaitlistScreen(
                             title = "Plucked Entrants",
                             users = users,
                             showRemoveButton = true,
-                            onRemoveEntrant = onRemoveEntrant
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab,
+                            onExportCSV = onExportCSV
                         )
                     }
                 }
@@ -269,7 +274,8 @@ fun WaitlistScreen(
                             title = "Canceled Entrants",
                             users = users,
                             showRemoveButton = false,
-                            onRemoveEntrant = onRemoveEntrant
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
                         )
                     }
                 }
@@ -685,7 +691,9 @@ private fun WaitlistEntriesList(
     title: String,
     users: List<FirebaseUser>,
     showRemoveButton: Boolean = false,
-    onRemoveEntrant: (WaitlistEntry) -> Unit = {}
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
+    onExportCSV: () -> Unit = {},
+    selectedTab: WaitlistTab
 ) {
     Column(
         modifier = Modifier
@@ -693,13 +701,29 @@ private fun WaitlistEntriesList(
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = PluckPalette.Primary
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
             )
-        )
+            if (selectedTab == WaitlistTab.CHOSEN) {
+                // Export CSV button (US 02.06.05)
+                IconButton(onClick = onExportCSV) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Export CSV",
+                        tint = PluckPalette.Secondary
+                    )
+                }
+            }
+        }
 
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
