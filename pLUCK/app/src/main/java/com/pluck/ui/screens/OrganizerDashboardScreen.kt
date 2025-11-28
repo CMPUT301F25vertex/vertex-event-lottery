@@ -558,7 +558,7 @@ private fun OrganizerEventCard(
                     OrganizerActionButton(
                         icon = Icons.Outlined.PlayArrow,
                         label = "Pluck Entrants",
-                        onClick = onManageChosenEntrants,
+                        onClick = onViewWaitlist,
                         backgroundColor = PluckPalette.Accept,
                         modifier = Modifier.fillMaxWidth()
                     )
