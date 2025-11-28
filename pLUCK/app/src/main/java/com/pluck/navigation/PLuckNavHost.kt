@@ -794,7 +794,21 @@ fun PLuckNavHost(
                         chosenEntries = chosenEntries,
                         cancelEntries = cancelEntries,
                         onBack = { navController.popBackStack() },
-                        users = users
+                        users = users,
+                        onRemoveEntrant = { entrant ->
+                            scope.launch {
+                                waitlistViewModel.removeChosenEntrant(
+                                    eventId = resolvedEvent.id,
+                                    waitlistEntryId = entrant.id,
+                                    userId = entrant.userId,
+                                    currentUserId = currentUser?.deviceId,
+                                    onSuccess = {
+                                        // Refresh the event data after removal
+                                        eventViewModel.loadEvent(resolvedEvent.id)
+                                    }
+                                )
+                            }
+                        }
                     )
                 }
                 waitlistLoading || eventsLoading -> {

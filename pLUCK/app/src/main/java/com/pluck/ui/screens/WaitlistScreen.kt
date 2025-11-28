@@ -40,10 +40,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +56,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,6 +125,7 @@ fun WaitlistScreen(
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
     cancelEntries: List<WaitlistEntry> = emptyList(),
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
     onBack: () -> Unit = {},
     onRunDraw: () -> Unit = {},
     users: List<FirebaseUser> = emptyList(),
@@ -231,7 +235,9 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = waitlistEntries,
                             title = "Waitlist Queue",
-                            users = users
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant
                         )
                     }
                 }
@@ -245,7 +251,9 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = chosenEntries,
                             title = "Plucked Entrants",
-                            users = users
+                            users = users,
+                            showRemoveButton = true,
+                            onRemoveEntrant = onRemoveEntrant
                         )
                     }
                 }
@@ -259,7 +267,9 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = cancelEntries,
                             title = "Canceled Entrants",
-                            users = users
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant
                         )
                     }
                 }
@@ -674,6 +684,8 @@ private fun WaitlistEntriesList(
     entries: List<WaitlistEntry>,
     title: String,
     users: List<FirebaseUser>,
+    showRemoveButton: Boolean = false,
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -701,7 +713,9 @@ private fun WaitlistEntriesList(
 
                 WaitlistEntryCard(
                     entry = entry,
-                    userProfileURL = userProfileURL
+                    userProfileURL = userProfileURL,
+                    showRemoveButton = showRemoveButton,
+                    onRemove = { onRemoveEntrant(entry) }
                 )
             }
         }
@@ -711,8 +725,12 @@ private fun WaitlistEntriesList(
 @Composable
 private fun WaitlistEntryCard(
     entry: WaitlistEntry,
-    userProfileURL: String
+    userProfileURL: String,
+    showRemoveButton: Boolean = false,
+    onRemove: () -> Unit = {}
 ) {
+    var showRemoveDialog by remember { mutableStateOf(false) }
+
     val accentColor = when (entry.status) {
         com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
         com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
@@ -772,30 +790,92 @@ private fun WaitlistEntryCard(
                     )
                 }
             }
-
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val statusLabel = when (entry.status) {
-                    com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
-                    com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
-                    com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
-                    com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
-                    else -> if (entry.isCurrentUser) "You" else "In Queue"
-                }
-                Text(
-                    text = statusLabel,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = accentColor
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    val statusLabel = when (entry.status) {
+                        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
+                        com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
+                        com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
+                        com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
+                        else -> if (entry.isCurrentUser) "You" else "In Queue"
+                    }
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentColor
+                        )
                     )
-                )
+                }
+            }
+            if (showRemoveButton) {
+                IconButton(
+                    onClick = { showRemoveDialog = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Remove entrant",
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
+    }
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Remove Entrant?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove ${entry.userName} from the event and free up their spot. You can run another lottery draw to fill the gap.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text("Cancel", color = PluckPalette.Muted)
+                }
+            }
+        )
     }
 }
 
