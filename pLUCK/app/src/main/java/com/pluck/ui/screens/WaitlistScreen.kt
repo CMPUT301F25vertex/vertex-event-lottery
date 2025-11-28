@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
@@ -73,6 +74,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
@@ -114,10 +116,14 @@ data class WaitlistEntry(
 @Composable
 fun WaitlistScreen(
     event: Event,
+    waitingCount: Int = 0,
+    availableSpots: Int = 0,
+    decisionStats: WaitlistDecisionStats = WaitlistDecisionStats(),
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
     cancelEntries: List<WaitlistEntry> = emptyList(),
     onBack: () -> Unit = {},
+    onRunDraw: () -> Unit = {},
     users: List<FirebaseUser> = emptyList(),
     modifier: Modifier = Modifier
 ) {
@@ -137,6 +143,21 @@ fun WaitlistScreen(
     listElements.add(ComposableItem {
         WaitlistHeaderCard(
             event = event
+        )
+    })
+
+    listElements.add(ComposableItem {
+        DrawActionsRow(
+            waitingCount = waitingCount,
+            availableSpots = availableSpots,
+            onRunDraw = onRunDraw
+        )
+    })
+
+    listElements.add(ComposableItem {
+        ChosenEntrantsStats(
+            stats = decisionStats,
+            capacity = event.capacity
         )
     })
 
@@ -354,7 +375,160 @@ private fun WaitlistHeaderCard(
         }
     }
 }
+@Composable
+private fun DrawActionsRow(
+    waitingCount: Int,
+    availableSpots: Int,
+    onRunDraw: () -> Unit
+) {
+    val canRunDraw = waitingCount > 0 && availableSpots > 0
+    val helperText = when {
+        availableSpots <= 0 -> "Event is full. Remove entrants or increase capacity to draw again."
+        waitingCount <= 0 -> "No entrants waiting. Invite more entrants to join the waitlist."
+        else -> "Draw again to invite ${minOf(waitingCount, availableSpots)} entrant(s)."
+    }
 
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Lottery Controls",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+
+                Button(
+                    onClick = onRunDraw,
+                    enabled = canRunDraw,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canRunDraw) PluckPalette.Secondary else PluckPalette.Muted.copy(alpha = 0.2f),
+                        contentColor = if (canRunDraw) autoTextColor(PluckPalette.Secondary) else PluckPalette.Muted
+                    ),
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .zIndex(10f) //Debugging
+                ) {
+                    Text(text = "Pluck", maxLines = 1)
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStats(
+    stats: WaitlistDecisionStats,
+    capacity: Int
+) {
+    val acceptedCount = stats.accepted
+    val pendingCount = stats.pending
+    val declinedCount = stats.declined
+    val cancelledCount = stats.cancelled
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ChosenEntrantsStatCard(
+                label = "Accepted",
+                value = "$acceptedCount/$capacity",
+                icon = Icons.Outlined.CheckCircle,
+                color = PluckPalette.Accept,
+                modifier = Modifier.weight(1f)
+            )
+            ChosenEntrantsStatCard(
+                label = "Pending",
+                value = pendingCount.toString(),
+                icon = Icons.Outlined.HourglassEmpty,
+                color = PluckPalette.Secondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStatCard(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = color.copy(alpha = 0.16f),
+                contentColor = color
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Muted
+                )
+            )
+        }
+    }
+}
 @Composable
 private fun WaitlistStatItem(
     icon: ImageVector,
