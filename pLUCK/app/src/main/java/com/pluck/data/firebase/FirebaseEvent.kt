@@ -81,7 +81,8 @@ data class FirebaseEvent(
     @ServerTimestamp
     val createdAt: Timestamp? = null,
     @ServerTimestamp
-    val updatedAt: Timestamp? = null
+    val updatedAt: Timestamp? = null,
+    val interests: List<String> = emptyList()
 ) {
     constructor() : this(
         id = "",
@@ -135,7 +136,8 @@ data class FirebaseEvent(
             acceptanceDeadline = acceptanceDeadline,
             requiresGeolocation = requiresGeolocation,
             latitude = latitude,
-            longitude = longitude
+            longitude = longitude,
+            interests = interests
         )
     }
 
@@ -170,7 +172,8 @@ data class FirebaseEvent(
                 acceptanceDeadline = event.acceptanceDeadline,
                 requiresGeolocation = event.requiresGeolocation,
                 latitude = event.latitude,
-                longitude = event.longitude
+                longitude = event.longitude,
+                interests = event.interests
             )
         }
     }

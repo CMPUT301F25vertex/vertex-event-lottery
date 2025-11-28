@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,7 +118,8 @@ data class CreateEventRequest(
     val registrationEndTime: LocalTime,
     val waitlistLimit: String,
     val samplingCount: String,
-    val requiresGeolocation: Boolean = false
+    val requiresGeolocation: Boolean = false,
+    val interests: List<String> = emptyList()
 )
 
 object CreateEventTestTags {
@@ -156,6 +158,8 @@ fun CreateEventScreen(
     var posterUrlInput by remember { mutableStateOf("") }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
+    var interestsMenuExpanded by remember { mutableStateOf(false) }
+    var selectedInterestIds by remember { mutableStateOf(setOf<String>()) }
 
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
@@ -334,6 +338,109 @@ fun CreateEventScreen(
             placeholder = "e.g., City Pool, 123 Main St",
             isRequired = true
         )
+    })
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Interests",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = PluckPalette.Primary
+            )
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = PluckPalette.Surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = if (selectedInterestIds.isEmpty()) "No interests selected" else selectedInterestIds.size.toString() + " selected",
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Primary
+                    )
+                )
+                Box {
+                    Button(
+                        onClick = { interestsMenuExpanded = true },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PluckPalette.Secondary,
+                            contentColor = PluckPalette.Surface
+                        ),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 12.dp,
+                            vertical = 6.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("Choose Interests")
+                    }
+
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = interestsMenuExpanded,
+                        onDismissRequest = { interestsMenuExpanded = false },
+                        containerColor = PluckPalette.Surface,
+                        tonalElevation = 2.dp,
+                        shadowElevation = 12.dp
+                    ) {
+                        com.pluck.ui.model.EventInterests.all.forEach { interest ->
+                            val selected = selectedInterestIds.contains(interest.id)
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.material3.Checkbox(
+                                            checked = selected,
+                                            onCheckedChange = {
+                                                selectedInterestIds = if (selected) {
+                                                    selectedInterestIds - interest.id
+                                                } else {
+                                                    selectedInterestIds + interest.id
+                                                }
+                                            }
+                                        )
+                                        Text(interest.label)
+                                    }
+                                },
+                                onClick = {
+                                    // Toggle on item click as well
+                                    selectedInterestIds = if (selected) {
+                                        selectedInterestIds - interest.id
+                                    } else {
+                                        selectedInterestIds + interest.id
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
     })
 
     listElements.add(ComposableItem {
@@ -599,7 +706,8 @@ fun CreateEventScreen(
                             registrationEndTime = registrationEndTime!!,
                             waitlistLimit = waitlistLimit,
                             samplingCount = samplingCount,
-                            requiresGeolocation = requiresGeolocation
+                            requiresGeolocation = requiresGeolocation,
+                            interests = selectedInterestIds.toList()
                         )
                     )
                 }

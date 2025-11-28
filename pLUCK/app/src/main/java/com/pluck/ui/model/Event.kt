@@ -69,7 +69,8 @@ data class Event(
     val acceptanceDeadline: Int = 24,
     val requiresGeolocation: Boolean = false,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val interests: List<String> = emptyList()
 ) {
     /**
      * @return A preview-friendly description limited to 120 characters.

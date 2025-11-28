@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Interests
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.Button
@@ -72,6 +73,7 @@ import androidx.compose.ui.zIndex
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.ShowQRCodeButton
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.EventInterests
 import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
@@ -444,6 +446,15 @@ private fun EventDetailInfoSection(
     event: Event,
     modifier: Modifier = Modifier
 ) {
+    val interestsLabel = if (event.interests.isEmpty()) {
+        "No interests"
+    } else {
+        val labels = event.interests.map { id ->
+            EventInterests.byId[id]?.label ?: id
+        }
+        "Interests: " + labels.joinToString(", ")
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -471,6 +482,12 @@ private fun EventDetailInfoSection(
                 label = event.location,
                 accentColor = PluckPalette.Tertiary,
                 modifier = Modifier.testTag("eventLocation")
+            )
+            EventInfoRow(
+                icon = Icons.Outlined.Interests,
+                label = interestsLabel,
+                accentColor = PluckPalette.Secondary,
+                modifier = Modifier.testTag("eventInterests")
             )
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,

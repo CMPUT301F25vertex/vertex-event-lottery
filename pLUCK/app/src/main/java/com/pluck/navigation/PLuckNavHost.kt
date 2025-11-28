@@ -1434,7 +1434,8 @@ fun PLuckNavHost(
                         registrationEnd = request.registrationEndDate,
                         registrationEndTime = request.registrationEndTime,
                         samplingCount = samplingCount,
-                        requiresGeolocation = request.requiresGeolocation
+                        requiresGeolocation = request.requiresGeolocation,
+                        interests = request.interests
                     )
 
                     eventViewModel.createEvent(newEvent, organizer.deviceId) { eventId ->

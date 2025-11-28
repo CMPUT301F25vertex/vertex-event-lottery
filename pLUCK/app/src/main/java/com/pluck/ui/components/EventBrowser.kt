@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Interests
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
@@ -64,7 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.pluck.ui.model.Event
-import com.pluck.ui.screens.EventCategory
 import com.pluck.ui.theme.autoTextColor
 
 class EventFilter(
@@ -91,8 +91,10 @@ fun EventBrowser(
     val confettiTrigger by remember { mutableStateOf(false) }
     var activeFilter: EventFilter by remember { mutableStateOf(filters[0]) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var interestsExpanded by remember { mutableStateOf(false) }
+    var selectedInterestIds by rememberSaveable { mutableStateOf(setOf<String>()) }
 
-    val filteredEvents = remember(events, activeFilter, searchQuery) {
+    val filteredEvents = remember(events, activeFilter, searchQuery, selectedInterestIds) {
         events
             // Filter based on active filter
             .filter { activeFilter.condition(it) }
@@ -104,6 +106,11 @@ fun EventBrowser(
                 event.description.contains(searchQuery, ignoreCase = true) ||
                 event.location.contains(searchQuery, ignoreCase = true) ||
                 event.organizerName.contains(searchQuery, ignoreCase = true)
+            }
+
+            // Final filter based on interests, if any
+            .filter { event ->
+                if (selectedInterestIds.isEmpty()) true else event.interests.any { it in selectedInterestIds }
             }
     }.sortedBy { event -> event.eventDateTime }
 
@@ -126,7 +133,15 @@ fun EventBrowser(
         FilterRow(
             filters = filters,
             selectedFilter = activeFilter,
-            onSelected = { filter -> activeFilter = filter }
+            onSelected = { filter -> activeFilter = filter },
+            selectedInterestCount = selectedInterestIds.size,
+            onClickInterests = { interestsExpanded = true },
+            interestsExpanded = interestsExpanded,
+            onDismissInterests = { interestsExpanded = false },
+            onToggleInterest = { id ->
+                selectedInterestIds = if (selectedInterestIds.contains(id)) selectedInterestIds - id else selectedInterestIds + id
+            },
+            isInterestSelected = { id -> selectedInterestIds.contains(id) }
         )
     })
 
@@ -414,19 +429,75 @@ private fun SearchBar(
 private fun FilterRow(
     filters: List<EventFilter>,
     selectedFilter: EventFilter,
-    onSelected: (EventFilter) -> Unit
+    onSelected: (EventFilter) -> Unit,
+    selectedInterestCount: Int,
+    onClickInterests: () -> Unit,
+    interestsExpanded: Boolean,
+    onDismissInterests: () -> Unit,
+    onToggleInterest: (String) -> Unit,
+    isInterestSelected: (String) -> Boolean
 ) {
-    val filtersAsStrings = mutableListOf<String>()
+    Column {
+        val filtersAsStrings = filters.map { it.label }
 
-    for (filter in filters) {
-        filtersAsStrings.add(filter.label)
+        PLuckChipRow(
+            chips = filtersAsStrings,
+            selectedChip = selectedFilter.label,
+            onSelect = { chip -> onSelected(filters.find { it.label == chip } ?: filters[0]) }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            FilterChip(
+                selected = selectedInterestCount > 0,
+                onClick = onClickInterests,
+                label = {
+                    val count = selectedInterestCount
+                    Text(if (count > 0) "Interests ($count)" else "Interests")
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Interests,
+                        contentDescription = null,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                )
+            )
+
+            androidx.compose.material3.DropdownMenu(
+                expanded = interestsExpanded,
+                onDismissRequest = onDismissInterests,
+                containerColor = PluckPalette.Surface,
+                tonalElevation = 2.dp,
+                shadowElevation = 12.dp
+            ) {
+                com.pluck.ui.model.EventInterests.all.forEach { interest ->
+                    val selected = isInterestSelected(interest.id)
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = { onToggleInterest(interest.id) }
+                                )
+                                Text(interest.label)
+                            }
+                        },
+                        onClick = { onToggleInterest(interest.id) }
+                    )
+                }
+            }
+        }
     }
-
-    PLuckChipRow(
-        chips = filtersAsStrings,
-        selectedChip = selectedFilter.label,
-        onSelect = { chip -> onSelected(filters.find { it.label == chip } ?: filters[0]) }
-    )
 }
 
 @Composable
