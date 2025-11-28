@@ -249,7 +249,6 @@ fun WaitlistScreen(
     PluckLayeredBackground(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
     )
     {
         FullWidthLazyScroll(
