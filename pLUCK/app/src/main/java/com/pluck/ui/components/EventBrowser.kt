@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class EventFilter(
     val label: String,
@@ -93,8 +95,11 @@ fun EventBrowser(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var interestsExpanded by remember { mutableStateOf(false) }
     var selectedInterestIds by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var availabilityStart by remember { mutableStateOf<LocalDate?>(null) }
+    var availabilityEnd by remember { mutableStateOf<LocalDate?>(null) }
+    var showAvailabilityPicker by remember { mutableStateOf(false) }
 
-    val filteredEvents = remember(events, activeFilter, searchQuery, selectedInterestIds) {
+    val filteredEvents = remember(events, activeFilter, searchQuery, selectedInterestIds, availabilityStart, availabilityEnd) {
         events
             // Filter based on active filter
             .filter { activeFilter.condition(it) }
@@ -108,9 +113,18 @@ fun EventBrowser(
                 event.organizerName.contains(searchQuery, ignoreCase = true)
             }
 
-            // Final filter based on interests, if any
+            // Filter based on interests
             .filter { event ->
                 if (selectedInterestIds.isEmpty()) true else event.interests.any { it in selectedInterestIds }
+            }
+
+            // Filter based on availability
+            .filter { event ->
+                if (availabilityStart != null && availabilityEnd != null) {
+                    !event.date.isBefore(availabilityStart) && !event.date.isAfter(availabilityEnd)
+                } else {
+                    true
+                }
             }
     }.sortedBy { event -> event.eventDateTime }
 
@@ -129,6 +143,15 @@ fun EventBrowser(
         }
     })
 
+    val availabilityLabel = remember(availabilityStart, availabilityEnd) {
+        if (availabilityStart != null && availabilityEnd != null) {
+            val fmt = DateTimeFormatter.ofPattern("MMM d")
+            "${availabilityStart!!.format(fmt)} – ${availabilityEnd!!.format(fmt)}"
+        } else {
+            null
+        }
+    }
+
     listElements.add(ComposableItem {
         FilterRow(
             filters = filters,
@@ -141,7 +164,9 @@ fun EventBrowser(
             onToggleInterest = { id ->
                 selectedInterestIds = if (selectedInterestIds.contains(id)) selectedInterestIds - id else selectedInterestIds + id
             },
-            isInterestSelected = { id -> selectedInterestIds.contains(id) }
+            isInterestSelected = { id -> selectedInterestIds.contains(id) },
+            availabilityLabel = availabilityLabel,
+            onClickAvailability = { showAvailabilityPicker = true }
         )
     })
 
@@ -173,6 +198,24 @@ fun EventBrowser(
             trigger = confettiTrigger,
             modifier = Modifier
                 .fillMaxSize()
+        )
+    }
+
+    if (showAvailabilityPicker) {
+        val defaultStart = availabilityStart ?: LocalDate.now()
+        val defaultEnd = availabilityEnd ?: defaultStart.plusDays(7)
+        PLuckDateRangePicker(
+            onDateSelected = { start, end ->
+                availabilityStart = start
+                availabilityEnd = end
+            },
+            onDismiss = { showAvailabilityPicker = false },
+            defaultStartDate = defaultStart,
+            defaultEndDate = defaultEnd,
+            onClear = {
+                availabilityStart = null
+                availabilityEnd = null
+            }
         )
     }
 }
@@ -435,7 +478,9 @@ private fun FilterRow(
     interestsExpanded: Boolean,
     onDismissInterests: () -> Unit,
     onToggleInterest: (String) -> Unit,
-    isInterestSelected: (String) -> Boolean
+    isInterestSelected: (String) -> Boolean,
+    availabilityLabel: String?,
+    onClickAvailability: () -> Unit
 ) {
     Column {
         val filtersAsStrings = filters.map { it.label }
@@ -450,18 +495,64 @@ private fun FilterRow(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Box {
+                FilterChip(
+                    selected = selectedInterestCount > 0,
+                    onClick = onClickInterests,
+                    label = {
+                        val count = selectedInterestCount
+                        Text(if (count > 0) "Interests ($count)" else "Interests")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Interests,
+                            contentDescription = null,
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    )
+                )
+
+                androidx.compose.material3.DropdownMenu(
+                    expanded = interestsExpanded,
+                    onDismissRequest = onDismissInterests,
+                    containerColor = PluckPalette.Surface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 12.dp
+                ) {
+                    com.pluck.ui.model.EventInterests.all.forEach { interest ->
+                        val selected = isInterestSelected(interest.id)
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.Checkbox(
+                                        checked = selected,
+                                        onCheckedChange = { onToggleInterest(interest.id) }
+                                    )
+                                    Text(interest.label)
+                                }
+                            },
+                            onClick = { onToggleInterest(interest.id) }
+                        )
+                    }
+                }
+            }
+
             FilterChip(
-                selected = selectedInterestCount > 0,
-                onClick = onClickInterests,
+                selected = availabilityLabel != null,
+                onClick = onClickAvailability,
                 label = {
-                    val count = selectedInterestCount
-                    Text(if (count > 0) "Interests ($count)" else "Interests")
+                    Text(availabilityLabel?.let { "Availability ($it)" } ?: "Availability")
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Interests,
+                        imageVector = Icons.Outlined.Schedule,
                         contentDescription = null,
                     )
                 },
@@ -469,33 +560,6 @@ private fun FilterRow(
                     selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 )
             )
-
-            androidx.compose.material3.DropdownMenu(
-                expanded = interestsExpanded,
-                onDismissRequest = onDismissInterests,
-                containerColor = PluckPalette.Surface,
-                tonalElevation = 2.dp,
-                shadowElevation = 12.dp
-            ) {
-                com.pluck.ui.model.EventInterests.all.forEach { interest ->
-                    val selected = isInterestSelected(interest.id)
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                androidx.compose.material3.Checkbox(
-                                    checked = selected,
-                                    onCheckedChange = { onToggleInterest(interest.id) }
-                                )
-                                Text(interest.label)
-                            }
-                        },
-                        onClick = { onToggleInterest(interest.id) }
-                    )
-                }
-            }
         }
     }
 }
