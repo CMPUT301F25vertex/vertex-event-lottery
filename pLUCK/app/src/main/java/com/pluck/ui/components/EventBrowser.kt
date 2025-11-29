@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.EventInterests
 import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -497,24 +499,54 @@ private fun FilterRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box {
-                FilterChip(
-                    selected = selectedInterestCount > 0,
-                    onClick = onClickInterests,
-                    label = {
-                        val count = selectedInterestCount
-                        Text(if (count > 0) "Interests ($count)" else "Interests")
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Interests,
-                            contentDescription = null,
+            Box(
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 4.dp,
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+                ) {
+                    FilterChip(
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = selectedInterestCount > 0,
+                        onClick = onClickInterests,
+                        label = {
+                            val count = selectedInterestCount
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Interests,
+                                    contentDescription = null,
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (count > 0) "Interests ($count)" else "Interests",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.Transparent,
+                            selectedContainerColor = Color.Transparent,
+                            labelColor = PluckPalette.Primary,
+                            selectedLabelColor = PluckPalette.Primary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selectedInterestCount > 0,
+                            borderColor = Color.Transparent,
+                            selectedBorderColor = Color.Transparent,
+                            disabledBorderColor = Color.Transparent
                         )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     )
-                )
+                }
 
                 androidx.compose.material3.DropdownMenu(
                     expanded = interestsExpanded,
@@ -523,7 +555,7 @@ private fun FilterRow(
                     tonalElevation = 2.dp,
                     shadowElevation = 12.dp
                 ) {
-                    com.pluck.ui.model.EventInterests.all.forEach { interest ->
+                    EventInterests.all.forEach { interest ->
                         val selected = isInterestSelected(interest.id)
                         androidx.compose.material3.DropdownMenuItem(
                             text = {
@@ -544,22 +576,51 @@ private fun FilterRow(
                 }
             }
 
-            FilterChip(
-                selected = availabilityLabel != null,
-                onClick = onClickAvailability,
-                label = {
-                    Text(availabilityLabel?.let { "Availability ($it)" } ?: "Availability")
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                tonalElevation = 0.dp,
+                shadowElevation = 4.dp,
+                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+            ) {
+                FilterChip(
+                    modifier = Modifier.fillMaxWidth(),
+                    selected = availabilityLabel != null,
+                    onClick = onClickAvailability,
+                    label = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Schedule,
+                                contentDescription = null,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = availabilityLabel?.let { "Availability ($it)" } ?: "Availability",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        labelColor = PluckPalette.Primary,
+                        selectedLabelColor = PluckPalette.Primary
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = availabilityLabel != null,
+                        borderColor = Color.Transparent,
+                        selectedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
                     )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 )
-            )
+            }
         }
     }
 }
