@@ -618,6 +618,7 @@ fun PLuckNavHost(
                     } ?: false
 
                     EventDetailScreen(
+                        isLoading = waitlistLoading,
                         event = resolvedEvent,
                         isUserOnWaitlist = isUserWaiting,
                         isUserConfirmed = isUserConfirmed,
