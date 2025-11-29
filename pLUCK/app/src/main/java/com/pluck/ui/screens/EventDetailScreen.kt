@@ -476,7 +476,7 @@ private fun EventDetailInfoSection(
             EventInfoRow(
                 icon = Icons.Outlined.LocationOn,
                 label = event.location,
-                accentColor = PluckPalette.Tertiary,
+                accentColor = PluckPalette.Secondary,
                 modifier = Modifier.testTag("eventLocation")
             )
             if (hasInterests) {
@@ -714,7 +714,7 @@ private fun EventLotteryInfoCard(
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = samplingLabel,
-                accentColor = PluckPalette.Tertiary
+                accentColor = PluckPalette.Secondary
             )
             if (event.waitlistCapacity != Int.MAX_VALUE) {
                 EventInfoRow(
