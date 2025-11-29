@@ -93,6 +93,7 @@ import com.pluck.ui.components.ComposableItem
  */
 @Composable
 fun EventDetailScreen(
+    isLoading: Boolean = false,
     event: Event,
     isUserOnWaitlist: Boolean,
     isUserConfirmed: Boolean,
@@ -137,7 +138,9 @@ fun EventDetailScreen(
             when {
                 isUserConfirmed -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
@@ -154,7 +157,9 @@ fun EventDetailScreen(
                 }
                 isUserOnWaitlist -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
@@ -171,7 +176,9 @@ fun EventDetailScreen(
                 }
                 registrationClosed -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
@@ -188,7 +195,9 @@ fun EventDetailScreen(
                 }
                 waitlistFull -> {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
                         shape = RoundedCornerShape(20.dp),
                         color = PluckPalette.Surface,
                         border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
@@ -272,7 +281,8 @@ fun EventDetailScreen(
                 isEventOrganizer = isEventOrganizer,
                 onJoinEvent = onJoinEvent,
                 onLeaveWaitlist = onLeaveWaitlist,
-                onViewWaitlist = onViewWaitlist
+                onViewWaitlist = onViewWaitlist,
+                isLoading = isLoading
             )
         }
     )
@@ -879,6 +889,7 @@ private fun RowScope.InviteTypeChip(
  */
 @Composable
 private fun EventDetailBottomActions(
+    isLoading: Boolean,
     event: Event,
     isUserOnWaitlist: Boolean,
     isUserConfirmed: Boolean,
@@ -911,12 +922,21 @@ private fun EventDetailBottomActions(
                     border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
-                    Text(
-                        text = "Release My Spot",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Primary
                         )
-                    )
+                    } else {
+                        Text(
+                            text = "Release My Spot",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
             else if (isUserOnWaitlist) {
@@ -931,12 +951,21 @@ private fun EventDetailBottomActions(
                     border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
-                    Text(
-                        text = "Leave Waitlist",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Primary
                         )
-                    )
+                    } else {
+                        Text(
+                            text = "Leave Waitlist",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
             else if (isEventOrganizer) {
@@ -952,18 +981,27 @@ private fun EventDetailBottomActions(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 )
                 {
-                    Icon(
-                        imageVector = Icons.Outlined.PeopleOutline,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = "View Waitlist",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Surface
                         )
-                    )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.PeopleOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = "View Waitlist",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
                 }
             }
             else {
@@ -984,12 +1022,21 @@ private fun EventDetailBottomActions(
                         waitlistFull -> "Waitlist Full"
                         else -> "Join Waitlist"
                     }
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Surface
                         )
-                    )
+                    } else {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -1001,14 +1048,23 @@ private fun EventDetailBottomActions(
                 color = PluckPalette.Muted.copy(alpha = 0.1f),
                 border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
             ) {
-                Text(
-                    text = "This event has already occurred",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = PluckPalette.Muted,
-                        fontWeight = FontWeight.Medium
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = PluckPalette.Secondary
                     )
-                )
+                } else {
+                    Text(
+                        text = "This event has already occurred",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Muted,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
             }
         }
 

@@ -110,12 +110,15 @@ fun NotificationsScreen(
 ) {
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.UNREAD) }
     val unreadCount = notifications.count { it.status == NotificationStatus.UNREAD }
+    val readCount = notifications.count { it.status == NotificationStatus.READ }
+
     val hasNotifications = notifications.isNotEmpty()
     val filteredItems = remember(notifications, filter) { notifications.filterBy(filter) }
 
     NotificationsContent(
         modifier = modifier,
         unreadCount = unreadCount,
+        readCount = readCount,
         selectedFilter = filter,
         onFilterSelected = { filter = it },
         notifications = filteredItems,
@@ -138,6 +141,7 @@ fun NotificationsScreen(
 private fun NotificationsContent(
     modifier: Modifier,
     unreadCount: Int,
+    readCount: Int,
     selectedFilter: NotificationFilter,
     onFilterSelected: (NotificationFilter) -> Unit,
     notifications: List<NotificationItem>,
@@ -156,6 +160,7 @@ private fun NotificationsContent(
     listElements.add(ComposableItem {
         NotificationsHero(
             unreadCount = unreadCount,
+            readCount = readCount,
             selectedFilter = selectedFilter,
             onFilterSelected = onFilterSelected,
             onProfileClick = onProfileClick,
@@ -221,6 +226,7 @@ private fun NotificationsContent(
  */
 private fun NotificationsHero(
     unreadCount: Int,
+    readCount: Int,
     selectedFilter: NotificationFilter,
     onFilterSelected: (NotificationFilter) -> Unit,
     onProfileClick: () -> Unit,
@@ -257,7 +263,8 @@ private fun NotificationsHero(
                 NotificationFilterRow(
                     unreadCount = unreadCount,
                     selected = selectedFilter,
-                    onSelected = onFilterSelected
+                    onSelected = onFilterSelected,
+                    readCount = readCount
                 )
             }
         }
@@ -323,6 +330,7 @@ private fun NotificationsHeaderRow(
 /** Filter chip row for toggling between unread and read notifications. */
 private fun NotificationFilterRow(
     unreadCount: Int,
+    readCount: Int,
     selected: NotificationFilter,
     onSelected: (NotificationFilter) -> Unit
 ) {
@@ -386,12 +394,22 @@ private fun NotificationFilterRow(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Read",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Read",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
                         )
-                    )
+                        if (readCount > 0) {
+                            Text(
+                                text = " (${readCount})",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
                 }
             },
             colors = FilterChipDefaults.filterChipColors(

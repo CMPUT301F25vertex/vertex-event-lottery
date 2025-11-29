@@ -245,7 +245,7 @@ class WaitlistRepositoryTest {
         assert(!FirebaseFirestore.getInstance().collection("waitlist")
             .whereEqualTo("eventId", eventId)
             .whereEqualTo("userId", userId)
-            .whereEqualTo("status", "WAITING")
+            .whereEqualTo("status", "DECLINED")
             .get().await().documents.isEmpty())
 
         async { clean() }.await()

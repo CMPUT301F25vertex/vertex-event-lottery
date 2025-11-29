@@ -78,6 +78,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.ComposableItem
@@ -111,7 +112,7 @@ data class WaitlistEntry(
     val joinedDate: LocalDate,
     val isCurrentUser: Boolean = false,
     val isChosen: Boolean = false,
-    val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING,
+    val status: WaitlistStatus = WaitlistStatus.WAITING,
     val latitude: Double? = null,
     val longitude: Double? = null
 )
@@ -296,7 +297,14 @@ fun WaitlistScreen(
     if (showNotificationWriterDialog) {
         val waitlistUserIds = mutableListOf<String>()
 
-        for (wait in waitlistEntries) {
+        var listToSendTo: List<WaitlistEntry>
+        when (selectedTab) {
+            WaitlistTab.WAITING -> listToSendTo = waitlistEntries
+            WaitlistTab.CANCELED -> listToSendTo = cancelEntries
+            WaitlistTab.CHOSEN -> listToSendTo = chosenEntries
+        }
+
+        for (wait in listToSendTo) {
             waitlistUserIds.add(wait.userId)
         }
 
@@ -496,7 +504,7 @@ private fun ChosenEntrantsStats(
 private fun ChosenEntrantsStatCard(
     label: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     color: Color,
     modifier: Modifier = Modifier
 ) {
@@ -756,9 +764,9 @@ private fun WaitlistEntryCard(
     var showRemoveDialog by remember { mutableStateOf(false) }
 
     val accentColor = when (entry.status) {
-        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
-        com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
-        com.pluck.data.firebase.WaitlistStatus.DECLINED -> PluckPalette.Decline
+        WaitlistStatus.ACCEPTED -> PluckPalette.Accept
+        WaitlistStatus.INVITED -> PluckPalette.Tertiary
+        WaitlistStatus.DECLINED -> PluckPalette.Decline
         else -> if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
     }
 
@@ -825,10 +833,10 @@ private fun WaitlistEntryCard(
                     shadowElevation = 0.dp
                 ) {
                     val statusLabel = when (entry.status) {
-                        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
-                        com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
-                        com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
-                        com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
+                        WaitlistStatus.ACCEPTED -> "Confirmed"
+                        WaitlistStatus.INVITED -> "Invited"
+                        WaitlistStatus.DECLINED -> "Declined"
+                        WaitlistStatus.CANCELLED -> "Removed"
                         else -> if (entry.isCurrentUser) "You" else "In Queue"
                     }
                     Text(

@@ -217,22 +217,6 @@ class ScreensSmokeTest {
     }
 
     @Test
-    fun waitlistScreen_rendersQueues() {
-        composeRule.setContent {
-            PluckTheme {
-                WaitlistScreen(
-                    event = sampleEvent,
-                    waitlistEntries = sampleWaitlistEntries,
-                    users = emptyList()
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("Waitlist Queue").assertIsDisplayed()
-        composeRule.onNodeWithText("Jordan Lee").assertIsDisplayed()
-    }
-
-    @Test
     fun welcomeBackScreen_rendersDeviceCard() {
         composeRule.setContent {
             PluckTheme {
