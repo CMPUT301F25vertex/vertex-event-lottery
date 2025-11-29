@@ -472,7 +472,7 @@ class WaitlistViewModel(
         onSuccess: (Intent) -> Unit
     ) {
         viewModelScope.launch {
-            csvExportRepository.exportAllEntrants(context, event, entrants)
+            csvExportRepository.exportAcceptedEntrants(context, event, entrants)
                 .onSuccess { intent ->
                     onSuccess(intent)
                 }

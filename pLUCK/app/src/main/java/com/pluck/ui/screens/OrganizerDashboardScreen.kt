@@ -517,44 +517,51 @@ private fun OrganizerEventCard(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 )
                 {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.People,
-                            label = "Manage Waitlist",
-                            onClick = onViewWaitlist,
-                            backgroundColor = PluckPalette.Tertiary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (event.isDrawComplete) {
-                            OrganizerActionButton(
-                                icon = Icons.Outlined.CheckCircle,
-                                label = "Plucked Entrants",
-                                onClick = onManageChosenEntrants,
-                                backgroundColor = PluckPalette.Accept,
-                                modifier = Modifier.weight(1f)
-                            )
-                        } else {
-                            OrganizerActionButton(
-                                icon = Icons.Outlined.PlayArrow,
-                                label = "Pluck Entrants",
-                                onClick = onRunDraw,
-                                backgroundColor = PluckPalette.Secondary,
-                                modifier = Modifier.weight(1f),
-                                enabled = event.canRunDrawEarly
-                            )
-                        }
-                    }
-                    if (!event.isDrawComplete && !event.canRunDrawEarly) {
-                        Text(
-                            text = "Cannot run draw until someone joins the waitlist.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = PluckPalette.Muted
-                            )
-                        )
-                    }
+//                    Row(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+//                    ) {
+//                        OrganizerActionButton(
+//                            icon = Icons.Outlined.People,
+//                            label = "Manage Waitlist",
+//                            onClick = onViewWaitlist,
+//                            backgroundColor = PluckPalette.Tertiary,
+//                            modifier = Modifier.weight(1f)
+//                        )
+//                        if (event.isDrawComplete) {
+//                            OrganizerActionButton(
+//                                icon = Icons.Outlined.CheckCircle,
+//                                label = "Plucked Entrants",
+//                                onClick = onManageChosenEntrants,
+//                                backgroundColor = PluckPalette.Accept,
+//                                modifier = Modifier.weight(1f)
+//                            )
+//                        } else {
+//                            OrganizerActionButton(
+//                                icon = Icons.Outlined.PlayArrow,
+//                                label = "Pluck Entrants",
+//                                onClick = onRunDraw,
+//                                backgroundColor = PluckPalette.Secondary,
+//                                modifier = Modifier.weight(1f),
+//                                enabled = event.canRunDrawEarly
+//                            )
+//                        }
+//                    }
+//                    if (!event.isDrawComplete && !event.canRunDrawEarly) {
+//                        Text(
+//                            text = "Cannot run draw until someone joins the waitlist.",
+//                            style = MaterialTheme.typography.bodySmall.copy(
+//                                color = PluckPalette.Muted
+//                            )
+//                        )
+//                    }
+                    OrganizerActionButton(
+                        icon = Icons.Outlined.PlayArrow,
+                        label = "Pluck Entrants",
+                        onClick = onViewWaitlist,
+                        backgroundColor = PluckPalette.Accept,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     OrganizerActionButton(
                         icon = Icons.Outlined.Edit,
                         label = "Edit Poster",

@@ -789,13 +789,73 @@ fun PLuckNavHost(
 
             when {
                 resolvedEvent != null -> {
+                    val waitingCount = waitlistEntries.count {
+                        it.status == WaitlistStatus.WAITING ||
+                                it.status == WaitlistStatus.INVITED ||
+                                it.status == WaitlistStatus.SELECTED
+                    }
+                    val availableSpots = (resolvedEvent.capacity - resolvedEvent.enrolled).coerceAtLeast(0)
+
+                    var showRunDrawDialog by remember { mutableStateOf(false) }
+
+                    if (showRunDrawDialog) {
+                        RunDrawDialog(
+                            eventTitle = resolvedEvent.title,
+                            waitingCount = waitingCount,
+                            capacity = resolvedEvent.capacity,
+                            enrolled = resolvedEvent.enrolled,
+                            currentWave = (chosenEntries.size / resolvedEvent.samplingCount) + 1,
+                            samplingCount = resolvedEvent.samplingCount,
+                            onConfirm = { drawSize ->
+                                showRunDrawDialog = false
+                                scope.launch {
+                                    eventViewModel.runDraw(
+                                        event = resolvedEvent,
+                                        waitlistViewModel = waitlistViewModel,
+                                        drawSize = drawSize,
+                                        onSuccess = {
+                                            eventViewModel.loadEvent(resolvedEvent.id)
+                                        }
+                                    )
+                                }
+                            },
+                            onDismiss = { showRunDrawDialog = false }
+                        )
+                    }
                     WaitlistScreen(
                         event = resolvedEvent,
                         waitlistEntries = waitlistEntries,
+                        waitingCount = waitingCount,
+                        availableSpots = availableSpots,
+                        decisionStats = chosenStats,
                         chosenEntries = chosenEntries,
                         cancelEntries = cancelEntries,
                         onBack = { navController.popBackStack() },
-                        users = users
+                        users = users,
+                        onRunDraw = { showRunDrawDialog = true },
+                        onExportCSV = {
+                            waitlistViewModel.exportChosenEntrantsToCSV(
+                                context = context,
+                                event = resolvedEvent,
+                                entrants = chosenEntries
+                            ) { intent ->
+                                context.startActivity(intent)
+                            }
+                        },
+                        onRemoveEntrant = { entrant ->
+                            scope.launch {
+                                waitlistViewModel.removeChosenEntrant(
+                                    eventId = resolvedEvent.id,
+                                    waitlistEntryId = entrant.id,
+                                    userId = entrant.userId,
+                                    currentUserId = currentUser?.deviceId,
+                                    onSuccess = {
+                                        // Refresh the event data after removal
+                                        eventViewModel.loadEvent(resolvedEvent.id)
+                                    }
+                                )
+                            }
+                        }
                     )
                 }
                 waitlistLoading || eventsLoading -> {

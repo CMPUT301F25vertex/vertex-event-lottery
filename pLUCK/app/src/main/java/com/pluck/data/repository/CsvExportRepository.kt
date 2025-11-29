@@ -54,14 +54,15 @@ class CsvExportRepository {
 
             FileWriter(file).use { writer ->
                 // Write CSV header
-                writer.append("User ID,User Name,Status,Position,Joined Date\n")
+//                writer.append("User ID,User Name,Status,Position,Joined Date\n")
+                writer.append("User ID,User Name,Status,Joined Date\n")
 
                 // Write data rows
                 filteredEntrants.forEach { entrant ->
                     writer.append("${entrant.userId},")
                     writer.append("\"${entrant.userName}\",")
                     writer.append("${entrant.status.name},")
-                    writer.append("${entrant.position},")
+//                    writer.append("${entrant.position},")
                     writer.append("${entrant.joinedDate}\n")
                 }
             }
