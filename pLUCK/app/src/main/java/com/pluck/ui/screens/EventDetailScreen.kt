@@ -446,14 +446,10 @@ private fun EventDetailInfoSection(
     event: Event,
     modifier: Modifier = Modifier
 ) {
-    val interestsLabel = if (event.interests.isEmpty()) {
-        "No interests"
-    } else {
-        val labels = event.interests.map { id ->
-            EventInterests.byId[id]?.label ?: id
-        }
-        "Interests: " + labels.joinToString(", ")
+    val interestLabels: List<String> = event.interests.mapNotNull { id ->
+        EventInterests.byId[id]?.label ?: id
     }
+    val hasInterests = interestLabels.isNotEmpty()
 
     Surface(
         modifier = modifier
@@ -483,12 +479,14 @@ private fun EventDetailInfoSection(
                 accentColor = PluckPalette.Tertiary,
                 modifier = Modifier.testTag("eventLocation")
             )
-            EventInfoRow(
-                icon = Icons.Outlined.Interests,
-                label = interestsLabel,
-                accentColor = PluckPalette.Secondary,
-                modifier = Modifier.testTag("eventInterests")
-            )
+            if (hasInterests) {
+                EventInfoRow(
+                    icon = Icons.Outlined.Interests,
+                    label = interestLabels.joinToString(", "),
+                    accentColor = PluckPalette.Secondary,
+                    modifier = Modifier.testTag("eventInterests")
+                )
+            }
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = "${event.enrolled}/${event.capacity} enrolled • ${event.remainingSpots} spots left",
