@@ -1,5 +1,6 @@
 package com.pluck.data.repository
 
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
@@ -218,22 +219,17 @@ class WaitlistRepository(
             val entryDoc = waitlistCollection.document(waitlistEntryId).get().await()
             val eventId = entryDoc.getString("eventId") ?: ""
 
-            // Return entrant to WAITING status so they remain in the queue
+            // Set entrant to DECLINE status
             waitlistCollection.document(waitlistEntryId)
                 .update(
                     mapOf(
-                        "status" to WaitlistStatus.WAITING.name,
+                        "status" to WaitlistStatus.DECLINED.name,
                         "declinedAt" to FieldValue.serverTimestamp(),
                         "selectedAt" to FieldValue.delete(),
                         "isReplacement" to FieldValue.delete()
                     )
                 )
                 .await()
-
-            // Update waitlist count to reflect the entrant rejoining the queue
-            val newCount = getWaitlistCount(eventId)
-            eventRepository.updateWaitlistCount(eventId, newCount)
-                .onFailure { return Result.failure(it) }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -855,6 +851,40 @@ class WaitlistRepository(
     }
 
     /**
+     * Get canceled entries for an event
+     * Returns entries with statuses: DECLINED, CANCELLED
+     *
+     * @param eventId The event ID
+     * @param currentUserId Optional user ID to mark as current user
+     * @return Result with list of chosen entries or error
+     */
+    suspend fun getCanceledEntries(
+        eventId: String,
+        currentUserId: String = ""
+    ): Result<List<WaitlistEntry>> {
+        return try {
+            val snapshot = waitlistCollection
+                .whereEqualTo("eventId", eventId)
+                .get()
+                .await()
+
+            val entries = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(FirebaseWaitlistEntry::class.java)
+                    // Include all draw-related statuses
+                    ?.takeIf {
+                            it.status == WaitlistStatus.DECLINED ||
+                            it.status == WaitlistStatus.CANCELLED
+                    }
+                    ?.toWaitlistEntry(currentUserId)
+            }
+
+            Result.success(entries.dedupeByUser().sortedBy { it.position })
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Get accepted entries for an event
      *
      * @param eventId The event ID
@@ -1019,7 +1049,6 @@ class WaitlistRepository(
                             doc.toObject(FirebaseWaitlistEntry::class.java)
                                 ?.takeIf {
                                     it.status == WaitlistStatus.ACCEPTED ||
-                                        it.status == WaitlistStatus.INVITED ||
                                         it.status == WaitlistStatus.SELECTED
                                 }
                                 ?.toWaitlistEntry(currentUserId)
@@ -1054,7 +1083,8 @@ class WaitlistRepository(
                         val entries = snapshot.documents.mapNotNull { doc ->
                             doc.toObject(FirebaseWaitlistEntry::class.java)
                                 ?.takeIf {
-                                    it.status == WaitlistStatus.CANCELLED
+                                    it.status == WaitlistStatus.CANCELLED ||
+                                            it.status == WaitlistStatus.DECLINED
                                 }
                                 ?.toWaitlistEntry(currentUserId)
                         }

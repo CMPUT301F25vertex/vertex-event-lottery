@@ -202,6 +202,26 @@ class WaitlistViewModel(
     }
 
     /**
+     * Load canceled entries for an event
+     */
+    fun loadCanceledEntries(eventId: String, currentUserId: String = "") {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            waitlistRepository.getCanceledEntries(eventId, currentUserId)
+                .onSuccess { entries ->
+                    _cancelEntries.value = entries
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to load chosen entries"
+                }
+
+            _isLoading.value = false
+        }
+    }
+
+    /**
      * Join an event's waitlist
      */
     fun joinWaitlist(
@@ -504,6 +524,9 @@ class WaitlistViewModel(
                 if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
             }
             _chosenEntries.value = _chosenEntries.value.map { entry ->
+                if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
+            }
+            _cancelEntries.value = _cancelEntries.value.map { entry ->
                 if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
             }
         }

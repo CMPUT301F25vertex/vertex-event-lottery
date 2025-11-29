@@ -780,6 +780,7 @@ fun PLuckNavHost(
                     val currentUserId = currentUser?.deviceId.orEmpty()
                     waitlistViewModel.observeWaitlist(eventId, currentUserId)
                     waitlistViewModel.observeChosenEntries(eventId, currentUserId)
+                    waitlistViewModel.observeCancelledEntries(eventId, currentUserId)
                     if (currentUserId.isNotBlank()) {
                         waitlistViewModel.checkUserWaitlistStatus(eventId, currentUserId)
                     }
@@ -1838,6 +1839,7 @@ fun PLuckNavHost(
                 eventViewModel.loadEvent(eventId)
                 waitlistViewModel.loadWaitlist(eventId)
                 waitlistViewModel.loadChosenEntries(eventId)
+                waitlistViewModel.loadCanceledEntries(eventId)
             }
 
             // Only render if event is loaded
@@ -1847,6 +1849,7 @@ fun PLuckNavHost(
                     if (eventId.isNotBlank()) {
                         waitlistViewModel.observeWaitlist(eventId, currentUserIdForChosen)
                         waitlistViewModel.observeChosenEntries(eventId, currentUserIdForChosen)
+                        waitlistViewModel.observeCancelledEntries(eventId, currentUserIdForChosen)
                     }
                 }
 
