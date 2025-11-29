@@ -231,79 +231,79 @@ fun AdminDashboardScreen(
         )
     }
 
-    previewImage?.let { image ->
-        AlertDialog(
-            onDismissRequest = { previewImage = null },
-            title = {
-                Text(
-                    text = image.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    AsyncImage(
-                        model = image.url,
-                        contentDescription = image.name,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                    )
-                    image.eventTitle?.let { title ->
-                        Text(
-                            text = "Event: $title",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                    image.userName?.let { user ->
-                        Text(
-                            text = "Profile: $user",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    } ?: image.userId?.let { id ->
-                        Text(
-                            text = "Profile ID: $id",
-                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
-                        )
-                    }
-                    Text(
-                        text = "Source: ${when (image.source) {
-                            ImageSource.STORAGE -> "Firebase Storage"
-                            ImageSource.EVENT_LINK -> "External Link"
-                            ImageSource.PROFILE -> "Profile Photo"
-                        }}",
-                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
-                    )
-                    if (image.sizeBytes > 0) {
-                        Text(
-                            text = "Size: ${image.sizeBytes / 1024} KB",
-                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
-                        )
-                    }
-                    Text(
-                        text = "URL: ${image.url}",
-                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Secondary)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { previewImage = null }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
+//    previewImage?.let { image ->
+//        AlertDialog(
+//            onDismissRequest = { previewImage = null },
+//            title = {
+//                Text(
+//                    text = image.name,
+//                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+//                )
+//            },
+//            text = {
+//                Column(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    verticalArrangement = Arrangement.spacedBy(12.dp),
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    AsyncImage(
+//                        model = image.url,
+//                        contentDescription = image.name,
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .height(220.dp)
+//                            .clip(RoundedCornerShape(16.dp))
+//                    )
+//                    image.eventTitle?.let { title ->
+//                        Text(
+//                            text = "Event: $title",
+//                            style = MaterialTheme.typography.bodyMedium.copy(
+//                                color = PluckPalette.Primary,
+//                                fontWeight = FontWeight.SemiBold
+//                            )
+//                        )
+//                    }
+//                    image.userName?.let { user ->
+//                        Text(
+//                            text = "Profile: $user",
+//                            style = MaterialTheme.typography.bodyMedium.copy(
+//                                color = PluckPalette.Primary,
+//                                fontWeight = FontWeight.SemiBold
+//                            )
+//                        )
+//                    } ?: image.userId?.let { id ->
+//                        Text(
+//                            text = "Profile ID: $id",
+//                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+//                        )
+//                    }
+//                    Text(
+//                        text = "Source: ${when (image.source) {
+//                            ImageSource.STORAGE -> "Firebase Storage"
+//                            ImageSource.EVENT_LINK -> "External Link"
+//                            ImageSource.PROFILE -> "Profile Photo"
+//                        }}",
+//                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+//                    )
+//                    if (image.sizeBytes > 0) {
+//                        Text(
+//                            text = "Size: ${image.sizeBytes / 1024} KB",
+//                            style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Muted)
+//                        )
+//                    }
+//                    Text(
+//                        text = "URL: ${image.url}",
+//                        style = MaterialTheme.typography.bodySmall.copy(color = PluckPalette.Secondary)
+//                    )
+//                }
+//            },
+//            confirmButton = {
+//                TextButton(onClick = { previewImage = null }) {
+//                    Text("Close")
+//                }
+//            }
+//        )
+//    }
 
 }
 
@@ -538,8 +538,16 @@ private fun ImagesListContent(
                     title = image.name,
                     subtitle = "Type: ${image.contentType} • Source: $sourceLabel",
                     detail = detailParts.joinToString(" • "),
-                    onView = { onView(image) },
-                    onRemove = { onRemove(image.id) }
+//                    onView = { onView(image) },
+                    onRemove = { onRemove(image.id) },
+                    extra = { modifier ->
+                        AsyncImage(
+                            model = image.url,
+                            contentDescription = image.name,
+                            modifier = modifier
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+                    }
                 )
             })
         }
@@ -864,7 +872,8 @@ private fun AdminItemCard(
     subtitle: String,
     detail: String,
     onView: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null
+    onRemove: (() -> Unit)? = null,
+    extra: (@Composable (modifier: Modifier) -> Unit)? = null
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -881,30 +890,34 @@ private fun AdminItemCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = PluckPalette.Primary
+            if (extra == null) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
                     )
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = PluckPalette.Muted
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
                     )
-                )
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = PluckPalette.Secondary,
-                        fontWeight = FontWeight.Medium
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Secondary,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
-                )
+                }
+            } else {
+                extra(Modifier.weight(1f))
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
