@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pluck.data.firebase.FirebaseWaitlistEntry
 import com.pluck.data.firebase.WaitlistStatus
+import com.pluck.notifications.SendNotification
 import com.pluck.ui.model.Event
 import com.pluck.ui.screens.WaitlistEntry
 import kotlinx.coroutines.channels.awaitClose
@@ -529,7 +530,7 @@ class WaitlistRepository(
                             "waitlistEntryId" to doc.id,
                             "title" to "You've been selected!",
                             "subtitle" to eventInfo.title,
-                            "detail" to "Congratulations! You've been selected for ${eventInfo.title}. Please accept your invitation within ${eventInfo.acceptanceDeadline} hours.",
+                            "detail" to "Congratulations! You've been selected for ${eventInfo.title}.",
                             "category" to "SELECTION",
                             "status" to "UNREAD",
                             "accentColor" to "#6366F1",
@@ -546,6 +547,8 @@ class WaitlistRepository(
                             "deadlineTimestamp" to Timestamp(now.seconds + (eventInfo.acceptanceDeadline * 3600), 0)
                         )
                         batch.set(notificationRef, notification)
+
+                        SendNotification(listOf(entry.userId), "Congratulations! You've been selected for ${eventInfo.title}.", "You've been selected!")
                     }
                 }
             }
@@ -611,6 +614,7 @@ class WaitlistRepository(
                     )
                     batch.set(notificationRef, notification)
                     notifiedCount++
+                    SendNotification(listOf(entry.userId), "Unfortunately, you were not selected in the lottery draw for ${event.title}. Thank you for your interest!", "Draw Results")
                 }
             }
 
