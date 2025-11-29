@@ -40,9 +40,13 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +57,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +78,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.repository.WaitlistDecisionStats
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.FullWidthLazyScroll
@@ -114,11 +120,17 @@ data class WaitlistEntry(
 @Composable
 fun WaitlistScreen(
     event: Event,
+    waitingCount: Int = 0,
+    availableSpots: Int = 0,
+    decisionStats: WaitlistDecisionStats = WaitlistDecisionStats(),
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
     cancelEntries: List<WaitlistEntry> = emptyList(),
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
     onBack: () -> Unit = {},
+    onRunDraw: () -> Unit = {},
     users: List<FirebaseUser> = emptyList(),
+    onExportCSV: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
@@ -137,6 +149,21 @@ fun WaitlistScreen(
     listElements.add(ComposableItem {
         WaitlistHeaderCard(
             event = event
+        )
+    })
+
+    listElements.add(ComposableItem {
+        DrawActionsRow(
+            waitingCount = waitingCount,
+            availableSpots = availableSpots,
+            onRunDraw = onRunDraw
+        )
+    })
+
+    listElements.add(ComposableItem {
+        ChosenEntrantsStats(
+            stats = decisionStats,
+            capacity = event.capacity
         )
     })
 
@@ -210,7 +237,10 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = waitlistEntries,
                             title = "Waitlist Queue",
-                            users = users
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
                         )
                     }
                 }
@@ -224,7 +254,11 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = chosenEntries,
                             title = "Plucked Entrants",
-                            users = users
+                            users = users,
+                            showRemoveButton = true,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab,
+                            onExportCSV = onExportCSV
                         )
                     }
                 }
@@ -238,7 +272,10 @@ fun WaitlistScreen(
                         WaitlistEntriesList(
                             entries = cancelEntries,
                             title = "Canceled Entrants",
-                            users = users
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
                         )
                     }
                 }
@@ -354,7 +391,160 @@ private fun WaitlistHeaderCard(
         }
     }
 }
+@Composable
+private fun DrawActionsRow(
+    waitingCount: Int,
+    availableSpots: Int,
+    onRunDraw: () -> Unit
+) {
+    val canRunDraw = waitingCount > 0 && availableSpots > 0
+    val helperText = when {
+        availableSpots <= 0 -> "Event is full. Remove entrants or increase capacity to draw again."
+        waitingCount <= 0 -> "No entrants waiting. Invite more entrants to join the waitlist."
+        else -> "Draw again to invite ${minOf(waitingCount, availableSpots)} entrant(s)."
+    }
 
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Lottery Controls",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+
+                Button(
+                    onClick = onRunDraw,
+                    enabled = canRunDraw,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canRunDraw) PluckPalette.Secondary else PluckPalette.Muted.copy(alpha = 0.2f),
+                        contentColor = if (canRunDraw) autoTextColor(PluckPalette.Secondary) else PluckPalette.Muted
+                    ),
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .zIndex(10f) //Debugging
+                ) {
+                    Text(text = "Pluck", maxLines = 1)
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStats(
+    stats: WaitlistDecisionStats,
+    capacity: Int
+) {
+    val acceptedCount = stats.accepted
+    val pendingCount = stats.pending
+    val declinedCount = stats.declined
+    val cancelledCount = stats.cancelled
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ChosenEntrantsStatCard(
+                label = "Accepted",
+                value = "$acceptedCount/$capacity",
+                icon = Icons.Outlined.CheckCircle,
+                color = PluckPalette.Accept,
+                modifier = Modifier.weight(1f)
+            )
+            ChosenEntrantsStatCard(
+                label = "Pending",
+                value = pendingCount.toString(),
+                icon = Icons.Outlined.HourglassEmpty,
+                color = PluckPalette.Secondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStatCard(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = color.copy(alpha = 0.16f),
+                contentColor = color
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Muted
+                )
+            )
+        }
+    }
+}
 @Composable
 private fun WaitlistStatItem(
     icon: ImageVector,
@@ -500,6 +690,10 @@ private fun WaitlistEntriesList(
     entries: List<WaitlistEntry>,
     title: String,
     users: List<FirebaseUser>,
+    showRemoveButton: Boolean = false,
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
+    onExportCSV: () -> Unit = {},
+    selectedTab: WaitlistTab
 ) {
     Column(
         modifier = Modifier
@@ -507,13 +701,29 @@ private fun WaitlistEntriesList(
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = PluckPalette.Primary
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
             )
-        )
+            if (selectedTab == WaitlistTab.CHOSEN) {
+                // Export CSV button (US 02.06.05)
+                IconButton(onClick = onExportCSV) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Export CSV",
+                        tint = PluckPalette.Secondary
+                    )
+                }
+            }
+        }
 
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -527,7 +737,9 @@ private fun WaitlistEntriesList(
 
                 WaitlistEntryCard(
                     entry = entry,
-                    userProfileURL = userProfileURL
+                    userProfileURL = userProfileURL,
+                    showRemoveButton = showRemoveButton,
+                    onRemove = { onRemoveEntrant(entry) }
                 )
             }
         }
@@ -537,8 +749,12 @@ private fun WaitlistEntriesList(
 @Composable
 private fun WaitlistEntryCard(
     entry: WaitlistEntry,
-    userProfileURL: String
+    userProfileURL: String,
+    showRemoveButton: Boolean = false,
+    onRemove: () -> Unit = {}
 ) {
+    var showRemoveDialog by remember { mutableStateOf(false) }
+
     val accentColor = when (entry.status) {
         com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
         com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
@@ -598,30 +814,92 @@ private fun WaitlistEntryCard(
                     )
                 }
             }
-
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val statusLabel = when (entry.status) {
-                    com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
-                    com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
-                    com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
-                    com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
-                    else -> if (entry.isCurrentUser) "You" else "In Queue"
-                }
-                Text(
-                    text = statusLabel,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = accentColor
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    val statusLabel = when (entry.status) {
+                        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
+                        com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
+                        com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
+                        com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
+                        else -> if (entry.isCurrentUser) "You" else "In Queue"
+                    }
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentColor
+                        )
                     )
-                )
+                }
+            }
+            if (showRemoveButton) {
+                IconButton(
+                    onClick = { showRemoveDialog = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Remove entrant",
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
+    }
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Remove Entrant?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove ${entry.userName} from the event and free up their spot. You can run another lottery draw to fill the gap.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text("Cancel", color = PluckPalette.Muted)
+                }
+            }
+        )
     }
 }
 
