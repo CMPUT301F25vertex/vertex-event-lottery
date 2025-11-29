@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Interests
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
@@ -64,8 +66,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.pluck.ui.model.Event
-import com.pluck.ui.screens.EventCategory
+import com.pluck.ui.model.EventInterests
 import com.pluck.ui.theme.autoTextColor
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class EventFilter(
     val label: String,
@@ -91,8 +95,13 @@ fun EventBrowser(
     val confettiTrigger by remember { mutableStateOf(false) }
     var activeFilter: EventFilter by remember { mutableStateOf(filters[0]) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var interestsExpanded by remember { mutableStateOf(false) }
+    var selectedInterestIds by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var availabilityStart by remember { mutableStateOf<LocalDate?>(null) }
+    var availabilityEnd by remember { mutableStateOf<LocalDate?>(null) }
+    var showAvailabilityPicker by remember { mutableStateOf(false) }
 
-    val filteredEvents = remember(events, activeFilter, searchQuery) {
+    val filteredEvents = remember(events, activeFilter, searchQuery, selectedInterestIds, availabilityStart, availabilityEnd) {
         events
             // Filter based on active filter
             .filter { activeFilter.condition(it) }
@@ -104,6 +113,20 @@ fun EventBrowser(
                 event.description.contains(searchQuery, ignoreCase = true) ||
                 event.location.contains(searchQuery, ignoreCase = true) ||
                 event.organizerName.contains(searchQuery, ignoreCase = true)
+            }
+
+            // Filter based on interests
+            .filter { event ->
+                if (selectedInterestIds.isEmpty()) true else event.interests.any { it in selectedInterestIds }
+            }
+
+            // Filter based on availability
+            .filter { event ->
+                if (availabilityStart != null && availabilityEnd != null) {
+                    !event.date.isBefore(availabilityStart) && !event.date.isAfter(availabilityEnd)
+                } else {
+                    true
+                }
             }
     }.sortedBy { event -> event.eventDateTime }
 
@@ -122,11 +145,30 @@ fun EventBrowser(
         }
     })
 
+    val availabilityLabel = remember(availabilityStart, availabilityEnd) {
+        if (availabilityStart != null && availabilityEnd != null) {
+            val fmt = DateTimeFormatter.ofPattern("MMM d")
+            "${availabilityStart!!.format(fmt)} – ${availabilityEnd!!.format(fmt)}"
+        } else {
+            null
+        }
+    }
+
     listElements.add(ComposableItem {
         FilterRow(
             filters = filters,
             selectedFilter = activeFilter,
-            onSelected = { filter -> activeFilter = filter }
+            onSelected = { filter -> activeFilter = filter },
+            selectedInterestCount = selectedInterestIds.size,
+            onClickInterests = { interestsExpanded = true },
+            interestsExpanded = interestsExpanded,
+            onDismissInterests = { interestsExpanded = false },
+            onToggleInterest = { id ->
+                selectedInterestIds = if (selectedInterestIds.contains(id)) selectedInterestIds - id else selectedInterestIds + id
+            },
+            isInterestSelected = { id -> selectedInterestIds.contains(id) },
+            availabilityLabel = availabilityLabel,
+            onClickAvailability = { showAvailabilityPicker = true }
         )
     })
 
@@ -158,6 +200,24 @@ fun EventBrowser(
             trigger = confettiTrigger,
             modifier = Modifier
                 .fillMaxSize()
+        )
+    }
+
+    if (showAvailabilityPicker) {
+        val defaultStart = availabilityStart ?: LocalDate.now()
+        val defaultEnd = availabilityEnd ?: defaultStart.plusDays(7)
+        PLuckDateRangePicker(
+            onDateSelected = { start, end ->
+                availabilityStart = start
+                availabilityEnd = end
+            },
+            onDismiss = { showAvailabilityPicker = false },
+            defaultStartDate = defaultStart,
+            defaultEndDate = defaultEnd,
+            onClear = {
+                availabilityStart = null
+                availabilityEnd = null
+            }
         )
     }
 }
@@ -414,19 +474,155 @@ private fun SearchBar(
 private fun FilterRow(
     filters: List<EventFilter>,
     selectedFilter: EventFilter,
-    onSelected: (EventFilter) -> Unit
+    onSelected: (EventFilter) -> Unit,
+    selectedInterestCount: Int,
+    onClickInterests: () -> Unit,
+    interestsExpanded: Boolean,
+    onDismissInterests: () -> Unit,
+    onToggleInterest: (String) -> Unit,
+    isInterestSelected: (String) -> Boolean,
+    availabilityLabel: String?,
+    onClickAvailability: () -> Unit
 ) {
-    val filtersAsStrings = mutableListOf<String>()
+    Column {
+        val filtersAsStrings = filters.map { it.label }
 
-    for (filter in filters) {
-        filtersAsStrings.add(filter.label)
+        PLuckChipRow(
+            chips = filtersAsStrings,
+            selectedChip = selectedFilter.label,
+            onSelect = { chip -> onSelected(filters.find { it.label == chip } ?: filters[0]) }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 4.dp,
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+                ) {
+                    FilterChip(
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = selectedInterestCount > 0,
+                        onClick = onClickInterests,
+                        label = {
+                            val count = selectedInterestCount
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Interests,
+                                    contentDescription = null,
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (count > 0) "Interests ($count)" else "Interests",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.Transparent,
+                            selectedContainerColor = Color.Transparent,
+                            labelColor = PluckPalette.Primary,
+                            selectedLabelColor = PluckPalette.Primary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selectedInterestCount > 0,
+                            borderColor = Color.Transparent,
+                            selectedBorderColor = Color.Transparent,
+                            disabledBorderColor = Color.Transparent
+                        )
+                    )
+                }
+
+                androidx.compose.material3.DropdownMenu(
+                    expanded = interestsExpanded,
+                    onDismissRequest = onDismissInterests,
+                    containerColor = PluckPalette.Surface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 12.dp
+                ) {
+                    EventInterests.all.forEach { interest ->
+                        val selected = isInterestSelected(interest.id)
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    androidx.compose.material3.Checkbox(
+                                        checked = selected,
+                                        onCheckedChange = { onToggleInterest(interest.id) }
+                                    )
+                                    Text(interest.label)
+                                }
+                            },
+                            onClick = { onToggleInterest(interest.id) }
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                tonalElevation = 0.dp,
+                shadowElevation = 4.dp,
+                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+            ) {
+                FilterChip(
+                    modifier = Modifier.fillMaxWidth(),
+                    selected = availabilityLabel != null,
+                    onClick = onClickAvailability,
+                    label = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Schedule,
+                                contentDescription = null,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = availabilityLabel?.let { "Availability ($it)" } ?: "Availability",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        labelColor = PluckPalette.Primary,
+                        selectedLabelColor = PluckPalette.Primary
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = availabilityLabel != null,
+                        borderColor = Color.Transparent,
+                        selectedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
+                    )
+                )
+            }
+        }
     }
-
-    PLuckChipRow(
-        chips = filtersAsStrings,
-        selectedChip = selectedFilter.label,
-        onSelect = { chip -> onSelected(filters.find { it.label == chip } ?: filters[0]) }
-    )
 }
 
 @Composable

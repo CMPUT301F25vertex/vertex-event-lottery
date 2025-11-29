@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Interests
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.Button
@@ -72,6 +73,7 @@ import androidx.compose.ui.zIndex
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.ShowQRCodeButton
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.EventInterests
 import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
@@ -454,6 +456,11 @@ private fun EventDetailInfoSection(
     event: Event,
     modifier: Modifier = Modifier
 ) {
+    val interestLabels: List<String> = event.interests.mapNotNull { id ->
+        EventInterests.byId[id]?.label ?: id
+    }
+    val hasInterests = interestLabels.isNotEmpty()
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -479,9 +486,17 @@ private fun EventDetailInfoSection(
             EventInfoRow(
                 icon = Icons.Outlined.LocationOn,
                 label = event.location,
-                accentColor = PluckPalette.Tertiary,
+                accentColor = PluckPalette.Secondary,
                 modifier = Modifier.testTag("eventLocation")
             )
+            if (hasInterests) {
+                EventInfoRow(
+                    icon = Icons.Outlined.Interests,
+                    label = interestLabels.joinToString(", "),
+                    accentColor = PluckPalette.Secondary,
+                    modifier = Modifier.testTag("eventInterests")
+                )
+            }
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = "${event.enrolled}/${event.capacity} enrolled • ${event.remainingSpots} spots left",
@@ -709,7 +724,7 @@ private fun EventLotteryInfoCard(
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = samplingLabel,
-                accentColor = PluckPalette.Tertiary
+                accentColor = PluckPalette.Secondary
             )
             if (event.waitlistCapacity != Int.MAX_VALUE) {
                 EventInfoRow(

@@ -1,5 +1,6 @@
 package com.pluck.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -129,6 +130,7 @@ fun PLuckDateRangePicker(
     onDismiss: () -> Unit,
     defaultStartDate: LocalDate,
     defaultEndDate: LocalDate,
+    onClear: (() -> Unit)? = null
 ) {
     val defaultStartMillis: Long = defaultStartDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val defaultEndMillis: Long = defaultEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -167,28 +169,53 @@ fun PLuckDateRangePicker(
             }
         }
     ) {
-        DateRangePicker(
-            state = dateRangePickerState,
-            title = { },
-            headline = {
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        modifier = Modifier.padding(start = 16.dp),
-                        text = "Select Registration Period",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = PluckPalette.Primary,
-                            fontSize = 20.sp
-                        )
-                    )
-                }
-            },
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(LocalConfiguration.current.screenHeightDp.dp * 0.8f)
-        )
+        ) {
+            DateRangePicker(
+                state = dateRangePickerState,
+                title = { },
+                headline = {
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(start = 16.dp),
+                            text = "Select Availability",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = PluckPalette.Primary,
+                                fontSize = 20.sp
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+
+            if (onClear != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            onClear()
+                            onDismiss()
+                        }
+                    ) {
+                        Text("Clear Selection")
+                    }
+                }
+            }
+        }
     }
 }
 
