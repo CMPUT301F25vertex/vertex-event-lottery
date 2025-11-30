@@ -331,6 +331,8 @@ class WaitlistViewModel(
 
     /**
      * Decline lottery invitation
+     * Returns the entrant to WAITING status so they can be selected again in future draws.
+     * Automatically draws a replacement if event information is provided.
      */
     fun declineInvitation(
         waitlistEntryId: String,
@@ -342,11 +344,14 @@ class WaitlistViewModel(
             _error.value = null
 
             waitlistRepository.declineInvitation(
-                waitlistEntryId = waitlistEntryId
+                waitlistEntryId = waitlistEntryId,
+                event = event
             )
                 .onSuccess {
+                    // Update status to CANCELLED - user is removed from waitlist
+                    _userWaitlistStatus.value = WaitlistStatus.CANCELLED
+                    // Clear the entry ID since user is no longer on waitlist
                     _userWaitlistEntryId.value = null
-                    _userWaitlistStatus.value = null
                     onSuccess()
                 }
                 .onFailure { exception ->

@@ -205,32 +205,60 @@ class WaitlistRepository(
     }
 
     /**
-     * Decline a lottery invitation and optionally draw replacement (US 01.05.01, US 02.05.03)
+     * Decline a lottery invitation and automatically draw replacement (US 01.05.01, US 02.05.03)
+     * Returns the entrant to WAITING status so they can be selected again in future draws.
      *
      * @param waitlistEntryId The waitlist entry ID
-     * @param drawReplacement Whether to automatically draw a replacement from waiting list
-     * @param event Optional event details for replacement notification
+     * @param event Optional event details for replacement notification. If provided, automatically draws a replacement.
      * @return Result indicating success or error
      */
     suspend fun declineInvitation(
-        waitlistEntryId: String
+        waitlistEntryId: String,
+        event: Event? = null
     ): Result<Unit> {
         return try {
             // Get entry details before declining
             val entryDoc = waitlistCollection.document(waitlistEntryId).get().await()
             val eventId = entryDoc.getString("eventId") ?: ""
+            val userId = entryDoc.getString("userId") ?: ""
+            val isReplacement = entryDoc.getBoolean("isReplacement") ?: false
 
-            // Set entrant to DECLINE status
+            // If they were already ACCEPTED, reduce enrolled count
+            val previousStatus = entryDoc.getString("status")
+            if (previousStatus == WaitlistStatus.ACCEPTED.name) {
+                eventRepository.decrementEnrolled(eventId)
+            }
+
+            // Set to CANCELLED status to remove from waitlist queue
             waitlistCollection.document(waitlistEntryId)
                 .update(
                     mapOf(
-                        "status" to WaitlistStatus.DECLINED.name,
+                        "status" to WaitlistStatus.CANCELLED.name,
                         "declinedAt" to FieldValue.serverTimestamp(),
                         "selectedAt" to FieldValue.delete(),
-                        "isReplacement" to FieldValue.delete()
+                        "isReplacement" to FieldValue.delete(),
+                        "updatedAt" to FieldValue.serverTimestamp()
                     )
                 )
                 .await()
+
+            // IMPORTANT: Wait a moment to ensure Firestore propagates the status change
+            // This prevents the same user from being selected in the replacement draw
+            kotlinx.coroutines.delay(500)
+
+            // Automatically draw a replacement if event info is provided
+            // This applies to both original draws and replacement draws
+            if (event != null) {
+                drawReplacementEntrant(eventId, event, excludeUserId = userId)
+                    .onFailure {
+                        // Log error but don't fail the decline operation
+                        android.util.Log.w("WaitlistRepository", "Failed to draw replacement after decline: ${it.message}")
+                    }
+            }
+
+            // Update waitlist count to reflect the status change (after replacement draw if it happened)
+            val newCount = getWaitlistCount(eventId)
+            eventRepository.updateWaitlistCount(eventId, newCount)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -298,7 +326,11 @@ class WaitlistRepository(
      * @param event The event details for notification
      * @return Result with selected entry ID or error
      */
-    suspend fun drawReplacementEntrant(eventId: String, event: Event): Result<String> {
+    suspend fun drawReplacementEntrant(
+        eventId: String,
+        event: Event,
+        excludeUserId: String? = null
+    ): Result<String> {
         return try {
             // Get all waiting entries
             val snapshot = waitlistCollection
@@ -307,12 +339,21 @@ class WaitlistRepository(
                 .get()
                 .await()
 
-            if (snapshot.documents.isEmpty()) {
+            // Filter out the excluded user if provided
+            val eligibleDocs = if (excludeUserId != null) {
+                snapshot.documents.filter { doc ->
+                    doc.getString("userId") != excludeUserId
+                }
+            } else {
+                snapshot.documents
+            }
+
+            if (eligibleDocs.isEmpty()) {
                 return Result.failure(Exception("No waiting entrants available"))
             }
 
             // Randomly select one replacement
-            val selectedDoc = snapshot.documents.random()
+            val selectedDoc = eligibleDocs.random()
             val now = Timestamp.now()
 
             // Update to INVITED status so entrant remains in the queue until they respond
@@ -359,6 +400,12 @@ class WaitlistRepository(
                     "deadlineTimestamp" to Timestamp(now.seconds + (event.acceptanceDeadline * 3600), 0)
                 )
                 firestore.collection("notifications").document(notificationRef.id).set(notification).await()
+                // Send push notification to the replacement-selected entrant
+                SendNotification(
+                    listOf(entry.userId),
+                    "A spot has opened up! You've been selected for ${event.title}.",
+                    "You've been selected!"
+                )
             }
 
             Result.success(selectedDoc.id)
