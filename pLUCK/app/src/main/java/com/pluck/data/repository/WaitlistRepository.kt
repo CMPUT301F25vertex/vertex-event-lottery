@@ -419,7 +419,14 @@ class WaitlistRepository(
         if (trimmedName.isBlank()) return Result.failure(IllegalArgumentException("Display name required."))
 
         return try {
-            val documents = waitlistCollection.whereEqualTo("userId", userId).get().await()
+            // On some devices Firestore queries can lag slightly behind recent writes. To keep
+            // tests and UI behaviour stable we retry a few times before giving up.
+            var attempts = 0
+            var documents = waitlistCollection.whereEqualTo("userId", userId).get().await()
+            while (documents.isEmpty && attempts < 3) {
+                attempts += 1
+                documents = waitlistCollection.whereEqualTo("userId", userId).get().await()
+            }
             if (documents.isEmpty) {
                 Result.success(Unit)
             } else {
@@ -1007,7 +1014,25 @@ class WaitlistRepository(
 
             val history = snapshot.documents.mapNotNull { doc ->
                 val entry = doc.toObject(FirebaseWaitlistEntry::class.java) ?: return@mapNotNull null
-                val event = eventRepository.getEvent(entry.eventId).getOrNull() ?: return@mapNotNull null
+                // Prefer the full event document, but if it has been deleted or temporarily
+                // unavailable, fall back to a lightweight placeholder so history still renders.
+                val eventResult = eventRepository.getEvent(entry.eventId)
+                val event = eventResult.getOrNull() ?: Event(
+                    id = entry.eventId,
+                    title = "Past event",
+                    description = "",
+                    location = "",
+                    date = entry.joinedTimestamp.toDate()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate(),
+                    capacity = 0,
+                    enrolled = 0,
+                    organizerName = "",
+                    organizerId = "",
+                    waitlistCount = 0,
+                    waitlistCapacity = 0
+                )
                 val joinedDate = Instant.ofEpochSecond(entry.joinedTimestamp.seconds)
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
