@@ -237,7 +237,6 @@ fun CustomThemeCreatorScreen(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 1
     ) {
         if (showColorPicker && editingColor != null) {
             SimpleColorPickerDialog(

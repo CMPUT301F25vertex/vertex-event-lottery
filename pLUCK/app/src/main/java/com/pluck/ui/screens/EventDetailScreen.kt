@@ -274,7 +274,6 @@ fun EventDetailScreen(
 
     AutoHidingBarScroller(
         listElements = listElements,
-        indexOfPersistentElement = 0,
         bottomBar = {
             EventDetailBottomActions(
                 event = event,
