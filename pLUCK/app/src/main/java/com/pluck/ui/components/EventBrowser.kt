@@ -504,10 +504,9 @@ private fun FilterRow(
             ) {
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
+                    color = PluckPalette.Surface,
                     tonalElevation = 0.dp,
                     shadowElevation = 4.dp,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
                 ) {
                     FilterChip(
                         modifier = Modifier.fillMaxWidth(),
@@ -533,18 +532,12 @@ private fun FilterRow(
                             }
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color.Transparent,
-                            selectedContainerColor = Color.Transparent,
+                            containerColor = PluckPalette.Surface,
+                            selectedContainerColor = PluckPalette.Surface,
                             labelColor = PluckPalette.Primary,
                             selectedLabelColor = PluckPalette.Primary
                         ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = selectedInterestCount > 0,
-                            borderColor = Color.Transparent,
-                            selectedBorderColor = Color.Transparent,
-                            disabledBorderColor = Color.Transparent
-                        )
+                        border = null
                     )
                 }
 
@@ -579,10 +572,9 @@ private fun FilterRow(
             Surface(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White,
+                color = PluckPalette.Surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 4.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
             ) {
                 FilterChip(
                     modifier = Modifier.fillMaxWidth(),
@@ -600,25 +592,19 @@ private fun FilterRow(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = availabilityLabel?.let { "Availability ($it)" } ?: "Availability",
+                                text = availabilityLabel ?: "Availability",
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                     },
                     colors = FilterChipDefaults.filterChipColors(
-                        containerColor = Color.Transparent,
-                        selectedContainerColor = Color.Transparent,
+                        containerColor = PluckPalette.Surface,
+                        selectedContainerColor = PluckPalette.Surface,
                         labelColor = PluckPalette.Primary,
                         selectedLabelColor = PluckPalette.Primary
                     ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = availabilityLabel != null,
-                        borderColor = Color.Transparent,
-                        selectedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    )
+                    border = null
                 )
             }
         }
