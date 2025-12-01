@@ -103,12 +103,14 @@ fun SettingsScreen(
     var notificationsEnabled by remember { mutableStateOf(notificationPrefs.areAllNotificationsEnabled()) }
     var emailNotifications by remember { mutableStateOf(notificationPrefs.areEmailNotificationsEnabled()) }
     var pushNotifications by remember { mutableStateOf(notificationPrefs.arePushNotificationsEnabled()) }
+    var organizerNotifications by remember { mutableStateOf(notificationPrefs.areOrganizerNotificationsEnabled()) }
 
     // Load preferences on first composition
     LaunchedEffect(Unit) {
         notificationsEnabled = notificationPrefs.areAllNotificationsEnabled()
         emailNotifications = notificationPrefs.areEmailNotificationsEnabled()
         pushNotifications = notificationPrefs.arePushNotificationsEnabled()
+        organizerNotifications = notificationPrefs.areOrganizerNotificationsEnabled()
     }
 
     val listElements = mutableListOf<ComposableItem>()
@@ -124,20 +126,30 @@ fun SettingsScreen(
             iconColor = PluckPalette.Secondary
         )
         {
-//            SettingsToggleItem(
-//                label = "In App Notifications",
-//                description = "Enable or disable in app notifications",
-//                checked = notificationsEnabled,
-//                onCheckedChange = {
-//                    notificationsEnabled = it
-//                    notificationPrefs.setAllNotificationsEnabled(it)
-//
-//                    if (!notificationsEnabled) {
-//                        pushNotifications = false
-//                        notificationPrefs.setPushNotificationsEnabled(false)
-//                    }
-//                }
-//            )
+            SettingsToggleItem(
+                label = "In App Notifications",
+                description = "Show updates in the Notifications tab",
+                checked = notificationsEnabled,
+                onCheckedChange = {
+                    notificationsEnabled = it
+                    notificationPrefs.setAllNotificationsEnabled(it)
+
+                    if (!notificationsEnabled) {
+                        pushNotifications = false
+                        notificationPrefs.setPushNotificationsEnabled(false)
+                    }
+                }
+            )
+            SettingsToggleItem(
+                label = "Organizer/Admin Updates",
+                description = "Allow messages sent by organizers and admins",
+                checked = organizerNotifications,
+                onCheckedChange = {
+                    organizerNotifications = it
+                    notificationPrefs.setOrganizerNotificationsEnabled(it)
+                },
+                enabled = notificationsEnabled
+            )
             SettingsToggleItem(
                 label = "Push Notifications",
                 description = "Receive push notifications for updates",

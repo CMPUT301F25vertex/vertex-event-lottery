@@ -83,7 +83,13 @@ data class NotificationItem(
     val waitlistEntryId: String? = null,
     val inviteContact: String? = null,
     val inviteType: InviteContactType? = null,
-    val createdAtMillis: Long = 0L
+    val createdAtMillis: Long = 0L,
+    /**
+     * Raw category string as stored in Firestore. This allows mapping to
+     * higher-level notification preference types (e.g., ORGANIZER_UPDATE,
+     * CANCELLATION) without expanding the UI-facing [NotificationCategory] enum.
+     */
+    val rawCategory: String = ""
 )
 
 /**

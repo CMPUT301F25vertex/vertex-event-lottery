@@ -115,9 +115,16 @@ fun EventBrowser(
                 event.organizerName.contains(searchQuery, ignoreCase = true)
             }
 
-            // Filter based on interests
+            // Filter based on interests. When one or more interests are selected, an event
+            // must include *all* of the selected interests to be shown. This matches the
+            // expectation that adding more interests narrows the results rather than
+            // expanding them.
             .filter { event ->
-                if (selectedInterestIds.isEmpty()) true else event.interests.any { it in selectedInterestIds }
+                if (selectedInterestIds.isEmpty()) {
+                    true
+                } else {
+                    selectedInterestIds.all { it in event.interests }
+                }
             }
 
             // Filter based on availability
