@@ -87,9 +87,9 @@ class WaitlistViewModel(
                     updateStatusFromEntries(
                         entries,
                         setOf(
-                            WaitlistStatus.WAITING,
-                            WaitlistStatus.INVITED,
-                            WaitlistStatus.SELECTED
+                            // Only clear membership when there is no WAITING entry;
+                            // INVITED / ACCEPTED are tracked via the chosenEntries stream.
+                            WaitlistStatus.WAITING
                         )
                     )
                     _isLoading.value = false
@@ -330,9 +330,10 @@ class WaitlistViewModel(
     }
 
     /**
-     * Decline lottery invitation
-     * Returns the entrant to WAITING status so they can be selected again in future draws.
-     * Automatically draws a replacement if event information is provided.
+     * Decline lottery invitation.
+     *
+     * Marks the entrant as DECLINED/removed from the active queue
+     * and triggers a replacement draw when event information is provided.
      */
     fun declineInvitation(
         waitlistEntryId: String,
@@ -343,14 +344,9 @@ class WaitlistViewModel(
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.declineInvitation(
-                waitlistEntryId = waitlistEntryId,
-                event = event
-            )
+            waitlistRepository.declineInvitation(waitlistEntryId, event)
                 .onSuccess {
-                    // Update status to CANCELLED - user is removed from waitlist
-                    _userWaitlistStatus.value = WaitlistStatus.CANCELLED
-                    // Clear the entry ID since user is no longer on waitlist
+                    _userWaitlistStatus.value = WaitlistStatus.DECLINED
                     _userWaitlistEntryId.value = null
                     onSuccess()
                 }

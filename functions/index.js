@@ -59,6 +59,8 @@ exports.sendNotification = functions.https.onRequest(async (req, res) => {
     typeof data.eventId === "string" ? data.eventId.trim() : "";
   const organizerIdOverride =
     typeof data.organizerId === "string" ? data.organizerId.trim() : "";
+  const skipNotifications =
+    typeof data.skipNotifications === "boolean" ? data.skipNotifications : false;
 
   if (!userIds.length || !title || !body) {
     res.status(400).json({
@@ -72,7 +74,7 @@ exports.sendNotification = functions.https.onRequest(async (req, res) => {
   const entrantsCollection = db.collection("entrants");
 
   const tokens = [];
-  const batch = db.batch();
+  const batch = skipNotifications ? null : db.batch();
 
   for (const rawUserId of userIds) {
     const userId =
@@ -90,35 +92,39 @@ exports.sendNotification = functions.https.onRequest(async (req, res) => {
       tokens.push(token.trim());
     }
 
-    const docRef = notificationsCollection.doc();
-    const payload = {
-      id: docRef.id,
-      userId,
-      organizerId: organizerIdOverride || userData.organizerId || "",
-      eventId: eventId,
-      waitlistEntryId: "",
-      title,
-      subtitle: "",
-      detail: body,
-      // Align with NotificationCategory.ORGANIZER_UPDATE
-      category: "ORGANIZER_UPDATE",
-      // Align with NotificationStatus.UNREAD
-      status: "UNREAD",
-      inviteContact: null,
-      inviteType: null,
-      // Simple broadcast: no accept/decline actions
-      allowAccept: false,
-      allowDecline: false,
-      allowEventDetails: !!eventId,
-      actionTaken: null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    if (!skipNotifications) {
+      const docRef = notificationsCollection.doc();
+      const payload = {
+        id: docRef.id,
+        userId,
+        organizerId: organizerIdOverride || userData.organizerId || "",
+        eventId: eventId,
+        waitlistEntryId: "",
+        title,
+        subtitle: "",
+        detail: body,
+        // Align with NotificationCategory.ORGANIZER_UPDATE
+        category: "ORGANIZER_UPDATE",
+        // Align with NotificationStatus.UNREAD
+        status: "UNREAD",
+        inviteContact: null,
+        inviteType: null,
+        // Simple broadcast: no accept/decline actions
+        allowAccept: false,
+        allowDecline: false,
+        allowEventDetails: !!eventId,
+        actionTaken: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
 
-    batch.set(docRef, payload, { merge: true });
+      batch.set(docRef, payload, { merge: true });
+    }
   }
 
-  await batch.commit();
+  if (!skipNotifications && batch) {
+    await batch.commit();
+  }
 
   let fcmSuccessCount = 0;
   let fcmFailureCount = 0;

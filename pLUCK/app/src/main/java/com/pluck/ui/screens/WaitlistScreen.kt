@@ -202,7 +202,7 @@ fun WaitlistScreen(
 
             val contextString = when (selectedTab) {
                 WaitlistTab.WAITING -> "Waiting"
-                WaitlistTab.CANCELED -> "Canceled"
+                WaitlistTab.CANCELED -> "Cancelled"
                 WaitlistTab.CHOSEN -> "Plucked"
             }
 
@@ -266,13 +266,13 @@ fun WaitlistScreen(
                 WaitlistTab.CANCELED -> {
                     if (cancelEntries.isEmpty()) {
                         WaitlistEmptyState(
-                            message = "No entrants canceled yet",
+                            message = "No entrants cancelled yet",
                             description = "That's a relief!"
                         )
                     } else {
                         WaitlistEntriesList(
                             entries = cancelEntries,
-                            title = "Canceled Entrants",
+                            title = "Cancelled Entrants",
                             users = users,
                             showRemoveButton = false,
                             onRemoveEntrant = onRemoveEntrant,
@@ -671,7 +671,7 @@ private fun WaitlistTabSelector(
                 FilterChip(
                     selected = selectedTab == WaitlistTab.CANCELED,
                     onClick = { onTabSelected(WaitlistTab.CANCELED) },
-                    label = { Text("Canceled ($canceledCount)") },
+                    label = { Text("Cancelled ($canceledCount)") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Cancel,
@@ -836,7 +836,7 @@ private fun WaitlistEntryCard(
                         WaitlistStatus.ACCEPTED -> "Confirmed"
                         WaitlistStatus.INVITED -> "Invited"
                         WaitlistStatus.DECLINED -> "Declined"
-                        WaitlistStatus.CANCELLED -> "Removed"
+                        WaitlistStatus.CANCELLED -> "Cancelled"
                         else -> if (entry.isCurrentUser) "You" else "In Queue"
                     }
                     Text(

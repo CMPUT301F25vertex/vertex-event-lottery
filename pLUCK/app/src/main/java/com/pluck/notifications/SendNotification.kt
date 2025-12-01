@@ -24,13 +24,15 @@ import java.net.URL
  * @param title The title of the notification to send.
  * @param eventId Optional event id this notification relates to.
  * @param organizerId Optional organizer id sending the notification.
+ * @param skipNotifications If true, Cloud Function will send FCM only and skip creating Firestore notification docs.
  */
 fun SendNotification(
     users: List<String>,
     body: String,
     title: String,
     eventId: String? = null,
-    organizerId: String? = null
+    organizerId: String? = null,
+    skipNotifications: Boolean = false
 ) {
     if (users.isEmpty() || title.isBlank() || body.isBlank()) {
         return
@@ -56,6 +58,9 @@ fun SendNotification(
                 put("body", body)
                 eventId?.takeIf { it.isNotBlank() }?.let { put("eventId", it) }
                 organizerId?.takeIf { it.isNotBlank() }?.let { put("organizerId", it) }
+                if (skipNotifications) {
+                    put("skipNotifications", true)
+                }
             }
 
             connection.outputStream.use { os ->
