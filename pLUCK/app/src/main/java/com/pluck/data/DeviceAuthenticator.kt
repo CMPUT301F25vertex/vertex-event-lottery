@@ -179,6 +179,35 @@ class DeviceAuthenticator(private val context: Context) {
     }
 
     /**
+     * Removes the current user's profile image reference from Firestore.
+     * Clears the profileImageUrl field while leaving other profile data intact.
+     *
+     * @return [DeviceAuthResult.Success] with updated profile, or [DeviceAuthResult.Error] on failure.
+     */
+    suspend fun clearProfileImage(): DeviceAuthResult {
+        val deviceId = resolveDeviceId()
+        return try {
+            val profile = withContext(Dispatchers.IO) {
+                ensureFirebaseUser()
+
+                val docRef = firestore.collection("entrants").document(deviceId)
+                val payload = mapOf(
+                    "profileImageUrl" to FieldValue.delete(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+
+                docRef.set(payload, SetOptions.merge()).await()
+                docRef.get().await().toEntrantProfile()
+            }
+            DeviceAuthResult.Success(profile)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Profile image clear failed", t)
+            val detail = t.message ?: t.localizedMessage ?: t.javaClass.simpleName
+            DeviceAuthResult.Error("Failed to remove profile photo. $detail", t)
+        }
+    }
+
+    /**
      * Fetches an existing profile for the current device from Firestore.
      * Returns null if no profile exists or if the profile is incomplete (missing display name).
      *

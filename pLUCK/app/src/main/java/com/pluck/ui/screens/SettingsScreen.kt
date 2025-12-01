@@ -98,15 +98,18 @@ fun SettingsScreen(
     val context = LocalContext.current
     val notificationPrefs = remember { NotificationPreferences(context) }
 
-    var notificationsEnabled by remember { mutableStateOf(notificationPrefs.areAllNotificationsEnabled()) }
-    var emailNotifications by remember { mutableStateOf(notificationPrefs.areEmailNotificationsEnabled()) }
-    var pushNotifications by remember { mutableStateOf(notificationPrefs.arePushNotificationsEnabled()) }
+    var pushNotifications by remember {
+        mutableStateOf(
+            notificationPrefs.areAllNotificationsEnabled() &&
+                notificationPrefs.arePushNotificationsEnabled()
+        )
+    }
 
     // Load preferences on first composition
     LaunchedEffect(Unit) {
-        notificationsEnabled = notificationPrefs.areAllNotificationsEnabled()
-        emailNotifications = notificationPrefs.areEmailNotificationsEnabled()
-        pushNotifications = notificationPrefs.arePushNotificationsEnabled()
+        val allEnabled = notificationPrefs.areAllNotificationsEnabled()
+        val pushEnabled = notificationPrefs.arePushNotificationsEnabled()
+        pushNotifications = allEnabled && pushEnabled
     }
 
     PluckLayeredBackground(
@@ -147,34 +150,17 @@ fun SettingsScreen(
                             iconColor = PluckPalette.Secondary
                         ) {
                             SettingsToggleItem(
-                                label = "All Notifications",
-                                description = "Enable or disable all notifications",
-                                checked = notificationsEnabled,
-                                onCheckedChange = {
-                                    notificationsEnabled = it
-                                    notificationPrefs.setAllNotificationsEnabled(it)
-                                }
-                            )
-                            SettingsToggleItem(
                                 label = "Push Notifications",
                                 description = "Receive push notifications for updates",
                                 checked = pushNotifications,
                                 onCheckedChange = {
                                     pushNotifications = it
+                                    // Single toggle controls both master notification opt-in
+                                    // and push delivery preferences.
                                     notificationPrefs.setPushNotificationsEnabled(it)
+                                    notificationPrefs.setAllNotificationsEnabled(it)
                                 },
-                                enabled = notificationsEnabled
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            SettingsToggleItem(
-                                label = "Email Notifications",
-                                description = "Receive email summaries",
-                                checked = emailNotifications,
-                                onCheckedChange = {
-                                    emailNotifications = it
-                                    notificationPrefs.setEmailNotificationsEnabled(it)
-                                },
-                                enabled = notificationsEnabled
+                                enabled = true
                             )
                         }
 

@@ -844,6 +844,23 @@ fun PLuckNavHost(
                             profileUpdateMessage = null
                             profileUpdateError = message
                         },
+                        onRemoveProfileImage = {
+                            scope.launch {
+                                profileUpdateMessage = null
+                                profileUpdateError = null
+
+                                val result = authenticator.clearProfileImage()
+                                when (result) {
+                                    is DeviceAuthResult.Success -> {
+                                        currentUser = result.profile
+                                        profileUpdateMessage = "Profile photo removed."
+                                    }
+                                    is DeviceAuthResult.Error -> {
+                                        profileUpdateError = result.message
+                                    }
+                                }
+                            }
+                        },
                         onUpdateProfile = { name, email, phone ->
                             scope.launch {
                                 profileUpdating = true

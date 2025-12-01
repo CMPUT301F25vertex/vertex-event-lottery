@@ -10,6 +10,7 @@
  */
 package com.pluck.ui.screens
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,12 +63,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Displays the profile management screen allowing entrants to review and update their information.
@@ -112,6 +115,7 @@ fun ProfileScreen(
     onProfileImageUploadStarted: () -> Unit = {},
     onProfileImageUploaded: (String) -> Unit = {},
     onProfileImageUploadFailed: (String) -> Unit = {},
+    onRemoveProfileImage: () -> Unit = {},
     onUpdateProfile: (displayName: String, email: String?, phone: String?) -> Unit = { _, _, _ -> },
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
@@ -129,25 +133,21 @@ fun ProfileScreen(
     val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val imageRequest = remember { PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly) }
     var profileImageUploading by remember { mutableStateOf(false) }
+    var showPhotoOptions by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        if (deviceId.isNullOrBlank()) {
-            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
-            return@rememberLauncherForActivityResult
-        }
-
+    fun startUploadFromUri(uri: Uri, deviceIdValue: String) {
         onProfileImageUploadStarted()
         profileImageUploading = true
 
         scope.launch {
             val result = runCatching {
-                uploadRepository.uploadProfileImage(uri, deviceId)
+                uploadRepository.uploadProfileImage(uri, deviceIdValue)
             }.getOrElse { throwable ->
                 Log.e(PROFILE_SCREEN_TAG, "Profile photo upload failed", throwable)
-                val message = throwable.message ?: throwable.localizedMessage ?: "Failed to upload profile photo."
+                val message = throwable.message
+                    ?: throwable.localizedMessage
+                    ?: "Failed to upload profile photo."
                 onProfileImageUploadFailed(message)
                 profileImageUploading = false
                 return@launch
@@ -165,13 +165,44 @@ fun ProfileScreen(
         }
     }
 
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val id = deviceId
+        if (id.isNullOrBlank()) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@rememberLauncherForActivityResult
+        }
+
+        startUploadFromUri(uri, id)
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (!success) {
+            cameraImageUri = null
+            return@rememberLauncherForActivityResult
+        }
+
+        val id = deviceId
+        val uri = cameraImageUri
+        if (id.isNullOrBlank() || uri == null) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@rememberLauncherForActivityResult
+        }
+
+        startUploadFromUri(uri, id)
+    }
+
     val onChangePhoto = on@{
         if (isLoading || profileImageUploading) return@on
         if (deviceId.isNullOrBlank()) {
             onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
             return@on
         }
-        imagePickerLauncher.launch(imageRequest)
+        showPhotoOptions = true
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -488,6 +519,80 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showPhotoOptions) {
+        AlertDialog(
+            onDismissRequest = { showPhotoOptions = false },
+            title = {
+                Text(
+                    text = "Profile photo",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = {
+                            showPhotoOptions = false
+                            if (deviceId.isNullOrBlank()) {
+                                onProfileImageUploadFailed("Cannot use camera because the device ID is unavailable.")
+                                return@TextButton
+                            }
+                            val uri = createTempProfileImageUri(context, deviceId)
+                            if (uri == null) {
+                                onProfileImageUploadFailed("Unable to create a file for the camera image.")
+                                return@TextButton
+                            }
+                            cameraImageUri = uri
+                            cameraLauncher.launch(uri)
+                        },
+                        enabled = !isLoading && !profileImageUploading
+                    ) {
+                        Text("Take Photo")
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showPhotoOptions = false
+                            if (deviceId.isNullOrBlank()) {
+                                onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+                                return@TextButton
+                            }
+                            imagePickerLauncher.launch(imageRequest)
+                        },
+                        enabled = !isLoading && !profileImageUploading
+                    ) {
+                        Text("Choose from Gallery")
+                    }
+
+                    if (!profileImageUrl.isNullOrBlank()) {
+                        TextButton(
+                            onClick = {
+                                showPhotoOptions = false
+                                if (!isLoading && !profileImageUploading) {
+                                    onRemoveProfileImage()
+                                }
+                            },
+                            enabled = !isLoading && !profileImageUploading
+                        ) {
+                            Text("Remove Photo")
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPhotoOptions = false }) {
                     Text("Cancel")
                 }
             }
@@ -923,3 +1028,18 @@ private fun ProfilePreview() {
 }
 
 private const val PROFILE_SCREEN_TAG = "ProfileScreen"
+
+private fun createTempProfileImageUri(context: Context, deviceId: String): Uri? {
+    return try {
+        val fileName = "profile_${deviceId}_${System.currentTimeMillis()}.jpg"
+        val file = File(context.cacheDir, fileName)
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    } catch (t: Throwable) {
+        Log.e(PROFILE_SCREEN_TAG, "Failed to create temp file for profile photo", t)
+        null
+    }
+}

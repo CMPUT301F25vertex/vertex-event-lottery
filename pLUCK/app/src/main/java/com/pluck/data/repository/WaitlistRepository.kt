@@ -776,6 +776,11 @@ class WaitlistRepository(
                 repeat(cancelledCount) {
                     drawReplacementEntrant(eventId, event)
                 }
+
+                // Normalise the event's waitlistCount so other screens see a consistent
+                // "X on waitlist" value. Only entrants still in WAITING status are counted.
+                val newCount = getWaitlistCount(eventId)
+                eventRepository.updateWaitlistCount(eventId, newCount)
             }
 
             Result.success(cancelledCount)
