@@ -8,6 +8,11 @@ A top of the line event app featuring everything you'd expect and a full theme c
 4. After android studio syncs with gradle, receive a copy of the API, and other info required for Cloudinary, and add the contents into the file `local.properties` in the `pLuck/` folder. Note: The `local.properties` file is only created after gradle syncs with android studio.
 5. Finally, build the `app` target
 
+## Debug Features
+Too enable the in app debug menu and debug toasts to pop up when errors happen, set the variable `DEBUG` to true in the file Debug.kt
+
+Note: Do not enable the Debug flag when testing, it is purely designed to aid in development
+
 ## Wiki
 Are wiki can be accessed here: https://github.com/CMPUT301F25vertex/vertex-event-lottery/wiki
 

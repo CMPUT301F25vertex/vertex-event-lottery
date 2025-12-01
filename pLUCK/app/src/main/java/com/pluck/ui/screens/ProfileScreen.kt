@@ -10,35 +10,36 @@
  */
 package com.pluck.ui.screens
 
+import android.Manifest
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.impl.utils.ContextUtil.getApplicationContext
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,19 +56,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.FileProvider
+import androidx.viewbinding.BuildConfig
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
+import com.pluck.ui.components.ComposableItem
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.ProfileCircle
+import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
+
 
 /**
  * Displays the profile management screen allowing entrants to review and update their information.
@@ -77,6 +92,7 @@ import kotlinx.coroutines.launch
  * @param userPhone Optional phone number tied to the profile.
  * @param profileImageUrl Optional Cloudinary URL for the entrant's profile photo.
  * @param deviceId Unique device identifier used as the Cloudinary public ID.
+ * @param profileImageOffsetY Saved vertical offset for profile photo framing (-1.0 to 1.0).
  * @param isLoading Whether the overall profile data is loading.
  * @param isUpdatingProfile Whether profile details are currently being saved.
  * @param isAdmin Whether the current device has admin privileges.
@@ -94,6 +110,7 @@ import kotlinx.coroutines.launch
  * @param onRegisterAdmin Invoked to open the admin registration dialog.
  * @param modifier Optional modifier for styling.
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -101,6 +118,7 @@ fun ProfileScreen(
     userPhone: String?,
     profileImageUrl: String?,
     deviceId: String?,
+    profileImageOffsetY: Float = 0f,
     isLoading: Boolean,
     isUpdatingProfile: Boolean = false,
     isAdmin: Boolean = false,
@@ -122,7 +140,9 @@ fun ProfileScreen(
     onBecomeOrganizer: () -> Unit = {},
     onDowngradeFromOrganizer: () -> Unit = {},
     onSubmitAppeal: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onProfileImageOffsetChanged: (Float) -> Unit = {},
+    modifier: Modifier = Modifier,
+    debugComposable: ComposableItem? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -130,9 +150,22 @@ fun ProfileScreen(
     val imageRequest = remember { PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly) }
     var profileImageUploading by remember { mutableStateOf(false) }
 
+    var imageUri by remember { mutableStateOf(Uri.EMPTY) }
+
+    val createTempImageURI = {
+        val tempFile = File.createTempFile(
+            "picture_${System.currentTimeMillis()}", ".png", context.cacheDir
+        ).apply {
+            createNewFile()
+        }
+
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
+        contract = ActivityResultContracts.PickVisualMedia(),
+    )
+    { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         if (deviceId.isNullOrBlank()) {
             onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
@@ -165,7 +198,55 @@ fun ProfileScreen(
         }
     }
 
-    val onChangePhoto = on@{
+    val imageTakerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+
+    ) { saved: Boolean ->
+        if (!saved) return@rememberLauncherForActivityResult
+        if (deviceId.isNullOrBlank()) {
+            onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
+            return@rememberLauncherForActivityResult
+        }
+
+        onProfileImageUploadStarted()
+        profileImageUploading = true
+
+        scope.launch {
+            val result = runCatching {
+                uploadRepository.uploadProfileImage(imageUri, deviceId)
+            }.getOrElse { throwable ->
+                Log.e(PROFILE_SCREEN_TAG, "Profile photo upload failed", throwable)
+                val message = throwable.message ?: throwable.localizedMessage ?: "Failed to upload profile photo."
+                onProfileImageUploadFailed(message)
+                profileImageUploading = false
+                return@launch
+            }
+
+            when (result) {
+                is CloudinaryUploadResult.Success -> onProfileImageUploaded(result.url)
+                is CloudinaryUploadResult.Error -> {
+                    val message = result.message.ifBlank { "Failed to upload profile photo." }
+                    onProfileImageUploadFailed(message)
+                }
+            }
+
+            profileImageUploading = false
+        }
+    }
+
+    val cameraPermissionState = rememberPermissionState(
+        permission = Manifest.permission.CAMERA,
+        onPermissionResult = { granted ->
+            if (granted && !isLoading && !profileImageUploading && !deviceId.isNullOrBlank()) {
+                imageUri = createTempImageURI()
+                imageTakerLauncher.launch(imageUri)
+            } else Log.e("ProfileScreen", "camera permission is denied")
+        }
+    )
+
+    var pickProfilePhotoDialog by remember { mutableStateOf(false) }
+
+    val pickPhotoFromGallery = on@{
         if (isLoading || profileImageUploading) return@on
         if (deviceId.isNullOrBlank()) {
             onProfileImageUploadFailed("Cannot upload profile photo because the device ID is unavailable.")
@@ -183,269 +264,253 @@ fun ProfileScreen(
     var editableEmail by remember(userEmail) { mutableStateOf(userEmail.orEmpty()) }
     var editablePhone by remember(userPhone) { mutableStateOf(userPhone.orEmpty()) }
     var showEditSection by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
 
-    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            contentAlignment = Alignment.Center
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Profile",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                color = PluckPalette.Primary,
+                fontWeight = FontWeight.Black,
+                fontSize = 28.sp
+            )
+        )
+    })
+
+    listElements.add(ComposableItem {
+        ProfileCircle(
+            userName = userName,
+            profileImageUrl = profileImageUrl,
+            profileImageOffsetY = profileImageOffsetY,
+            isUploading = profileImageUploading,
+            onChangePhoto = {
+                pickProfilePhotoDialog = true
+            }
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = PluckPalette.Primary.copy(alpha = 0.04f)
         ) {
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 460.dp),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 16.dp
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 28.dp, vertical = 32.dp)
-                        .testTag(ProfileScreenTestTags.ScrollContainer),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
+                Text(
+                    text = userName,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = PluckPalette.Primary
+                    )
+                )
+                if (!userEmail.isNullOrBlank()) {
                     Text(
-                        text = "Profile",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            color = PluckPalette.Primary,
-                            fontWeight = FontWeight.Black
+                        text = userEmail,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Muted
                         )
                     )
-
-                    ProfileAvatarSection(
-                        userName = userName,
-                        profileImageUrl = profileImageUrl,
-                        isUploading = profileImageUploading,
-                        onChangePhoto = onChangePhoto
+                }
+                if (!deviceId.isNullOrBlank()) {
+                    Text(
+                        text = "Device ID: $deviceId",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
                     )
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(28.dp),
-                        color = PluckPalette.Primary.copy(alpha = 0.04f)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 18.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = userName,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = PluckPalette.Primary
-                                )
-                            )
-                            if (!userEmail.isNullOrBlank()) {
-                                Text(
-                                    text = userEmail,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = PluckPalette.Muted
-                                    )
-                                )
-                            }
-                            if (!deviceId.isNullOrBlank()) {
-                                Text(
-                                    text = "Device ID: $deviceId",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = PluckPalette.Muted
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        color = PluckPalette.Surface,
-                        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "Personal Information",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = PluckPalette.Primary
-                                    )
-                                )
-                                TextButton(
-                                    onClick = {
-                                        showEditSection = !showEditSection
-                                        editableName = userName
-                                        editableEmail = userEmail.orEmpty()
-                                    },
-                                    enabled = !isLoading && !isUpdatingProfile
-                                ) {
-                                    Text(if (showEditSection) "Cancel" else "Edit")
-                                }
-                            }
-
-                            if (updateMessage != null) {
-                                Text(
-                                    text = updateMessage,
-                                    color = PluckPalette.Accept,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                            if (updateError != null) {
-                                Text(
-                                    text = updateError,
-                                    color = PluckPalette.Decline,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            if (showEditSection) {
-                                ProfileInputField(
-                                    label = "Display Name",
-                                    value = editableName,
-                                    onValueChange = { editableName = it }
-                                )
-                                ProfileInputField(
-                                    label = "Email (Optional)",
-                                    value = editableEmail,
-                                    onValueChange = { editableEmail = it }
-                                )
-                                ProfileInputField(
-                                    label = "Phone (optional)",
-                                    value = editablePhone,
-                                    onValueChange = { editablePhone = it }
-                                )
-                                TextButton(
-                                    onClick = {
-                                        val finalEmail = editableEmail.trim().takeIf { it.isNotBlank() }
-                                        val finalPhone = editablePhone.trim().takeIf { it.isNotBlank() }
-                                        onUpdateProfile(editableName.trim(), finalEmail, finalPhone)
-                                    },
-                                    enabled = editableName.trim().isNotBlank() && !isUpdatingProfile
-                                ) {
-                                    Text(if (isUpdatingProfile) "Saving..." else "Save Changes")
-                                }
-                            } else {
-                                Text(
-                                    text = "Keep your name and contact information up to date so organizers can reach you.",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = PluckPalette.Muted
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ProfileActionButton(
-                            text = "My Events",
-                            description = "View your joined and created events.",
-                            enabled = !isLoading,
-                            containerColor = PluckPalette.Secondary.copy(alpha = 0.12f),
-                            contentColor = PluckPalette.Secondary,
-                            onClick = onMyEvents
-                        )
-                        if (isOrganizer) {
-                            ProfileActionButton(
-                                text = "Organizer Dashboard",
-                                description = "Create and manage your events.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Tertiary,
-                                onClick = onOrganizerDashboard
-                            )
-                            ProfileActionButton(
-                                text = "Downgrade to User",
-                                description = "Remove organizer status. All your events will be deleted.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Muted,
-                                onClick = { showDowngradeDialog = true }
-                            )
-                        } else if (!isOrganizerBanned) {
-                            ProfileActionButton(
-                                text = "Become an Organizer",
-                                description = "Create and manage events for the community.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Tertiary,
-                                onClick = { showBecomeOrganizerDialog = true }
-                            )
-                        } else if (hasOutstandingAppeal) {
-                            ProfileActionButton(
-                                text = "Appeal Pending",
-                                description = "Your organizer access appeal is being reviewed by admins.",
-                                enabled = false,
-                                containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Muted,
-                                onClick = {}
-                            )
-                        } else {
-                            ProfileActionButton(
-                                text = "Submit Appeal",
-                                description = "You were removed from organizer access. Submit an appeal to admins.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Accept.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Accept,
-                                onClick = { showAppealDialog = true }
-                            )
-                        }
-                        if (isAdmin) {
-                            ProfileActionButton(
-                                text = "Admin Dashboard",
-                                description = "Manage platform content and users.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Decline.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Decline,
-                                onClick = onAdminDashboard
-                            )
-                        } else {
-                            ProfileActionButton(
-                                text = "Register as Admin",
-                                description = "Unlock the admin console with a secure password.",
-                                enabled = !isLoading,
-                                containerColor = PluckPalette.Primary.copy(alpha = 0.12f),
-                                contentColor = PluckPalette.Primary,
-                                onClick = onRegisterAdmin
-                            )
-                        }
-                        ProfileActionButton(
-                            text = "Sign Out",
-                            description = "Return to the welcome screen and clear this session.",
-                            enabled = !isLoading,
-                            containerColor = PluckPalette.Primary.copy(alpha = 0.08f),
-                            contentColor = PluckPalette.Primary,
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.2f)),
-                            onClick = onSignOut
-                        )
-                        ProfileDestructiveActionButton(
-                            text = "Delete Account",
-                            description = "Permanently remove your profile and history.",
-                            enabled = !isLoading,
-                            onClick = { showDeleteDialog = true },
-                            modifier = Modifier.testTag(ProfileScreenTestTags.DeleteAccountButton)
-                        )
-                    }
                 }
             }
         }
+    })
+
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = PluckPalette.Surface,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+        )
+        {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Personal Information",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    TextButton(
+                        onClick = {
+                            showEditSection = !showEditSection
+                            editableName = userName
+                            editableEmail = userEmail.orEmpty()
+                        },
+                        enabled = !isLoading && !isUpdatingProfile
+                    ) {
+                        Text(if (showEditSection) "Cancel" else "Edit")
+                    }
+                }
+
+                if (updateMessage != null) {
+                    Text(
+                        text = updateMessage,
+                        color = PluckPalette.Accept,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (updateError != null) {
+                    Text(
+                        text = updateError,
+                        color = PluckPalette.Decline,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                if (showEditSection) {
+                    ProfileInputField(
+                        label = "Display Name",
+                        value = editableName,
+                        onValueChange = { editableName = it }
+                    )
+                    ProfileInputField(
+                        label = "Email (Optional)",
+                        value = editableEmail,
+                        onValueChange = { editableEmail = it }
+                    )
+                    ProfileInputField(
+                        label = "Phone (optional)",
+                        value = editablePhone,
+                        onValueChange = { editablePhone = it }
+                    )
+                    TextButton(
+                        onClick = {
+                            val finalEmail = editableEmail.trim().takeIf { it.isNotBlank() }
+                            val finalPhone = editablePhone.trim().takeIf { it.isNotBlank() }
+                            onUpdateProfile(editableName.trim(), finalEmail, finalPhone)
+                        },
+                        enabled = editableName.trim().isNotBlank() && !isUpdatingProfile
+                    ) {
+                        Text(if (isUpdatingProfile) "Saving..." else "Save Changes")
+                    }
+                } else {
+                    Text(
+                        text = "Keep your name and contact information up to date so organizers can reach you.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+            }
+        }
+    })
+
+    listElements.add(ComposableItem {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        )
+        {
+            ProfileActionButton(
+                text = "Event History",
+                description = "View your joined and created events.",
+                enabled = !isLoading,
+                containerColor = PluckPalette.Secondary.copy(alpha = 0.12f),
+                contentColor = PluckPalette.Secondary,
+                onClick = onMyEvents
+            )
+            if (isOrganizer) {
+                ProfileActionButton(
+                    text = "Downgrade to User",
+                    description = "Remove organizer status. All your events will be deleted.",
+                    enabled = !isLoading,
+                    containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Muted,
+                    onClick = { showDowngradeDialog = true }
+                )
+            } else if (!isOrganizerBanned) {
+                ProfileActionButton(
+                    text = "Become an Organizer",
+                    description = "Create and manage events for the community.",
+                    enabled = !isLoading,
+                    containerColor = PluckPalette.Tertiary.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Tertiary,
+                    onClick = { showBecomeOrganizerDialog = true }
+                )
+            } else if (hasOutstandingAppeal) {
+                ProfileActionButton(
+                    text = "Appeal Pending",
+                    description = "Your organizer access appeal is being reviewed by admins.",
+                    enabled = false,
+                    containerColor = PluckPalette.Muted.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Muted,
+                    onClick = {}
+                )
+            } else {
+                ProfileActionButton(
+                    text = "Submit Appeal",
+                    description = "You were removed from organizer access. Submit an appeal to admins.",
+                    enabled = !isLoading,
+                    containerColor = PluckPalette.Accept.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Accept,
+                    onClick = { showAppealDialog = true }
+                )
+            }
+            if (!isAdmin) {
+                ProfileActionButton(
+                    text = "Register as Admin",
+                    description = "Unlock the admin console with a secure password.",
+                    enabled = !isLoading,
+                    containerColor = PluckPalette.Primary.copy(alpha = 0.12f),
+                    contentColor = PluckPalette.Primary,
+                    onClick = onRegisterAdmin
+                )
+            }
+            ProfileActionButton(
+                text = "Sign Out",
+                description = "Return to the welcome screen and clear this session.",
+                enabled = !isLoading,
+                containerColor = PluckPalette.Primary.copy(alpha = 0.08f),
+                contentColor = PluckPalette.Primary,
+                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.2f)),
+                onClick = onSignOut
+            )
+            ProfileDestructiveActionButton(
+                text = "Delete Account",
+                description = "Permanently remove your profile and history.",
+                enabled = !isLoading,
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier.testTag(ProfileScreenTestTags.DeleteAccountButton)
+            )
+        }
+    })
+
+    if (debugComposable != null) {
+        listElements.add(debugComposable)
+    }
+
+    PluckLayeredBackground(
+        modifier = modifier.fillMaxSize()
+    )
+    {
+        SquircleScrollableLazyList(
+            listElements = listElements
+        )
     }
 
     if (showDeleteDialog) {
@@ -646,6 +711,175 @@ fun ProfileScreen(
             }
         )
     }
+
+    if (pickProfilePhotoDialog) {
+        AlertDialog(
+            onDismissRequest = { pickProfilePhotoDialog = false },
+            title = {
+                Text(
+                    text = "Take or Choose Photo?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = PluckPalette.Primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = {
+                            (cameraPermissionState::launchPermissionRequest)()
+                            pickProfilePhotoDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Take")
+                    }
+
+                    Button(
+                        onClick = {
+                            pickPhotoFromGallery()
+                            pickProfilePhotoDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choose")
+                    }
+                }
+
+            },
+            confirmButton = { },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pickProfilePhotoDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+//    if (showTakePictureDialog) {
+//        TakePicture(
+//            onPictureTaken = { uri ->
+//                // TODO
+//            },
+//            onDismiss = {
+//                showTakePictureDialog = false
+//            }
+//        )
+//    }
+}
+
+@Composable
+private fun TakePicture(
+    modifier: Modifier = Modifier,
+    onPictureTaken: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    // Track last scan time to debounce rapid scanning (prevent duplicate scans)
+    var lastScannedTime by remember { mutableStateOf(0L) }
+
+    AlertDialog(
+        onDismissRequest = {
+            onDismiss()
+        },
+        text = {
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(24.dp),
+                color = PluckPalette.Surface,
+                border = BorderStroke(2.dp, PluckPalette.Primary.copy(alpha = 0.3f))
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx)
+                        val cameraProvider = cameraProviderFuture.get()
+
+                        // Set up camera preview use case
+                        val preview = androidx.camera.core.Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+                        // Set up image analysis use case for QR code detection
+//                val imageAnalyzer = ImageAnalysis.Builder()
+//                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+//                    .build()
+//                    .also {
+//                        it.setAnalyzer(executor) { imageProxy ->
+//                            // Process each camera frame with ML Kit barcode scanner
+////                            processImageProxy(imageProxy) { code ->
+////                                // Debounce: Only scan once every 2 seconds to prevent duplicates
+////                                val currentTime = System.currentTimeMillis()
+////                                if (currentTime - lastScannedTime > 2000) {
+////                                    lastScannedTime = currentTime
+////                                    onQRCodeScanned(code)
+////                                }
+////                            }
+//                        }
+//                    }
+
+                        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+                        try {
+                            // Unbind previous use cases before binding new ones
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                preview
+                            )
+                        } catch (exc: Exception) {
+                            Log.e("QRScannerScreen", "Failed to bind camera use cases", exc)
+                        }
+
+                        previewView
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { view ->
+                        view.clipToOutline = true
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = {
+//                        onPictureTaken() // TODO
+                        onDismiss()
+                    }
+                ) {
+                    Text("Take Picture!")
+                }
+
+                Button(
+                    onClick = {
+                        // TODO
+                    }
+                ) {
+                    Text("Flip")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -761,114 +995,6 @@ private fun ProfileDestructiveActionButton(
                     color = PluckPalette.Decline.copy(alpha = 0.85f)
                 )
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileAvatarSection(
-    /**
-     * User's display name used for the textual fallback when no image is available.
-     */
-    userName: String,
-    /**
-     * Cloudinary URL for the current profile photo.
-     */
-    profileImageUrl: String?,
-    /**
-     * Whether an image upload is in progress to display the loading indicator.
-     */
-    isUploading: Boolean,
-    /**
-     * Callback invoked when the user taps the avatar or change photo action.
-     */
-    onChangePhoto: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(140.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize(),
-                shape = CircleShape,
-                color = PluckPalette.Primary.copy(alpha = 0.08f),
-                tonalElevation = 0.dp,
-                shadowElevation = 10.dp,
-                onClick = onChangePhoto,
-                enabled = !isUploading
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!profileImageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = profileImageUrl,
-                            contentDescription = "Profile photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = userName.trim()
-                                .takeIf { it.isNotEmpty() }
-                                ?.first()
-                                ?.uppercaseChar()
-                                ?.toString()
-                                ?: "?",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                color = PluckPalette.Primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    if (isUploading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(PluckPalette.Primary.copy(alpha = 0.45f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = PluckPalette.Surface)
-                        }
-                    }
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .padding(end = 4.dp, bottom = 4.dp)
-                    .size(40.dp),
-                shape = CircleShape,
-                color = PluckPalette.Primary,
-                shadowElevation = 8.dp,
-                tonalElevation = 0.dp,
-                onClick = onChangePhoto,
-                enabled = !isUploading
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.PhotoCamera,
-                        contentDescription = "Change profile photo",
-                        tint = PluckPalette.Surface
-                    )
-                }
-            }
-        }
-
-        TextButton(
-            onClick = onChangePhoto,
-            enabled = !isUploading
-        ) {
-            Text(if (isUploading) "Uploading…" else "Change Photo")
         }
     }
 }

@@ -25,6 +25,26 @@ class UserRepository(
     private val usersCollection = firestore.collection("entrants")
 
     /**
+     * Set the FCM token of a user
+     *
+     * @param token The token to be given to the user
+     */
+    suspend fun setFCMToken(userId: String, token: String): Result<Unit> {
+        return try {
+            usersCollection.document(userId)
+                .update(
+                    mapOf(
+                        "fcmToken" to token
+                    )
+                ).await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Get all users in the system
      *
      * @return Result with list of users or error
@@ -91,13 +111,50 @@ class UserRepository(
 
     /**
      * Delete a user profile (US 03.02.01)
+     * Also cleans up related data: waitlist entries, notifications, and invitations
      *
      * @param userId The user ID to delete
      * @return Result with success or error
      */
     suspend fun deleteUser(userId: String): Result<Unit> {
         return try {
+            // Delete the user profile document
             usersCollection.document(userId).delete().await()
+
+            // Clean up related waitlist entries
+            val waitlistSnapshot = firestore.collection("waitlists")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            val batch = firestore.batch()
+            waitlistSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up notifications for this user
+            val notificationSnapshot = firestore.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            notificationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Clean up invitations sent to this user
+            val invitationSnapshot = firestore.collection("invitations")
+                .whereEqualTo("inviteeId", userId)
+                .get()
+                .await()
+
+            invitationSnapshot.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+
+            // Commit all deletions in a single batch
+            batch.commit().await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -135,6 +192,32 @@ class UserRepository(
      */
     suspend fun getAllOrganizers(): Result<List<FirebaseUser>> {
         return getUsersByRole(UserRole.ORGANIZER)
+    }
+
+    /**
+     * Observes users in real time
+     *
+     * @return Flow emitting user lists whenever Firestore changes.
+     */
+    fun observeUsers(): Flow<List<FirebaseUser>> = callbackFlow {
+        val listenerRegistration = usersCollection
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    // Handle permission errors gracefully (e.g., when user loses admin access)
+                    trySend(emptyList())
+                    close()
+                    return@addSnapshotListener
+                }
+
+                val users = snapshot?.documents
+                    ?.mapNotNull { doc -> doc.toObject(FirebaseUser::class.java) }
+                    ?.sortedByDescending { it.createdAt }
+                    ?: emptyList()
+
+                trySend(users)
+            }
+
+        awaitClose { listenerRegistration.remove() }
     }
 
     /**

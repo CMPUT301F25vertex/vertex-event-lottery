@@ -5,14 +5,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.NotificationItem
 import com.pluck.ui.model.NotificationStatus
 import com.pluck.ui.model.previewNotifications
-import com.pluck.ui.screens.ProfileScreenTestTags.ScrollContainer
 import com.pluck.ui.theme.PluckTheme
 import org.junit.Rule
 import org.junit.Test
@@ -50,19 +48,6 @@ class ScreensSmokeTest {
         )
     )
 
-    private val sampleMyEvents = listOf(
-        MyEventItem(
-            event = sampleEvent,
-            status = EventStatus.CONFIRMED,
-            isCreatedByUser = false
-        ),
-        MyEventItem(
-            event = sampleEvent.copy(id = "event-3", title = "Photography Walk", enrolled = 20),
-            status = EventStatus.UPCOMING,
-            isCreatedByUser = true
-        )
-    )
-
     private val sampleWaitlistEntries = listOf(
         WaitlistEntry(
             id = "waitlist-1",
@@ -95,7 +80,11 @@ class ScreensSmokeTest {
                     isLoading = false,
                     currentRoute = null,
                     onSelectEvent = {},
-                    onNavigate = {}
+                    onNavigate = {},
+                    dashboards = emptyList(),
+                    currentUserId = "",
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }
@@ -165,12 +154,10 @@ class ScreensSmokeTest {
             }
         }
 
-        composeRule.onNodeWithTag(ScrollContainer).assertExists()
-
-        composeRule.onNodeWithText("My Events", useUnmergedTree = true)
+        composeRule.onNodeWithText("Event History", useUnmergedTree = true)
             .assertExists()
 
-        composeRule.onNodeWithText("My Events")
+        composeRule.onNodeWithText("Event History")
             .assertHasClickAction()
 
         composeRule.onNodeWithText("Delete Account", useUnmergedTree = true)
@@ -185,14 +172,22 @@ class ScreensSmokeTest {
         composeRule.setContent {
             PluckTheme {
                 MyEventsScreen(
-                    events = sampleMyEvents,
+                    events = sampleEvents,
                     isLoading = false,
-                    onEventClick = {}
+                    onEventClick = { },
+                    userId = "",
+                    historyByEventId = emptyMap(),
+                    dashboards = emptyList(),
+                    onNavigate = { str -> },
+                    currentRoute = null,
+                    onRefresh = { },
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }
 
-        composeRule.onNodeWithText("My Events").assertIsDisplayed()
+        composeRule.onNodeWithText("Event History").assertIsDisplayed()
         composeRule.onAllNodesWithText("Upcoming")[0].assertIsDisplayed()
     }
 
@@ -208,28 +203,17 @@ class ScreensSmokeTest {
                         totalParticipants = 120,
                         totalRejections = 4
                     ),
-                    events = sampleEvents
+                    events = sampleEvents,
+                    currentRoute = "organizer_dashboard",
+                    dashboards = emptyList(),
+                    onNavigate = { },
+                    notificationCount = 0
                 )
             }
         }
 
         composeRule.onNodeWithText("Organizer Dashboard").assertIsDisplayed()
         composeRule.onNodeWithText("Welcome back, Vertex Team").assertIsDisplayed()
-    }
-
-    @Test
-    fun waitlistScreen_rendersQueues() {
-        composeRule.setContent {
-            PluckTheme {
-                WaitlistScreen(
-                    event = sampleEvent,
-                    waitlistEntries = sampleWaitlistEntries
-                )
-            }
-        }
-
-        composeRule.onNodeWithText("Waitlist Queue").assertIsDisplayed()
-        composeRule.onNodeWithText("Jordan Lee").assertIsDisplayed()
     }
 
     @Test

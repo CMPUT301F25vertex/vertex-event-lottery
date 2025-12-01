@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import com.pluck.ui.components.Dashboard
 import com.pluck.ui.model.Event
 import org.junit.Before
 import org.junit.Rule
@@ -88,11 +89,15 @@ class HomeScreenTest {
                 isLoading = false,
                 currentRoute = "home",
                 onSelectEvent = {},
-                onNavigate = {}
+                onNavigate = {},
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
-        composeRule.onNodeWithText("No events match your filters just yet.", substring = true).assertExists()
+        composeRule.onNodeWithText("No events match your filters", substring = true).assertExists()
     }
 
     @Test
@@ -106,7 +111,11 @@ class HomeScreenTest {
                 isLoading = false,
                 currentRoute = "home",
                 onSelectEvent = { event -> clickedEvent = event },
-                onNavigate = {}
+                onNavigate = {},
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -125,7 +134,11 @@ class HomeScreenTest {
                 isLoading = false,
                 currentRoute = "home",
                 onSelectEvent = {},
-                onNavigate = {}
+                onNavigate = {},
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -144,7 +157,11 @@ class HomeScreenTest {
                 isLoading = false,
                 currentRoute = "home",
                 onSelectEvent = {},
-                onNavigate = {}
+                onNavigate = {},
+                dashboards = emptyList(),
+                currentUserId = "",
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 

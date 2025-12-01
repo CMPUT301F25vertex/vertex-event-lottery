@@ -1,9 +1,7 @@
 package com.pluck.ui.screens
 
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.pluck.data.firebase.WaitlistStatus
@@ -24,13 +22,13 @@ class MyEventsScreenTest {
 
     private lateinit var upcomingEvent: Event
     private lateinit var pastEvent: Event
-    private lateinit var mockEvents: List<MyEventItem>
+    private lateinit var mockEvents: List<Event>
 
     @Before
     fun setup() {
         upcomingEvent = Event(
             id = "upcoming-1",
-            title = "Upcoming Event",
+            title = "Upcoming Event-Name",
             description = "Test upcoming event",
             location = "Test Location",
             date = LocalDate.now().plusDays(7),
@@ -41,7 +39,7 @@ class MyEventsScreenTest {
 
         pastEvent = Event(
             id = "past-1",
-            title = "Past Event",
+            title = "Past Event-Name",
             description = "Test past event",
             location = "Past Location",
             date = LocalDate.now().minusDays(7),
@@ -51,20 +49,8 @@ class MyEventsScreenTest {
         )
 
         mockEvents = listOf(
-            MyEventItem(
-                event = upcomingEvent,
-                status = EventStatus.CONFIRMED,
-                isCreatedByUser = false,
-                joinedDate = LocalDate.now().minusDays(2),
-                historyStatus = WaitlistStatus.ACCEPTED
-            ),
-            MyEventItem(
-                event = pastEvent,
-                status = EventStatus.PAST,
-                isCreatedByUser = false,
-                joinedDate = LocalDate.now().minusDays(10),
-                historyStatus = WaitlistStatus.ACCEPTED
-            )
+            upcomingEvent,
+            pastEvent
         )
     }
 
@@ -73,13 +59,21 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = mockEvents,
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
         // Verify events are displayed
-        composeRule.onNodeWithText("Upcoming Event").assertExists()
-        composeRule.onNodeWithText("Past Event").assertExists()
+        composeRule.onNodeWithText("Upcoming Event-Name").assertExists()
+        composeRule.onNodeWithText("Past Event-Name").assertExists()
     }
 
     @Test
@@ -87,7 +81,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = emptyList(),
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -100,7 +102,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = emptyList(),
-                isLoading = true
+                isLoading = true,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -114,7 +124,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = mockEvents,
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -122,7 +140,7 @@ class MyEventsScreenTest {
         composeRule.onNodeWithText("Upcoming").performClick()
 
         // Should show upcoming event
-        composeRule.onNodeWithText("Upcoming Event").assertExists()
+        composeRule.onNodeWithText("Upcoming Event-Name").assertExists()
         // Past event should still exist in the list (filtering doesn't remove from tree)
     }
 
@@ -131,7 +149,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = mockEvents,
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -139,7 +165,7 @@ class MyEventsScreenTest {
         composeRule.onNodeWithText("Past").performClick()
 
         // Should show past event
-        composeRule.onNodeWithText("Past Event").assertExists()
+        composeRule.onNodeWithText("Past Event-Name").assertExists()
     }
 
     @Test
@@ -147,7 +173,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = mockEvents,
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
@@ -155,8 +189,8 @@ class MyEventsScreenTest {
         composeRule.onNodeWithText("All").assertExists()
 
         // Both events should exist
-        composeRule.onNodeWithText("Upcoming Event").assertExists()
-        composeRule.onNodeWithText("Past Event").assertExists()
+        composeRule.onNodeWithText("Upcoming Event-Name").assertExists()
+        composeRule.onNodeWithText("Past Event-Name").assertExists()
     }
 
     @Test
@@ -167,11 +201,19 @@ class MyEventsScreenTest {
             MyEventsScreen(
                 events = mockEvents,
                 isLoading = false,
-                onEventClick = { event -> clickedEvent = event }
+                onEventClick = { event -> clickedEvent = event },
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 
-        composeRule.onNodeWithText("Upcoming Event").performClick()
+        composeRule.onNodeWithText("Upcoming Event-Name").performClick()
 
         assert(clickedEvent != null) { "Event click callback was not called" }
         assert(clickedEvent?.id == "upcoming-1") { "Wrong event was clicked" }
@@ -183,7 +225,15 @@ class MyEventsScreenTest {
         composeRule.setContent {
             MyEventsScreen(
                 events = mockEvents,
-                isLoading = false
+                isLoading = false,
+                userId = "",
+                historyByEventId = emptyMap(),
+                dashboards = emptyList(),
+                onNavigate = { str -> },
+                currentRoute = null,
+                onRefresh = { },
+                isRefreshing = false,
+                notificationCount = 0
             )
         }
 

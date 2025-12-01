@@ -22,6 +22,7 @@ import java.time.Instant
  * @property email Optional email address for contact and notifications.
  * @property phoneNumber Optional phone number for contact and notifications.
  * @property profileImageUrl Optional Cloudinary image URL for the entrant's profile photo.
+ * @property profileImageOffsetY Vertical offset for profile image framing (-1.0 to 1.0).
  * @property firebaseUid Firebase Authentication UID (anonymous auth linked to device).
  * @property role Current user role (ENTRANT, ORGANIZER, ADMIN).
  * @property isOrganizerBanned Whether the user is banned from organizer actions.
@@ -35,6 +36,7 @@ data class EntrantProfile(
     val email: String?,
     val phoneNumber: String?,
     val profileImageUrl: String?,
+    val profileImageOffsetY: Float = 0f,
     val firebaseUid: String,
     val role: UserRole = UserRole.ENTRANT,
     val isOrganizerBanned: Boolean = false,

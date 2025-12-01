@@ -31,14 +31,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +57,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,16 +77,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import com.pluck.data.firebase.FirebaseUser
+import com.pluck.data.firebase.WaitlistStatus
+import com.pluck.data.repository.WaitlistDecisionStats
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.FullWidthLazyScroll
+import com.pluck.ui.components.NotificationWriter
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
+import com.pluck.ui.components.ProfileCircle
+import com.pluck.ui.components.SquircleScrollableLazyList
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
 private enum class WaitlistTab {
     WAITING,
-    CHOSEN
+    CHOSEN,
+    CANCELED
 }
 
 /**
@@ -94,7 +112,7 @@ data class WaitlistEntry(
     val joinedDate: LocalDate,
     val isCurrentUser: Boolean = false,
     val isChosen: Boolean = false,
-    val status: com.pluck.data.firebase.WaitlistStatus = com.pluck.data.firebase.WaitlistStatus.WAITING,
+    val status: WaitlistStatus = WaitlistStatus.WAITING,
     val latitude: Double? = null,
     val longitude: Double? = null
 )
@@ -103,193 +121,239 @@ data class WaitlistEntry(
 @Composable
 fun WaitlistScreen(
     event: Event,
+    waitingCount: Int = 0,
+    availableSpots: Int = 0,
+    decisionStats: WaitlistDecisionStats = WaitlistDecisionStats(),
     waitlistEntries: List<WaitlistEntry> = emptyList(),
     chosenEntries: List<WaitlistEntry> = emptyList(),
-    isUserWaiting: Boolean = false,
-    isUserConfirmed: Boolean = false,
-    onJoinWaitlist: () -> Unit = {},
-    onLeaveWaitlist: () -> Unit = {},
+    cancelEntries: List<WaitlistEntry> = emptyList(),
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
     onBack: () -> Unit = {},
+    onRunDraw: () -> Unit = {},
+    users: List<FirebaseUser> = emptyList(),
+    onExportCSV: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(WaitlistTab.WAITING) }
     val waitlistSize = waitlistEntries.size
-    val waitlistFull = waitlistSize >= event.waitlistCapacity
-    val currentUserPosition = waitlistEntries.firstOrNull { it.isCurrentUser }?.position
-    val derivedUserWaiting = isUserWaiting || waitlistEntries.any { it.isCurrentUser }
-    val derivedUserConfirmed = isUserConfirmed || chosenEntries.any { it.isCurrentUser }
 
-    val scrollState = rememberScrollState()
-    val collapseProgress = 0f
-    val spacerHeight = 56.dp
+    var showNotificationWriterDialog by remember { mutableStateOf(false) }
 
-    PluckLayeredBackground(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Surface(
-                modifier = Modifier
-                    .padding(top = 24.dp, start = 24.dp)
-                    .zIndex(10f)
-                    .size(56.dp)
-                    .align(Alignment.TopStart),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onBack
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Go back",
-                        tint = PluckPalette.Primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        BackButton(
+            onBack = onBack
+        )
+    })
+
+    listElements.add(ComposableItem {
+        WaitlistHeaderCard(
+            event = event
+        )
+    })
+
+    listElements.add(ComposableItem {
+        DrawActionsRow(
+            waitingCount = waitingCount,
+            availableSpots = availableSpots,
+            onRunDraw = onRunDraw
+        )
+    })
+
+    listElements.add(ComposableItem {
+        ChosenEntrantsStats(
+            stats = decisionStats,
+            capacity = event.capacity
+        )
+    })
+
+    listElements.add(ComposableItem {
+        WaitlistTabSelector(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            waitingCount = waitlistEntries.size,
+            chosenCount = chosenEntries.size,
+            canceledCount = cancelEntries.size,
+            modifier = Modifier.animateContentSize()
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Button(
+            onClick = {
+                showNotificationWriterDialog = true
+            },
+            modifier = modifier
+                .height(40.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PluckPalette.Secondary,
+                contentColor = autoTextColor(PluckPalette.Secondary)
+            ),
+            contentPadding = PaddingValues(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+
+            val contextString = when (selectedTab) {
+                WaitlistTab.WAITING -> "Waiting"
+                WaitlistTab.CANCELED -> "Cancelled"
+                WaitlistTab.CHOSEN -> "Plucked"
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Spacer(modifier = Modifier.height(spacerHeight))
+            Text(
+                text = "Notify Everyone $contextString",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = 1,
+            )
+        }
+    })
 
-                WaitlistHeaderCard(
-                    event = event,
-                    collapseProgress = collapseProgress
-                )
-
-//                WaitlistSummaryCard(
-//                    event = event,
-//                    waitlistSize = waitlistSize,
-//                    waitlistCapacity = event.waitlistCapacity,
-//                    isUserWaiting = derivedUserWaiting,
-//                    isUserConfirmed = derivedUserConfirmed,
-//                    currentUserPosition = currentUserPosition,
-//                    waitlistFull = waitlistFull,
-//                    onJoinWaitlist = onJoinWaitlist,
-//                    onLeaveWaitlist = onLeaveWaitlist,
-//                    modifier = Modifier.animateContentSize()
-//                )
-
-                WaitlistTabSelector(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    waitingCount = waitlistEntries.size,
-                    chosenCount = chosenEntries.size,
-                    modifier = Modifier.animateContentSize()
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize()
-                        .widthIn(max = 460.dp),
-                    shape = RoundedCornerShape(36.dp),
-                    color = PluckPalette.Surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                ) {
-                    when (selectedTab) {
-                        WaitlistTab.WAITING -> {
-                            if (waitlistEntries.isEmpty()) {
-                                WaitlistEmptyState(
-                                    message = "No one on the waitlist yet",
-                                    description = ""
-                                )
-                            } else {
-                                WaitlistEntriesList(
-                                    entries = waitlistEntries,
-                                    title = "Waitlist Queue"
-                                )
-                            }
-                        }
-                        WaitlistTab.CHOSEN -> {
-                            if (chosenEntries.isEmpty()) {
-                                WaitlistEmptyState(
-                                    message = "No entrants chosen yet",
-                                    description = "Run the lottery to randomly select entrants from the waitlist."
-                                )
-                            } else {
-                                WaitlistEntriesList(
-                                    entries = chosenEntries,
-                                    title = "Chosen Entrants"
-                                )
-                            }
-                        }
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .widthIn(max = 460.dp),
+            shape = RoundedCornerShape(36.dp),
+            color = PluckPalette.Surface,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+        )
+        {
+            when (selectedTab) {
+                WaitlistTab.WAITING -> {
+                    if (waitlistEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No one on the waitlist yet",
+                            description = "Go promote your event!"
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = waitlistEntries,
+                            title = "Waitlist Queue",
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
+                        )
+                    }
+                }
+                WaitlistTab.CHOSEN -> {
+                    if (chosenEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No entrants plucked yet",
+                            description = "Run the lottery to randomly select entrants from the waitlist."
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = chosenEntries,
+                            title = "Plucked Entrants",
+                            users = users,
+                            showRemoveButton = true,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab,
+                            onExportCSV = onExportCSV
+                        )
+                    }
+                }
+                WaitlistTab.CANCELED -> {
+                    if (cancelEntries.isEmpty()) {
+                        WaitlistEmptyState(
+                            message = "No entrants cancelled yet",
+                            description = "That's a relief!"
+                        )
+                    } else {
+                        WaitlistEntriesList(
+                            entries = cancelEntries,
+                            title = "Cancelled Entrants",
+                            users = users,
+                            showRemoveButton = false,
+                            onRemoveEntrant = onRemoveEntrant,
+                            selectedTab = selectedTab
+                        )
                     }
                 }
             }
         }
+    })
+
+    PluckLayeredBackground(
+        modifier = modifier
+            .fillMaxSize()
+    )
+    {
+        FullWidthLazyScroll(
+            listElements = listElements
+        )
+    }
+
+    if (showNotificationWriterDialog) {
+        val waitlistUserIds = mutableListOf<String>()
+
+        var listToSendTo: List<WaitlistEntry>
+        when (selectedTab) {
+            WaitlistTab.WAITING -> listToSendTo = waitlistEntries
+            WaitlistTab.CANCELED -> listToSendTo = cancelEntries
+            WaitlistTab.CHOSEN -> listToSendTo = chosenEntries
+        }
+
+        for (wait in listToSendTo) {
+            waitlistUserIds.add(wait.userId)
+        }
+
+        NotificationWriter(
+            users = waitlistUserIds,
+            eventId = event.id,
+            organizerId = event.organizerId,
+            onDismiss = {
+                showNotificationWriterDialog = false
+            },
+            onConfirm = {
+                showNotificationWriterDialog = false
+            }
+        )
     }
 }
 
 @Composable
 private fun WaitlistHeaderCard(
-    event: Event,
-    collapseProgress: Float
+    event: Event
 ) {
     val selectionMessage = if (event.samplingCount > 0) {
         val plural = if (event.samplingCount == 1) "" else "s"
         "Lottery draws randomly select ${event.samplingCount} entrant$plural each time. Everyone else keeps their waitlist spot for the next draw."
     } else {
-        "Lottery draws randomly select entrants from the waiting list. If you are not chosen, you remain in line for the next draw."
+        "Lottery draws randomly select entrants from the waiting list. If you are not plucked, you remain in line for the next draw."
     }
-
-    val paddingFactor = (1f - 0.35f * collapseProgress).coerceIn(0.65f, 1f)
-    val headerPadding by animateDpAsState(
-        targetValue = 24.dp * paddingFactor,
-        label = "waitlistHeaderPadding"
-    )
-    val columnSpacing by animateDpAsState(
-        targetValue = 16.dp * (1f - 0.3f * collapseProgress).coerceIn(0.6f, 1f),
-        label = "waitlistHeaderSpacing"
-    )
-    val badgeSize by animateDpAsState(
-        targetValue = 56.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
-        label = "waitlistHeaderBadge"
-    )
-    val badgeIconSize by animateDpAsState(
-        targetValue = 40.dp * (1f - 0.2f * collapseProgress).coerceIn(0.7f, 1f),
-        label = "waitlistHeaderBadgeIcon"
-    )
-    val titleSize by animateFloatAsState(
-        targetValue = if (collapseProgress > 0.6f) 22f else 24f,
-        label = "waitlistHeaderTitleSize"
-    )
-    val shadowElevation by animateDpAsState(
-        targetValue = 16.dp * (1f - 0.5f * collapseProgress).coerceIn(0.5f, 1f),
-        label = "waitlistHeaderElevation"
-    )
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .widthIn(max = 460.dp)
-            .animateContentSize(),
+            .widthIn(max = 460.dp),
         shape = RoundedCornerShape(36.dp),
         color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = shadowElevation,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = headerPadding, vertical = headerPadding),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(columnSpacing)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = event.title,
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Black,
                     color = PluckPalette.Primary,
-                    fontSize = titleSize.sp
+                    fontSize = 22f.sp
                 ),
                 textAlign = TextAlign.Center
             )
@@ -304,24 +368,24 @@ private fun WaitlistHeaderCard(
                     value = "${event.enrolled}/${event.capacity}",
                     label = "Enrolled",
                     accentColor = PluckPalette.Secondary,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Groups,
                     value = "${event.waitlistCount}",
                     label = "Waitlisted",
                     accentColor = PluckPalette.Tertiary,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
                 WaitlistStatItem(
                     icon = Icons.Outlined.Schedule,
-                    value = "${event.waitlistAvailable}",
+                    value = "${if (event.waitlistCapacity == Int.MAX_VALUE) "∞" else event.waitlistAvailable}",
                     label = "Available",
                     accentColor = PluckPalette.Accept,
-                    circleSize = badgeSize,
-                    iconSize = badgeIconSize
+                    circleSize = 56.dp,
+                    iconSize = 40.dp
                 )
             }
 
@@ -335,7 +399,160 @@ private fun WaitlistHeaderCard(
         }
     }
 }
+@Composable
+private fun DrawActionsRow(
+    waitingCount: Int,
+    availableSpots: Int,
+    onRunDraw: () -> Unit
+) {
+    val canRunDraw = waitingCount > 0 && availableSpots > 0
+    val helperText = when {
+        availableSpots <= 0 -> "Event is full. Remove entrants or increase capacity to draw again."
+        waitingCount <= 0 -> "No entrants waiting. Invite more entrants to join the waitlist."
+        else -> "Draw again to invite ${minOf(waitingCount, availableSpots)} entrant(s)."
+    }
 
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Lottery Controls",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+
+                Button(
+                    onClick = onRunDraw,
+                    enabled = canRunDraw,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canRunDraw) PluckPalette.Secondary else PluckPalette.Muted.copy(alpha = 0.2f),
+                        contentColor = if (canRunDraw) autoTextColor(PluckPalette.Secondary) else PluckPalette.Muted
+                    ),
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .zIndex(10f) //Debugging
+                ) {
+                    Text(text = "Pluck", maxLines = 1)
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStats(
+    stats: WaitlistDecisionStats,
+    capacity: Int
+) {
+    val acceptedCount = stats.accepted
+    val pendingCount = stats.pending
+    val declinedCount = stats.declined
+    val cancelledCount = stats.cancelled
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ChosenEntrantsStatCard(
+                label = "Accepted",
+                value = "$acceptedCount/$capacity",
+                icon = Icons.Outlined.CheckCircle,
+                color = PluckPalette.Accept,
+                modifier = Modifier.weight(1f)
+            )
+            ChosenEntrantsStatCard(
+                label = "Pending",
+                value = pendingCount.toString(),
+                icon = Icons.Outlined.HourglassEmpty,
+                color = PluckPalette.Secondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+@Composable
+private fun ChosenEntrantsStatCard(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = PluckPalette.Surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = color.copy(alpha = 0.16f),
+                contentColor = color
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = PluckPalette.Muted
+                )
+            )
+        }
+    }
+}
 @Composable
 private fun WaitlistStatItem(
     icon: ImageVector,
@@ -381,109 +598,6 @@ private fun WaitlistStatItem(
     }
 }
 
-@Composable
-private fun WaitlistSummaryCard(
-    event: Event,
-    waitlistSize: Int,
-    waitlistCapacity: Int,
-    isUserWaiting: Boolean,
-    isUserConfirmed: Boolean,
-    currentUserPosition: Int?,
-    waitlistFull: Boolean,
-    onJoinWaitlist: () -> Unit,
-    onLeaveWaitlist: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val registrationClosed = !event.isRegistrationOpen
-    val isPastEvent = event.isPastEvent
-    val primaryLabel = when {
-        isPastEvent -> "Event Has Occurred"
-        isUserConfirmed -> "Release My Spot"
-        isUserWaiting -> "Leave Waitlist"
-        waitlistFull -> "Waitlist Full"
-        registrationClosed -> "Registration Closed"
-        else -> "Join Waitlist"
-    }
-
-    val primaryEnabled = when {
-        isPastEvent -> false
-        isUserConfirmed -> true
-        isUserWaiting -> true
-        waitlistFull -> false
-        registrationClosed -> false
-        else -> true
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = 460.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "Waitlist status",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = PluckPalette.Primary
-                    )
-                )
-                Text(
-                    text = buildString {
-                        append(waitlistSize)
-                        append(" of ")
-                        append(waitlistCapacity)
-                        append(" entrants currently on the waitlist.")
-                        if (currentUserPosition != null) {
-                            append(" You are #")
-                            append(currentUserPosition)
-                            append(" in line.")
-                        }
-                    },
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = PluckPalette.Muted
-                    )
-                )
-            }
-
-            Button(
-                onClick = {
-                    if (isUserWaiting || isUserConfirmed) {
-                        onLeaveWaitlist()
-                    } else {
-                        onJoinWaitlist()
-                    }
-                },
-                enabled = primaryEnabled,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isUserWaiting || isUserConfirmed) PluckPalette.Surface else PluckPalette.Primary,
-                    contentColor = if (isUserWaiting || isUserConfirmed) PluckPalette.Primary else PluckPalette.Surface,
-                    disabledContainerColor = PluckPalette.Muted.copy(alpha = 0.25f),
-                    disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
-                ),
-                border = if (isUserWaiting || isUserConfirmed) BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)) else null,
-                contentPadding = PaddingValues(vertical = 14.dp)
-            ) {
-                Text(primaryLabel)
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WaitlistTabSelector(
@@ -491,6 +605,7 @@ private fun WaitlistTabSelector(
     onTabSelected: (WaitlistTab) -> Unit,
     waitingCount: Int,
     chosenCount: Int,
+    canceledCount: Int,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -499,54 +614,81 @@ private fun WaitlistTabSelector(
             .widthIn(max = 460.dp),
         shape = RoundedCornerShape(24.dp),
         color = PluckPalette.Surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 12.dp,
         border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
     ) {
-        Row(
+        LazyRow(
+            state = rememberLazyListState(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FilterChip(
-                selected = selectedTab == WaitlistTab.WAITING,
-                onClick = { onTabSelected(WaitlistTab.WAITING) },
-                label = { Text("Waiting ($waitingCount)") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.WAITING,
+                    onClick = { onTabSelected(WaitlistTab.WAITING) },
+                    label = { Text("Waiting ($waitingCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.WAITING) autoTextColor(
+                            PluckPalette.Tertiary
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Tertiary,
+                        selectedLabelColor = autoTextColor(PluckPalette.Tertiary)
                     )
-                },
-                modifier = Modifier.weight(1f),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selectedTab == WaitlistTab.WAITING) PluckPalette.Tertiary else PluckPalette.Surface,
-                    labelColor = if (selectedTab == WaitlistTab.WAITING) autoTextColor(PluckPalette.Tertiary) else PluckPalette.Primary,
-                    selectedContainerColor = PluckPalette.Tertiary,
-                    selectedLabelColor = autoTextColor(PluckPalette.Tertiary)
                 )
-            )
-            FilterChip(
-                selected = selectedTab == WaitlistTab.CHOSEN,
-                onClick = { onTabSelected(WaitlistTab.CHOSEN) },
-                label = { Text("Chosen ($chosenCount)") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+            }
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.CHOSEN,
+                    onClick = { onTabSelected(WaitlistTab.CHOSEN) },
+                    label = { Text("Plucked ($chosenCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.CHOSEN) autoTextColor(
+                            PluckPalette.Accept
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Accept,
+                        selectedLabelColor = autoTextColor(PluckPalette.Accept)
                     )
-                },
-                modifier = Modifier.weight(1f),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selectedTab == WaitlistTab.CHOSEN) PluckPalette.Accept else PluckPalette.Surface,
-                    labelColor = if (selectedTab == WaitlistTab.CHOSEN) autoTextColor(PluckPalette.Accept) else PluckPalette.Primary,
-                    selectedContainerColor = PluckPalette.Accept,
-                    selectedLabelColor = autoTextColor(PluckPalette.Accept)
                 )
-            )
+            }
+            item {
+                FilterChip(
+                    selected = selectedTab == WaitlistTab.CANCELED,
+                    onClick = { onTabSelected(WaitlistTab.CANCELED) },
+                    label = { Text("Cancelled ($canceledCount)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Cancel,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (selectedTab == WaitlistTab.CANCELED) PluckPalette.Decline else PluckPalette.Surface,
+                        labelColor = if (selectedTab == WaitlistTab.CANCELED) autoTextColor(
+                            PluckPalette.Decline
+                        ) else PluckPalette.Primary,
+                        selectedContainerColor = PluckPalette.Decline,
+                        selectedLabelColor = autoTextColor(PluckPalette.Decline)
+                    )
+                )
+            }
         }
     }
 }
@@ -554,7 +696,12 @@ private fun WaitlistTabSelector(
 @Composable
 private fun WaitlistEntriesList(
     entries: List<WaitlistEntry>,
-    title: String
+    title: String,
+    users: List<FirebaseUser>,
+    showRemoveButton: Boolean = false,
+    onRemoveEntrant: (WaitlistEntry) -> Unit = {},
+    onExportCSV: () -> Unit = {},
+    selectedTab: WaitlistTab
 ) {
     Column(
         modifier = Modifier
@@ -562,30 +709,64 @@ private fun WaitlistEntriesList(
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = PluckPalette.Primary
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PluckPalette.Primary
+                )
             )
-        )
+            if (selectedTab == WaitlistTab.CHOSEN) {
+                // Export CSV button (US 02.06.05)
+                IconButton(onClick = onExportCSV) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Export CSV",
+                        tint = PluckPalette.Secondary
+                    )
+                }
+            }
+        }
 
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             entries.forEach { entry ->
-                WaitlistEntryCard(entry = entry)
+                val usr: FirebaseUser? = users.find{ user ->
+                    user.id == entry.userId
+                }
+
+                val userProfileURL = usr?.profileImageUrl ?: ""
+
+                WaitlistEntryCard(
+                    entry = entry,
+                    userProfileURL = userProfileURL,
+                    showRemoveButton = showRemoveButton,
+                    onRemove = { onRemoveEntrant(entry) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun WaitlistEntryCard(entry: WaitlistEntry) {
+private fun WaitlistEntryCard(
+    entry: WaitlistEntry,
+    userProfileURL: String,
+    showRemoveButton: Boolean = false,
+    onRemove: () -> Unit = {}
+) {
+    var showRemoveDialog by remember { mutableStateOf(false) }
+
     val accentColor = when (entry.status) {
-        com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> PluckPalette.Accept
-        com.pluck.data.firebase.WaitlistStatus.INVITED -> PluckPalette.Tertiary
-        com.pluck.data.firebase.WaitlistStatus.DECLINED -> PluckPalette.Decline
+        WaitlistStatus.ACCEPTED -> PluckPalette.Accept
+        WaitlistStatus.INVITED -> PluckPalette.Tertiary
+        WaitlistStatus.DECLINED -> PluckPalette.Decline
         else -> if (entry.isCurrentUser) PluckPalette.Secondary else PluckPalette.Primary
     }
 
@@ -610,37 +791,19 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .height(48.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accentColor.copy(alpha = 0.9f))
-            )
-
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
+                ProfileCircle(
+                    userName = entry.userName,
+                    profileImageUrl = userProfileURL,
+                    isUploading = false,
+                    size = 48,
                     modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = accentColor,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 4.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "#${entry.position}",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Black,
-                                color = PluckPalette.Surface,
-                                fontSize = 16.sp
-                            )
-                        )
-                    }
-                }
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -659,30 +822,92 @@ private fun WaitlistEntryCard(entry: WaitlistEntry) {
                     )
                 }
             }
-
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val statusLabel = when (entry.status) {
-                    com.pluck.data.firebase.WaitlistStatus.ACCEPTED -> "Confirmed"
-                    com.pluck.data.firebase.WaitlistStatus.INVITED -> "Invited"
-                    com.pluck.data.firebase.WaitlistStatus.DECLINED -> "Declined"
-                    com.pluck.data.firebase.WaitlistStatus.CANCELLED -> "Removed"
-                    else -> if (entry.isCurrentUser) "You" else "In Queue"
-                }
-                Text(
-                    text = statusLabel,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = accentColor
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = accentColor.copy(alpha = if (entry.isCurrentUser || entry.isChosen) 0.25f else 0.15f),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    val statusLabel = when (entry.status) {
+                        WaitlistStatus.ACCEPTED -> "Confirmed"
+                        WaitlistStatus.INVITED -> "Invited"
+                        WaitlistStatus.DECLINED -> "Declined"
+                        WaitlistStatus.CANCELLED -> "Cancelled"
+                        else -> if (entry.isCurrentUser) "You" else "In Queue"
+                    }
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentColor
+                        )
                     )
-                )
+                }
+            }
+            if (showRemoveButton) {
+                IconButton(
+                    onClick = { showRemoveDialog = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Remove entrant",
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
+    }
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Remove Entrant?",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove ${entry.userName} from the event and free up their spot. You can run another lottery draw to fill the gap.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text("Cancel", color = PluckPalette.Muted)
+                }
+            }
+        )
     }
 }
 
@@ -691,7 +916,7 @@ private fun WaitlistEmptyState(message: String, description: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -779,9 +1004,7 @@ private fun WaitlistScreenPreview() {
         event = previewEvent,
         waitlistEntries = waitlistEntries,
         chosenEntries = chosenEntries,
-        isUserWaiting = true,
-        onJoinWaitlist = {},
-        onLeaveWaitlist = {},
-        onBack = {}
+        onBack = {},
+        users = emptyList()
     )
 }

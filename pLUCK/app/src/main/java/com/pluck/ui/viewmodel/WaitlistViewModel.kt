@@ -40,6 +40,9 @@ class WaitlistViewModel(
     private val _chosenEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
     val chosenEntries: StateFlow<List<WaitlistEntry>> = _chosenEntries.asStateFlow()
 
+    private val _cancelEntries = MutableStateFlow<List<WaitlistEntry>>(emptyList())
+    val cancelEntries: StateFlow<List<WaitlistEntry>> = _cancelEntries.asStateFlow()
+
     private val _chosenStats = MutableStateFlow(WaitlistDecisionStats())
     val chosenStats: StateFlow<WaitlistDecisionStats> = _chosenStats.asStateFlow()
 
@@ -60,6 +63,8 @@ class WaitlistViewModel(
 
     private var waitlistJob: Job? = null
     private var chosenJob: Job? = null
+
+    private var canceledJob: Job? = null
     private var chosenStatsJob: Job? = null
 
     /**
@@ -82,9 +87,9 @@ class WaitlistViewModel(
                     updateStatusFromEntries(
                         entries,
                         setOf(
-                            WaitlistStatus.WAITING,
-                            WaitlistStatus.INVITED,
-                            WaitlistStatus.SELECTED
+                            // Only clear membership when there is no WAITING entry;
+                            // INVITED / ACCEPTED are tracked via the chosenEntries stream.
+                            WaitlistStatus.WAITING
                         )
                     )
                     _isLoading.value = false
@@ -131,6 +136,32 @@ class WaitlistViewModel(
     }
 
     /**
+     * Observe real-time cancelled entries for an event
+     */
+    fun observeCancelledEntries(eventId: String, currentUserId: String = "") {
+        if (eventId.isBlank()) return
+        canceledJob?.cancel()
+        _cancelEntries.value = emptyList()
+        canceledJob = viewModelScope.launch {
+            waitlistRepository.observeCanceledEntries(eventId, currentUserId)
+                .catch { throwable ->
+                    _error.value = throwable.message ?: "Failed to load selected entrants"
+                }
+                .collect { entries ->
+                    _cancelEntries.value = entries
+                    updateStatusFromEntries(
+                        entries,
+                        setOf(
+                            WaitlistStatus.INVITED,
+                            WaitlistStatus.SELECTED,
+                            WaitlistStatus.ACCEPTED
+                        )
+                    )
+                }
+        }
+    }
+
+    /**
      * Load waitlist entries for an event
      */
     fun loadWaitlist(eventId: String, currentUserId: String = "") {
@@ -161,6 +192,26 @@ class WaitlistViewModel(
             waitlistRepository.getChosenEntries(eventId, currentUserId)
                 .onSuccess { entries ->
                     _chosenEntries.value = entries
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to load chosen entries"
+                }
+
+            _isLoading.value = false
+        }
+    }
+
+    /**
+     * Load canceled entries for an event
+     */
+    fun loadCanceledEntries(eventId: String, currentUserId: String = "") {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            waitlistRepository.getCanceledEntries(eventId, currentUserId)
+                .onSuccess { entries ->
+                    _cancelEntries.value = entries
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to load chosen entries"
@@ -279,7 +330,10 @@ class WaitlistViewModel(
     }
 
     /**
-     * Decline lottery invitation
+     * Decline lottery invitation.
+     *
+     * Marks the entrant as DECLINED/removed from the active queue
+     * and triggers a replacement draw when event information is provided.
      */
     fun declineInvitation(
         waitlistEntryId: String,
@@ -290,12 +344,10 @@ class WaitlistViewModel(
             _isLoading.value = true
             _error.value = null
 
-            waitlistRepository.declineInvitation(
-                waitlistEntryId = waitlistEntryId
-            )
+            waitlistRepository.declineInvitation(waitlistEntryId, event)
                 .onSuccess {
+                    _userWaitlistStatus.value = WaitlistStatus.DECLINED
                     _userWaitlistEntryId.value = null
-                    _userWaitlistStatus.value = null
                     onSuccess()
                 }
                 .onFailure { exception ->
@@ -421,7 +473,7 @@ class WaitlistViewModel(
         onSuccess: (Intent) -> Unit
     ) {
         viewModelScope.launch {
-            csvExportRepository.exportAllEntrants(context, event, entrants)
+            csvExportRepository.exportAcceptedEntrants(context, event, entrants)
                 .onSuccess { intent ->
                     onSuccess(intent)
                 }
@@ -473,6 +525,9 @@ class WaitlistViewModel(
                 if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
             }
             _chosenEntries.value = _chosenEntries.value.map { entry ->
+                if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
+            }
+            _cancelEntries.value = _cancelEntries.value.map { entry ->
                 if (entry.userId == userId) entry.copy(userName = trimmedName) else entry
             }
         }

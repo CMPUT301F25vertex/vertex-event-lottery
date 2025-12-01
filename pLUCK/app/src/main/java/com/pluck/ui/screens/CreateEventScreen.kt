@@ -10,8 +10,6 @@
  */
 package com.pluck.ui.screens
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -27,12 +25,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -48,7 +43,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -69,27 +63,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import coil.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.PLuckDatePicker
+import com.pluck.ui.components.PLuckDateRangePicker
+import com.pluck.ui.components.PLuckTimePicker
+import com.pluck.ui.components.RoundIconButton
+import com.pluck.ui.components.SquircleScrollableLazyList
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -114,13 +112,15 @@ data class CreateEventRequest(
     val eventTime: LocalTime,
     val capacity: String,
     val posterUrl: String?,
+    val posterOffsetY: Float = 0f,
     val registrationStartDate: LocalDate,
     val registrationStartTime: LocalTime,
     val registrationEndDate: LocalDate,
     val registrationEndTime: LocalTime,
     val waitlistLimit: String,
     val samplingCount: String,
-    val requiresGeolocation: Boolean = false
+    val requiresGeolocation: Boolean = false,
+    val interests: List<String> = emptyList()
 )
 
 object CreateEventTestTags {
@@ -131,6 +131,7 @@ object CreateEventTestTags {
     const val WaitlistLength = "waitlist_length"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
     isLoading: Boolean = false,
@@ -154,16 +155,32 @@ fun CreateEventScreen(
     // Geolocation toggle - when enabled, location is MANDATORY for joining
     var requiresGeolocation by remember { mutableStateOf(true) }
 
-    var posterUrl by remember { mutableStateOf<String?>(null) }
-    var posterUrlInput by remember { mutableStateOf("") }
+      var posterUrl by remember { mutableStateOf<String?>(null) }
+      var posterOffsetY by remember { mutableStateOf(0f) }
+      var posterUrlInput by remember { mutableStateOf("") }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
+    var interestsMenuExpanded by remember { mutableStateOf(false) }
+    var selectedInterestIds by remember { mutableStateOf(setOf<String>()) }
 
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val uploadRepository = remember { CloudinaryUploadRepository(context) }
     val coroutineScope = rememberCoroutineScope()
+
+    var hasDateSelectLambda by remember { mutableStateOf(false) }
+    var dateSelectLambda by remember { mutableStateOf({ date: LocalDate -> }) }
+    var defaultDateDialogDate by remember { mutableStateOf(LocalDate.now()) }
+
+    var hasRangeSelectLambda by remember { mutableStateOf(false) }
+    var rangeSelectLambda by remember { mutableStateOf({ date1: LocalDate, date2: LocalDate -> }) }
+    var defaultDateRangeDialogStartDate by remember { mutableStateOf(LocalDate.now()) }
+    var defaultDateRangeDialogEndDate by remember { mutableStateOf(LocalDate.now().plus(1, ChronoUnit.DAYS)) }
+
+    var hasTimeSelectLambda by remember { mutableStateOf(false) }
+    var timeSelectLambda by remember { mutableStateOf({ time: LocalTime -> }) }
+    var defaultTimeDialogTime by remember { mutableStateOf(LocalTime.now()) }
 
     /**
      * Image picker launcher for event poster selection.
@@ -174,7 +191,8 @@ fun CreateEventScreen(
      */
     val posterPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
+    )
+    { uri: Uri? ->
         // Validate that an image was actually selected
         if (uri == null) {
             posterUploadError = "No image selected. Pick an image or paste a direct URL."
@@ -251,447 +269,534 @@ fun CreateEventScreen(
             samplingCount.isNotBlank() &&
             !posterUploadInProgress  // Wait for Cloudinary upload to complete before allowing submission
 
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 24.dp)
-        ) {
-            // Close button
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(56.dp)
-                    .zIndex(2f),
-                shape = CircleShape,
-                color = PluckPalette.Surface,
-                contentColor = PluckPalette.Primary,
-                tonalElevation = 0.dp,
-                shadowElevation = 12.dp,
-                onClick = onCancel
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = "Close",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+    val listElements = mutableListOf<ComposableItem>()
 
-            // Main content card
-            Surface(
+    listElements.add(ComposableItem {
+        CreateEventHeader(onCancel = onCancel)
+    })
+
+    listElements.add(ComposableItem {
+        PosterUploadSection(
+            posterUrl = posterUrl,
+            isUploading = posterUploadInProgress,
+            canUploadPoster = true,  // Cloudinary is always available
+            posterOffsetY = posterOffsetY,
+            manualPosterUrl = posterUrlInput,
+            onManualPosterUrlChange = { value ->
+                posterUrlInput = value
+                posterUrl = value.trim().takeIf { it.isNotBlank() }
+            },
+              onSelectPoster = {
+                  posterPicker.launch(
+                      PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                  )
+              },
+              onRemovePoster = {
+                  posterUrl = null
+                  posterUrlInput = ""
+                  posterOffsetY = 0f
+              },
+              onPosterOffsetYChange = { offset ->
+                  posterOffsetY = offset
+              }
+          )
+      })
+
+    if (posterUploadError != null) {
+        listElements.add(ComposableItem {
+            Text(
+                text = posterUploadError ?: "",
+                color = PluckPalette.Decline,
+                style = MaterialTheme.typography.bodySmall
+            )
+        })
+    }
+
+    // Form fields
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = title,
+            onValueChange = { title = it },
+            label = "Event Title",
+            icon = Icons.Outlined.Event,
+            placeholder = "e.g., Swimming Lessons",
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = description,
+            onValueChange = { description = it },
+            label = "Description",
+            icon = Icons.Outlined.Description,
+            placeholder = "Tell attendees what to expect...",
+            maxLines = 4,
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = location,
+            onValueChange = { location = it },
+            label = "Location",
+            icon = Icons.Outlined.LocationOn,
+            placeholder = "e.g., City Pool, 123 Main St",
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Interests",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = PluckPalette.Primary
+            )
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = PluckPalette.Surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.06f))
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 460.dp)
-                    .align(Alignment.Center)
-                    .zIndex(1f),
-                shape = RoundedCornerShape(36.dp),
-                color = PluckPalette.Surface,
-                tonalElevation = 0.dp,
-                shadowElevation = 18.dp,
-                border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
+                Text(
+                    text = if (selectedInterestIds.isEmpty()) "No interests selected" else selectedInterestIds.size.toString() + " selected",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 28.dp, vertical = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    // Header
-                    CreateEventHeader()
-
-                    PosterUploadSection(
-                        posterUrl = posterUrl,
-                        isUploading = posterUploadInProgress,
-                        canUploadPoster = true,  // Cloudinary is always available
-                        manualPosterUrl = posterUrlInput,
-                        onManualPosterUrlChange = { value ->
-                            posterUrlInput = value
-                            posterUrl = value.trim().takeIf { it.isNotBlank() }
-                        },
-                        onSelectPoster = {
-                            posterPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        onRemovePoster = {
-                            posterUrl = null
-                            posterUrlInput = ""
-                        }
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = PluckPalette.Primary
                     )
-
-                    if (posterUploadError != null) {
-                        Text(
-                            text = posterUploadError ?: "",
-                            color = PluckPalette.Decline,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    // Form fields
-                    CreateEventFormField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = "Event Title",
-                        icon = Icons.Outlined.Event,
-                        placeholder = "e.g., Swimming Lessons",
-                        isRequired = true
-                    )
-
-                    CreateEventFormField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = "Description",
-                        icon = Icons.Outlined.Description,
-                        placeholder = "Tell attendees what to expect...",
-                        maxLines = 4,
-                        isRequired = true
-                    )
-
-                    CreateEventFormField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = "Location",
-                        icon = Icons.Outlined.LocationOn,
-                        placeholder = "e.g., City Pool, 123 Main St",
-                        isRequired = true
-                    )
-
-                    Text(
-                        text = "Event Schedule",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = PluckPalette.Primary
-                        )
-                    )
-
-                    CreateEventPickerField(
-                        label = "Event Date",
-                        value = eventDate?.format(dateFormatter),
-                        placeholder = "Select date",
-                        icon = Icons.Outlined.CalendarMonth,
-                        onClick = {
-                            val initialDate = eventDate ?: LocalDate.now()
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    eventDate = LocalDate.of(year, month + 1, dayOfMonth)
-                                    if (eventTime == null) {
-                                        eventTime = LocalTime.of(9, 0)
-                                    }
-                                },
-                                initialDate.year,
-                                initialDate.monthValue - 1,
-                                initialDate.dayOfMonth
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventPickerField(
-                        label = "Event Start Time",
-                        value = eventTime?.format(timeFormatter),
-                        placeholder = "Select time",
-                        icon = Icons.Outlined.Schedule,
-                        onClick = {
-                            val initialTime = eventTime ?: LocalTime.of(9, 0)
-                            TimePickerDialog(
-                                context,
-                                { _, hourOfDay, minute ->
-                                    eventTime = LocalTime.of(hourOfDay, minute)
-                                },
-                                initialTime.hour,
-                                initialTime.minute,
-                                false
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventFormField(
-                        value = capacity,
-                        onValueChange = { capacity = it },
-                        label = "Capacity",
-                        icon = Icons.Outlined.People,
-                        placeholder = "e.g., 20",
-                        keyboardType = KeyboardType.Number,
-                        isRequired = true
-                    )
-
-                    Text(
-                        text = "Registration Window",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = PluckPalette.Primary
-                        )
-                    )
-
-                    CreateEventPickerField(
-                        label = "Registration Opens (Date)",
-                        value = registrationStartDate?.format(dateFormatter),
-                        placeholder = "Select date",
-                        icon = Icons.Outlined.CalendarMonth,
-                        onClick = {
-                            val baseDate = registrationStartDate ?: eventDate ?: LocalDate.now()
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    registrationStartDate = LocalDate.of(year, month + 1, dayOfMonth)
-                                    if (registrationStartTime == null) {
-                                        registrationStartTime = LocalTime.of(8, 0)
-                                    }
-                                },
-                                baseDate.year,
-                                baseDate.monthValue - 1,
-                                baseDate.dayOfMonth
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventPickerField(
-                        label = "Registration Opens (Time)",
-                        value = registrationStartTime?.format(timeFormatter),
-                        placeholder = "Select time",
-                        icon = Icons.Outlined.Schedule,
-                        onClick = {
-                            val initialTime = registrationStartTime ?: LocalTime.of(8, 0)
-                            TimePickerDialog(
-                                context,
-                                { _, hourOfDay, minute ->
-                                    registrationStartTime = LocalTime.of(hourOfDay, minute)
-                                },
-                                initialTime.hour,
-                                initialTime.minute,
-                                false
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventPickerField(
-                        label = "Registration Closes (Date)",
-                        value = registrationEndDate?.format(dateFormatter),
-                        placeholder = "Select date",
-                        icon = Icons.Outlined.CalendarMonth,
-                        onClick = {
-                            val baseDate = registrationEndDate
-                                ?: registrationStartDate
-                                ?: eventDate
-                                ?: LocalDate.now()
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    registrationEndDate = LocalDate.of(year, month + 1, dayOfMonth)
-                                    if (registrationEndTime == null) {
-                                        registrationEndTime = LocalTime.of(18, 0)
-                                    }
-                                },
-                                baseDate.year,
-                                baseDate.monthValue - 1,
-                                baseDate.dayOfMonth
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventPickerField(
-                        label = "Registration Closes (Time)",
-                        value = registrationEndTime?.format(timeFormatter),
-                        placeholder = "Select time",
-                        icon = Icons.Outlined.Schedule,
-                        onClick = {
-                            val initialTime = registrationEndTime ?: LocalTime.of(18, 0)
-                            TimePickerDialog(
-                                context,
-                                { _, hourOfDay, minute ->
-                                    registrationEndTime = LocalTime.of(hourOfDay, minute)
-                                },
-                                initialTime.hour,
-                                initialTime.minute,
-                                false
-                            ).show()
-                        },
-                        isRequired = true
-                    )
-
-                    CreateEventFormField(
-                        value = waitlistLimit,
-                        onValueChange = { waitlistLimit = it },
-                        label = "Waitlist Limit",
-                        icon = Icons.Outlined.Groups,
-                        placeholder = "e.g., 40",
-                        keyboardType = KeyboardType.Number,
-                        isRequired = false,
-                        modifier = Modifier.testTag(CreateEventTestTags.WaitlistLength)
-                    )
-
-                    CreateEventFormField(
-                        value = samplingCount,
-                        onValueChange = { samplingCount = it },
-                        label = "Sampling Count",
-                        icon = Icons.Outlined.People,
-                        placeholder = "Entrants per lottery draw",
-                        keyboardType = KeyboardType.Number,
-                        isRequired = true
-                    )
-
-                    // Geolocation toggle - when enabled, location becomes MANDATORY (US 02.02.03)
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        color = PluckPalette.Secondary.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.2f))
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "Require Geolocation",
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = PluckPalette.Primary
-                                    )
-                                )
-                                Text(
-                                    text = "When enabled, entrants MUST share their location to join. They cannot join without location access.",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = PluckPalette.Muted
-                                    )
-                                )
-                            }
-                            Switch(
-                                checked = requiresGeolocation,
-                                onCheckedChange = { requiresGeolocation = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = PluckPalette.Surface,
-                                    checkedTrackColor = PluckPalette.Secondary,
-                                    uncheckedThumbColor = PluckPalette.Surface,
-                                    uncheckedTrackColor = PluckPalette.Muted.copy(alpha = 0.3f)
-                                )
-                            )
-                        }
-                    }
-
-                    // Error message
-                    if (errorMessage != null) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
-                            color = PluckPalette.Decline.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, PluckPalette.Decline.copy(alpha = 0.3f))
-                        ) {
-                            Text(
-                                text = errorMessage,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = PluckPalette.Decline,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    // Info callout
-                    CreateEventInfoCallout()
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "*",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = PluckPalette.Decline
-                            )
-                        )
-
-                        Text(
-                            text = "Indicates Required Fields.",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = PluckPalette.Primary
-                            )
-                        )
-                    }
-
-                    // Create button
+                )
+                Box {
                     Button(
-                        onClick = {
-                            if (isFormValid && !isLoading) {
-                                onCreateEvent(
-                                    CreateEventRequest(
-                                        title = title,
-                                        description = description,
-                                        location = location,
-                                        eventDate = eventDate!!,
-                                        eventTime = eventTime!!,
-                                        capacity = capacity,
-                                        posterUrl = posterUrl,
-                                        registrationStartDate = registrationStartDate!!,
-                                        registrationStartTime = registrationStartTime!!,
-                                        registrationEndDate = registrationEndDate!!,
-                                        registrationEndTime = registrationEndTime!!,
-                                        waitlistLimit = waitlistLimit,
-                                        samplingCount = samplingCount,
-                                        requiresGeolocation = requiresGeolocation
-                                    )
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(28.dp),
+                        onClick = { interestsMenuExpanded = true },
+                        shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PluckPalette.Primary,
-                            contentColor = autoTextColor(PluckPalette.Primary),
-                            disabledContainerColor = PluckPalette.Muted.copy(alpha = 0.3f),
-                            disabledContentColor = PluckPalette.Muted
+                            containerColor = PluckPalette.Secondary,
+                            contentColor = PluckPalette.Surface
                         ),
-                        enabled = isFormValid && !isLoading,
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp)
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 12.dp,
+                            vertical = 6.dp
+                        )
                     ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = autoTextColor(PluckPalette.Primary),
-                                strokeWidth = 2.dp
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("Choose Interests")
+                    }
+
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = interestsMenuExpanded,
+                        onDismissRequest = { interestsMenuExpanded = false },
+                        containerColor = PluckPalette.Surface,
+                        tonalElevation = 2.dp,
+                        shadowElevation = 12.dp
+                    ) {
+                        com.pluck.ui.model.EventInterests.all.forEach { interest ->
+                            val selected = selectedInterestIds.contains(interest.id)
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.material3.Checkbox(
+                                            checked = selected,
+                                            onCheckedChange = {
+                                                selectedInterestIds = if (selected) {
+                                                    selectedInterestIds - interest.id
+                                                } else {
+                                                    selectedInterestIds + interest.id
+                                                }
+                                            }
+                                        )
+                                        Text(interest.label)
+                                    }
+                                },
+                                onClick = {
+                                    // Toggle on item click as well
+                                    selectedInterestIds = if (selected) {
+                                        selectedInterestIds - interest.id
+                                    } else {
+                                        selectedInterestIds + interest.id
+                                    }
+                                }
                             )
-                        } else {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = "Create Event",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                            }
                         }
                     }
                 }
             }
         }
+    })
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Event Schedule",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = PluckPalette.Primary
+            )
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventPickerField(
+            label = "Event Date",
+            value = eventDate?.format(dateFormatter),
+            placeholder = "Select date",
+            icon = Icons.Outlined.CalendarMonth,
+            onClick = {
+                defaultDateDialogDate = eventDate ?: LocalDate.now()
+                dateSelectLambda = { date: LocalDate -> eventDate = date }
+                hasDateSelectLambda = true
+
+                if (eventTime == null) eventTime = LocalTime.now()
+            },
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventPickerField(
+            label = "Event Start Time",
+            value = eventTime?.format(timeFormatter),
+            placeholder = "Select time",
+            icon = Icons.Outlined.Schedule,
+            onClick = {
+                defaultTimeDialogTime = eventTime ?: LocalTime.now()
+                timeSelectLambda = { time: LocalTime -> eventTime = time }
+                hasTimeSelectLambda = true
+            },
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = capacity,
+            onValueChange = { capacity = it },
+            label = "Capacity",
+            icon = Icons.Outlined.People,
+            placeholder = "e.g., 20",
+            keyboardType = KeyboardType.Number,
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        Text(
+            text = "Registration Window",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = PluckPalette.Primary
+            )
+        )
+    })
+
+    var registrationPeriodString: String? = null
+    if (registrationStartDate != null && registrationEndDate != null) {
+        registrationPeriodString = "${registrationStartDate?.format(dateFormatter)} - ${registrationEndDate?.format(dateFormatter)}"
+    }
+
+    listElements.add(ComposableItem {
+        CreateEventPickerField(
+            label = "Registration Period",
+            value = registrationPeriodString,
+            placeholder = "Select period",
+            icon = Icons.Outlined.CalendarMonth,
+            onClick = {
+                defaultDateRangeDialogStartDate = registrationStartDate ?: LocalDate.now()
+                defaultDateRangeDialogEndDate = registrationEndDate
+                    ?: registrationStartDate?.plusDays(1)
+                    ?: LocalDate.now().plusDays(1)
+
+                rangeSelectLambda = { startDate: LocalDate, endDate: LocalDate ->
+                    registrationStartDate = startDate
+                    registrationEndDate = endDate
+                }
+                hasRangeSelectLambda = true
+
+                if (registrationStartTime == null) registrationStartTime = LocalTime.of(8, 0)
+                if (registrationEndTime == null) registrationEndTime = LocalTime.of(18, 0)
+            },
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventPickerField(
+            label = "Registration Start Time",
+            value = registrationStartTime?.format(timeFormatter),
+            placeholder = "Select time",
+            icon = Icons.Outlined.Schedule,
+            onClick = {
+                defaultTimeDialogTime = registrationStartTime ?: LocalTime.of(8, 0)
+                timeSelectLambda = { time: LocalTime -> registrationStartTime = time }
+                hasTimeSelectLambda = true
+            },
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventPickerField(
+            label = "Registration Closes (Time)",
+            value = registrationEndTime?.format(timeFormatter),
+            placeholder = "Select time",
+            icon = Icons.Outlined.Schedule,
+            onClick = {
+                defaultTimeDialogTime = registrationEndTime ?: LocalTime.of(18, 0)
+                timeSelectLambda = { time: LocalTime -> registrationEndTime = time }
+                hasTimeSelectLambda = true
+            },
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = waitlistLimit,
+            onValueChange = { waitlistLimit = it },
+            label = "Waitlist Limit",
+            icon = Icons.Outlined.Groups,
+            placeholder = "e.g., 40",
+            keyboardType = KeyboardType.Number,
+            isRequired = false,
+            modifier = Modifier.testTag(CreateEventTestTags.WaitlistLength)
+        )
+    })
+
+    listElements.add(ComposableItem {
+        CreateEventFormField(
+            value = samplingCount,
+            onValueChange = { samplingCount = it },
+            label = "Sampling Count",
+            icon = Icons.Outlined.People,
+            placeholder = "Entrants per lottery draw",
+            keyboardType = KeyboardType.Number,
+            isRequired = true
+        )
+    })
+
+    listElements.add(ComposableItem {
+        // Geolocation toggle - when enabled, location becomes MANDATORY (US 02.02.03)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = PluckPalette.Secondary.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.2f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Require Geolocation",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = PluckPalette.Primary
+                        )
+                    )
+                    Text(
+                        text = "When enabled, entrants MUST share their location to join. They cannot join without location access.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = PluckPalette.Muted
+                        )
+                    )
+                }
+                Switch(
+                    checked = requiresGeolocation,
+                    onCheckedChange = { requiresGeolocation = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = PluckPalette.Surface,
+                        checkedTrackColor = PluckPalette.Secondary,
+                        uncheckedThumbColor = PluckPalette.Surface,
+                        uncheckedTrackColor = PluckPalette.Muted.copy(alpha = 0.3f)
+                    )
+                )
+            }
+        }
+    })
+
+    if (errorMessage != null) {
+        listElements.add(ComposableItem {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = PluckPalette.Decline.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, PluckPalette.Decline.copy(alpha = 0.3f))
+            ) {
+                Text(
+                    text = errorMessage,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = PluckPalette.Decline,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        })
+    }
+
+    listElements.add(ComposableItem {
+        CreateEventInfoCallout()
+    })
+
+    listElements.add(ComposableItem {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "*",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = PluckPalette.Decline
+                )
+            )
+
+            Text(
+                text = "Indicates Required Fields.",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = PluckPalette.Primary
+                )
+            )
+        }
+    })
+
+    listElements.add(ComposableItem {
+        Button(
+            onClick = {
+                if (isFormValid && !isLoading) {
+                    onCreateEvent(
+                        CreateEventRequest(
+                            title = title,
+                            description = description,
+                            location = location,
+                            eventDate = eventDate!!,
+                            eventTime = eventTime!!,
+                            capacity = capacity,
+                            posterUrl = posterUrl,
+                            posterOffsetY = posterOffsetY,
+                            registrationStartDate = registrationStartDate!!,
+                            registrationStartTime = registrationStartTime!!,
+                            registrationEndDate = registrationEndDate!!,
+                            registrationEndTime = registrationEndTime!!,
+                            waitlistLimit = waitlistLimit,
+                            samplingCount = samplingCount,
+                            requiresGeolocation = requiresGeolocation,
+                            interests = selectedInterestIds.toList()
+                        )
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PluckPalette.Primary,
+                contentColor = autoTextColor(PluckPalette.Primary),
+                disabledContainerColor = PluckPalette.Muted.copy(alpha = 0.3f),
+                disabledContentColor = PluckPalette.Muted
+            ),
+            enabled = isFormValid && !isLoading,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp)
+        )
+        {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = autoTextColor(PluckPalette.Primary),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "Create Event",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+        }
+    })
+
+    PluckLayeredBackground(
+        modifier = modifier.fillMaxSize()
+    )
+    {
+        SquircleScrollableLazyList(
+            listElements = listElements
+        )
+    }
+
+    if (hasDateSelectLambda) {
+        PLuckDatePicker(
+            onDateSelected = dateSelectLambda,
+            onDismiss = {
+                hasDateSelectLambda = false
+            },
+            defaultDate = defaultDateDialogDate
+        )
+    }
+
+    if (hasRangeSelectLambda) {
+        PLuckDateRangePicker(
+            onDateSelected = rangeSelectLambda,
+            onDismiss = {
+                hasRangeSelectLambda = false
+            },
+            defaultStartDate = defaultDateRangeDialogStartDate,
+            defaultEndDate = defaultDateRangeDialogEndDate
+        )
+    }
+
+    if (hasTimeSelectLambda) {
+        PLuckTimePicker(
+            onTimeSelected = timeSelectLambda,
+            onDismiss = {
+                hasTimeSelectLambda = false
+            },
+            defaultTime = defaultTimeDialogTime
+        )
     }
 }
 
@@ -700,10 +805,12 @@ private fun PosterUploadSection(
     posterUrl: String?,
     isUploading: Boolean,
     canUploadPoster: Boolean,
+    posterOffsetY: Float = 0f,
     manualPosterUrl: String,
     onManualPosterUrlChange: (String) -> Unit,
     onSelectPoster: () -> Unit,
-    onRemovePoster: () -> Unit
+    onRemovePoster: () -> Unit,
+    onPosterOffsetYChange: (Float) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -743,14 +850,18 @@ private fun PosterUploadSection(
                         )
                     }
                 }
-                else -> {
-                    AsyncImage(
-                        model = posterUrl,
-                        contentDescription = "Event poster preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                  else -> {
+                      AdjustableImage(
+                          imageUrl = posterUrl,
+                          contentDescription = "Event poster preview",
+                          initialOffsetY = posterOffsetY,
+                          onOffsetChanged = onPosterOffsetYChange,
+                          onOffsetCommitted = onPosterOffsetYChange,
+                          modifier = Modifier.fillMaxSize(),
+                          adjustable = true,
+                          contentScale = ContentScale.Crop
+                      )
+                  }
             }
         }
 
@@ -789,7 +900,7 @@ private fun PosterUploadSection(
                 Text("Remove Poster")
             }
         }
-        
+
         if (!canUploadPoster) {
             Text(
                 text = "Poster uploads unavailable. Paste a direct URL instead.",
@@ -802,19 +913,38 @@ private fun PosterUploadSection(
 }
 
 @Composable
-private fun CreateEventHeader() {
+private fun CreateEventHeader(
+    onCancel: () -> Unit = {},
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Create Event",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Black,
-                color = PluckPalette.Primary,
-                fontSize = 28.sp
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterStart),
+                text = "Create Event",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Black,
+                    color = PluckPalette.Primary,
+                    fontSize = 28.sp
+                )
             )
-        )
+
+            // Close Button
+            RoundIconButton(
+                onClick = onCancel,
+                imageVector = Icons.Outlined.Close,
+                contentDescription = "Close",
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        }
+
         Text(
             text = "Set up a new lottery event for your community",
             style = MaterialTheme.typography.bodyMedium.copy(
@@ -880,7 +1010,9 @@ private fun CreateEventFormField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().then(modifier),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(modifier),
             placeholder = {
                 Text(
                     text = placeholder,

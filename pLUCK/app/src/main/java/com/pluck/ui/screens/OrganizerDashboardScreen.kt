@@ -24,12 +24,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Edit
@@ -59,9 +56,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
+import com.pluck.ui.components.AutoHidingBarScroller
+import com.pluck.ui.components.BottomNavBar
+import com.pluck.ui.components.ComposableItem
+import com.pluck.ui.components.Dashboard
+import com.pluck.ui.components.DashboardType
 import com.pluck.ui.components.PluckAccentCircle
-import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.model.Event
 import com.pluck.ui.theme.autoTextColor
@@ -97,79 +97,60 @@ fun OrganizerDashboardScreen(
     onViewWaitlist: (Event) -> Unit = {},
     onManageChosenEntrants: (Event) -> Unit = {},
     onViewEntrantLocations: (Event) -> Unit = {},
-    onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    currentRoute: String?,
+    onNavigate: (String) -> Unit,
+    dashboards: List<Dashboard>,
+    notificationCount: Int
 ) {
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column {
-                // Floating back button
-                Surface(
-                    modifier = Modifier
-                        .padding(top = 24.dp, start = 24.dp)
-                        .size(56.dp),
-                    shape = CircleShape,
-                    color = PluckPalette.Surface,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    onClick = onBack
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Go back",
-                            tint = PluckPalette.Primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+    val listElements = mutableListOf<ComposableItem>()
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                )
-                {
-                    OrganizerDashboardHero(
-                        organizerName = organizerName,
-                        stats = stats
-                    )
+    listElements.add(ComposableItem {
+        OrganizerDashboardHero(
+            organizerName = organizerName,
+            stats = stats
+        )
+    })
 
-                    OrganizerStatsCards(stats = stats)
+    listElements.add(ComposableItem {
+        OrganizerStatsCards(stats = stats)
+    })
 
-                    OrganizerCreateEventCard(onClick = onCreateEvent)
+    listElements.add(ComposableItem {
+        OrganizerCreateEventCard(onClick = onCreateEvent)
+    })
 
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zIndex(1f),
-                        shape = RoundedCornerShape(36.dp),
-                        color = PluckPalette.Surface,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 12.dp,
-                        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-                    ) {
-                        when {
-                            isLoading -> OrganizerLoadingState()
-                            events.isEmpty() -> OrganizerEmptyState()
-                            else -> OrganizerEventsList(
-                                events = events,
-                                onEventClick = onEventClick,
-                                onEditEvent = onEditEvent,
-                                onRunDraw = onRunDraw,
-                                onViewWaitlist = onViewWaitlist,
-                                onManageChosenEntrants = onManageChosenEntrants,
-                                onViewEntrantLocations = onViewEntrantLocations
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    when {
+        isLoading -> listElements.add(ComposableItem {
+            OrganizerLoadingState()
+        })
+
+        events.isEmpty() -> listElements.add(ComposableItem {
+            OrganizerEmptyState()
+        })
+
+        else -> listElements.addAll(OrganizerEventsList(
+            events = events,
+            onEventClick = onEventClick,
+            onEditEvent = onEditEvent,
+            onRunDraw = onRunDraw,
+            onViewWaitlist = onViewWaitlist,
+            onManageChosenEntrants = onManageChosenEntrants,
+            onViewEntrantLocations = onViewEntrantLocations
+        ))
     }
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        bottomBar = {
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                dashboards = dashboards,
+                currentDashboard = DashboardType.Organizer,
+                notificationCount = notificationCount
+            )
+        }
+    )
 }
 
 @Composable
@@ -382,7 +363,6 @@ private fun OrganizerCreateEventCard(onClick: () -> Unit) {
     }
 }
 
-@Composable
 private fun OrganizerEventsList(
     events: List<Event>,
     onEventClick: (Event) -> Unit,
@@ -391,24 +371,25 @@ private fun OrganizerEventsList(
     onViewWaitlist: (Event) -> Unit,
     onManageChosenEntrants: (Event) -> Unit,
     onViewEntrantLocations: (Event) -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Text(
-                text = "Your Events",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = PluckPalette.Primary
-                )
+): List<ComposableItem> {
+    val eventElements = mutableListOf<ComposableItem>()
+
+    eventElements.add(ComposableItem {
+        Text(
+            text = "Your Events",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                color = PluckPalette.Primary
             )
-        }
-        itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
+        )
+    })
+
+    var i = 0
+    for (event in events) {
+        eventElements.add(ComposableItem {
             OrganizerEventCard(
                 event = event,
-                accentColor = if (index % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
+                accentColor = if (i % 2 == 0) PluckPalette.Secondary else PluckPalette.Tertiary,
                 onEventClick = { onEventClick(event) },
                 onEditEvent = { onEditEvent(event) },
                 onRunDraw = { onRunDraw(event) },
@@ -416,8 +397,12 @@ private fun OrganizerEventsList(
                 onManageChosenEntrants = { onManageChosenEntrants(event) },
                 onViewEntrantLocations = { onViewEntrantLocations(event) }
             )
-        }
+        })
+
+        ++i
     }
+
+    return eventElements
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -457,7 +442,8 @@ private fun OrganizerEventCard(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            )
+            {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = event.title,
@@ -481,7 +467,8 @@ private fun OrganizerEventCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                )
+                {
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
@@ -528,48 +515,56 @@ private fun OrganizerEventCard(
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OrganizerActionButton(
-                            icon = Icons.Outlined.People,
-                            label = "Manage Waitlist",
-                            onClick = onViewWaitlist,
-                            backgroundColor = PluckPalette.Tertiary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (event.isDrawComplete) {
-                            OrganizerActionButton(
-                                icon = Icons.Outlined.CheckCircle,
-                                label = "Chosen Entrants",
-                                onClick = onManageChosenEntrants,
-                                backgroundColor = PluckPalette.Accept,
-                                modifier = Modifier.weight(1f)
-                            )
-                        } else {
-                            OrganizerActionButton(
-                                icon = Icons.Outlined.PlayArrow,
-                                label = "Run Draw",
-                                onClick = onRunDraw,
-                                backgroundColor = PluckPalette.Secondary,
-                                modifier = Modifier.weight(1f),
-                                enabled = event.canRunDrawEarly
-                            )
-                        }
-                    }
-                    if (!event.isDrawComplete && !event.canRunDrawEarly) {
-                        Text(
-                            text = "Add at least one entrant to the waitlist and ensure a sampling count is set to enable the draw.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = PluckPalette.Muted
-                            )
-                        )
-                    }
+                )
+                {
+//                    Row(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+//                    ) {
+//                        OrganizerActionButton(
+//                            icon = Icons.Outlined.People,
+//                            label = "Manage Waitlist",
+//                            onClick = onViewWaitlist,
+//                            backgroundColor = PluckPalette.Tertiary,
+//                            modifier = Modifier.weight(1f)
+//                        )
+//                        if (event.isDrawComplete) {
+//                            OrganizerActionButton(
+//                                icon = Icons.Outlined.CheckCircle,
+//                                label = "Plucked Entrants",
+//                                onClick = onManageChosenEntrants,
+//                                backgroundColor = PluckPalette.Accept,
+//                                modifier = Modifier.weight(1f)
+//                            )
+//                        } else {
+//                            OrganizerActionButton(
+//                                icon = Icons.Outlined.PlayArrow,
+//                                label = "Pluck Entrants",
+//                                onClick = onRunDraw,
+//                                backgroundColor = PluckPalette.Secondary,
+//                                modifier = Modifier.weight(1f),
+//                                enabled = event.canRunDrawEarly
+//                            )
+//                        }
+//                    }
+//                    if (!event.isDrawComplete && !event.canRunDrawEarly) {
+//                        Text(
+//                            text = "Cannot run draw until someone joins the waitlist.",
+//                            style = MaterialTheme.typography.bodySmall.copy(
+//                                color = PluckPalette.Muted
+//                            )
+//                        )
+//                    }
+                    OrganizerActionButton(
+                        icon = Icons.Outlined.PlayArrow,
+                        label = "Pluck Entrants",
+                        onClick = onViewWaitlist,
+                        backgroundColor = PluckPalette.Accept,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     OrganizerActionButton(
                         icon = Icons.Outlined.Edit,
-                        label = "Edit Event",
+                        label = "Edit Poster",
                         onClick = onEditEvent,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -609,7 +604,7 @@ private fun OrganizerActionButton(
             containerColor = backgroundColor,
             contentColor = contentColor
         ),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(8.dp)
     ) {
         Icon(
             imageVector = icon,
@@ -620,7 +615,8 @@ private fun OrganizerActionButton(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.SemiBold
-            )
+            ),
+            maxLines = 1,
         )
     }
 }
@@ -713,7 +709,11 @@ private fun OrganizerDashboardScreenPreview() {
             totalRejections = 12
         ),
         events = previewEvents,
-        isLoading = false
+        isLoading = false,
+        currentRoute = "",
+        dashboards = emptyList(),
+        onNavigate = { },
+        notificationCount = 0
     )
 }
 

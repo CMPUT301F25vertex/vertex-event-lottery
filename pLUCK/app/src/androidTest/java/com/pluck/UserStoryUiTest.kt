@@ -122,13 +122,17 @@ class UserStoryUiTest {
                     currentRoute = "event_list",
                     onSelectEvent = { selectedEventId = it.id },
                     onNavigate = { selectedRoute = it },
-                    onScanQRCode = {}
+                    onScanQRCode = {},
+                    dashboards = emptyList(),
+                    currentUserId = "",
+                    isRefreshing = false,
+                    notificationCount = 0
                 )
             }
         }
 
         composeRule.onNodeWithText("Community Showcase").performClick()
-        composeRule.onNodeWithText("Notifications").performClick()
+        composeRule.onNodeWithTag("test_tag_notifications").performClick()
 
         composeRule.runOnIdle {
             assertEquals("event-1", selectedEventId)

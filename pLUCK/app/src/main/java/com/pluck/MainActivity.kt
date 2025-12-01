@@ -1,20 +1,33 @@
 package com.pluck
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.messaging.FirebaseMessaging
+import com.pluck.data.DeviceAuthenticator
+import com.pluck.data.firebase.UserRole
 import com.pluck.navigation.PLuckNavHost
 import com.pluck.ui.theme.PluckTheme
 import com.pluck.ui.theme.ThemeManager
 import com.pluck.ui.theme.ThemePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * Main activity for the pLUCK lottery event management app.
@@ -27,12 +40,31 @@ class MainActivity : ComponentActivity() {
     /** Tracks the currently selected theme (default is blue) */
     private val selectedThemeIdFlow = MutableStateFlow("blue")
 
+    private val requestNotificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (!isGranted) {
+                Log.w("Notifications", "POST_NOTIFICATIONS permission denied by user")
+            }
+        }
+
+    private val requestLocationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+            val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+            if (!fineGranted && !coarseGranted) {
+                Log.w("Location", "Location permission denied by user")
+            }
+        }
+
     /**
      * Sets up theme preferences and initializes the navigation host.
      * Loads saved user preferences and applies them to the UI.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        requestNotificationPermissionIfNeeded()
+        requestLocationPermissionsIfNeeded()
 
         // Load saved theme preferences
         val prefs = ThemePreferences(this)
@@ -68,6 +100,41 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        val permissionStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        )
+
+        if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun requestLocationPermissionsIfNeeded() {
+        val fineStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+        val coarseStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        if (fineStatus != PackageManager.PERMISSION_GRANTED &&
+            coarseStatus != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 }

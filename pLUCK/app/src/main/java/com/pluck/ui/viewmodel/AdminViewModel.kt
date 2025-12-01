@@ -339,25 +339,30 @@ class AdminViewModel(
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to remove event"
-                    _isLoading.value = false
                 }
+
+            _isLoading.value = false
         }
     }
 
     /** Deletes a user profile from the system (US 03.02.01) */
     fun removeProfile(profileId: String) {
         viewModelScope.launch {
+            Log.e("TTAG","Starting removal")
             _isLoading.value = true
             _error.value = null
 
             userRepository.deleteUser(profileId)
                 .onSuccess {
+                    Log.e("TTAG","Starting Load")
                     loadAllUsers()
+                    Log.e("TTAG","Done Load")
                 }
                 .onFailure { exception ->
                     _error.value = exception.message ?: "Failed to remove profile"
-                    _isLoading.value = false
                 }
+
+            _isLoading.value = false
         }
     }
 

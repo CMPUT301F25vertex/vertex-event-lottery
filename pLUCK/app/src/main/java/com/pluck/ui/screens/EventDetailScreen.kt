@@ -20,18 +20,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -41,6 +37,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Interests
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.Button
@@ -56,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -64,12 +60,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,15 +70,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.components.ShowQRCodeButton
 import com.pluck.ui.model.Event
+import com.pluck.ui.model.EventInterests
 import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
-import coil.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
+import com.pluck.ui.components.AutoHidingBarScroller
+import com.pluck.ui.components.BackButton
+import com.pluck.ui.components.RoundIconButton
+import com.pluck.ui.components.ComposableItem
 
 /**
  * EventDetailScreen.kt
@@ -99,6 +95,7 @@ import coil.compose.AsyncImage
  */
 @Composable
 fun EventDetailScreen(
+    isLoading: Boolean = false,
     event: Event,
     isUserOnWaitlist: Boolean,
     isUserConfirmed: Boolean,
@@ -124,108 +121,172 @@ fun EventDetailScreen(
         }
     }
 
-    PluckLayeredBackground(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
+    val listElements = mutableListOf<ComposableItem>()
+
+    listElements.add(ComposableItem {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                // Back button - positioned at top left
-                Surface(
-                    modifier = Modifier
-                        .padding(start = 16.dp, top = 16.dp, bottom = 16.dp)
-                        .size(56.dp),
-                    shape = CircleShape,
-                    color = PluckPalette.Surface,
-                    contentColor = PluckPalette.Primary,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 12.dp,
-                    onClick = onBack
-                )
-                {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            modifier = Modifier.size(24.dp)
+            BackButton(
+                padding = 8.dp,
+                onBack = onBack
+            )
+
+            // Info text
+            val waitlistFull = event.isWaitlistFull
+            val registrationClosed = !event.isRegistrationOpen
+
+            when {
+                isUserConfirmed -> {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Surface,
+                        border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
+                    ) {
+                        Text(
+                            text = "You're confirmed for this event. Tap below if you need to release your spot.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Secondary,
+                                fontWeight = FontWeight.Medium
+                            )
                         )
                     }
                 }
-
-                // Main content column - properly centered
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(top = 20.dp)
-                        .weight(1F),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                )
-                {
-                    EventDetailHeroCard(
-                        event = event,
-                        canEditPoster = isEventOrganizer,
-                        onEditPoster = { onEditPoster(event) }
-                    )
-
-                    EventDetailInfoSection(event = event)
-
-                    EventDetailDescriptionSection(description = event.description)
-
-                    EventDetailReminder(
-                        remainingSpots = event.remainingSpots,
-                        waitlistCount = event.waitlistCount
-                    )
-
-                    EventLotteryInfoCard(event = event)
-
-//                    if (isEventOrganizer) {
-//                        OrganizerInviteCard(
-//                            inviteContact = inviteContact,
-//                            onInviteContactChange = {
-//                                inviteContact = it
-//                                onClearInviteFeedback()
-//                            },
-//                            inviteType = inviteType,
-//                            onInviteTypeChange = { type ->
-//                                inviteType = type
-//                                onClearInviteFeedback()
-//                            },
-//                            onSendInvite = {
-//                                val trimmed = inviteContact.trim()
-//                                if (trimmed.isNotBlank()) {
-//                                    onClearInviteFeedback()
-//                                    onInviteEntrant(trimmed, inviteType)
-//                                }
-//                            },
-//                            isSending = inviteInProgress,
-//                            feedbackMessage = inviteFeedbackMessage,
-//                            isError = inviteFeedbackIsError
-//                        )
-//                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
+                isUserOnWaitlist -> {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Surface,
+                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "You're already on this waitlist.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
                 }
-
-                // Bottom action section - fixed at bottom
-                EventDetailBottomActions(
-                    event = event,
-                    isUserOnWaitlist = isUserOnWaitlist,
-                    isUserConfirmed = isUserConfirmed,
-                    isEventOrganizer = isEventOrganizer,
-                    onJoinEvent = onJoinEvent,
-                    onLeaveWaitlist = onLeaveWaitlist,
-                    onViewWaitlist = onViewWaitlist,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
-                )
+                registrationClosed -> {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Surface,
+                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            text = "Registration window has closed. Check back for future lotteries.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+                waitlistFull -> {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = PluckPalette.Surface,
+                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            text = "Waitlist is full. Check back after the next draw.",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = PluckPalette.Secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
             }
         }
-    }
+    })
+
+    listElements.add(ComposableItem {
+        EventDetailHeroCard(
+            event = event,
+            canEditPoster = isEventOrganizer,
+            onEditPoster = { onEditPoster(event) }
+        )
+    })
+
+    listElements.add(ComposableItem {
+        EventDetailInfoSection(event = event)
+    })
+
+    listElements.add(ComposableItem {
+        EventDetailDescriptionSection(description = event.description)
+    })
+
+    listElements.add(ComposableItem {
+        EventDetailReminder(
+            remainingSpots = event.remainingSpots,
+            waitlistCount = event.waitlistCount
+        )
+    })
+
+    listElements.add(ComposableItem {
+        EventLotteryInfoCard(event = event)
+    })
+
+//    listElements.add(ComposableItem {
+//        if (isEventOrganizer) {
+//            OrganizerInviteCard(
+//                inviteContact = inviteContact,
+//                onInviteContactChange = {
+//                    inviteContact = it
+//                    onClearInviteFeedback()
+//                },
+//                inviteType = inviteType,
+//                onInviteTypeChange = { type ->
+//                    inviteType = type
+//                    onClearInviteFeedback()
+//                },
+//                onSendInvite = {
+//                    val trimmed = inviteContact.trim()
+//                    if (trimmed.isNotBlank()) {
+//                        onClearInviteFeedback()
+//                        onInviteEntrant(trimmed, inviteType)
+//                    }
+//                },
+//                isSending = inviteInProgress,
+//                feedbackMessage = inviteFeedbackMessage,
+//                isError = inviteFeedbackIsError
+//            )
+//        }
+//    })
+
+    AutoHidingBarScroller(
+        listElements = listElements,
+        bottomBar = {
+            EventDetailBottomActions(
+                event = event,
+                isUserOnWaitlist = isUserOnWaitlist,
+                isUserConfirmed = isUserConfirmed,
+                isEventOrganizer = isEventOrganizer,
+                onJoinEvent = onJoinEvent,
+                onLeaveWaitlist = onLeaveWaitlist,
+                onViewWaitlist = onViewWaitlist,
+                isLoading = isLoading
+            )
+        }
+    )
 }
 
 /**
@@ -260,9 +321,11 @@ private fun EventDetailHeroCard(
                     .clip(RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp))
             ) {
                 if (hasPoster) {
-                    AsyncImage(
-                        model = event.posterUrl,
+                    AdjustableImage(
+                        imageUrl = event.posterUrl ?: "",
                         contentDescription = "${event.title} poster",
+                        initialOffsetY = event.posterOffsetY,
+                        adjustable = false,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -394,6 +457,11 @@ private fun EventDetailInfoSection(
     event: Event,
     modifier: Modifier = Modifier
 ) {
+    val interestLabels: List<String> = event.interests.mapNotNull { id ->
+        EventInterests.byId[id]?.label ?: id
+    }
+    val hasInterests = interestLabels.isNotEmpty()
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -419,9 +487,17 @@ private fun EventDetailInfoSection(
             EventInfoRow(
                 icon = Icons.Outlined.LocationOn,
                 label = event.location,
-                accentColor = PluckPalette.Tertiary,
+                accentColor = PluckPalette.Secondary,
                 modifier = Modifier.testTag("eventLocation")
             )
+            if (hasInterests) {
+                EventInfoRow(
+                    icon = Icons.Outlined.Interests,
+                    label = interestLabels.joinToString(", "),
+                    accentColor = PluckPalette.Secondary,
+                    modifier = Modifier.testTag("eventInterests")
+                )
+            }
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = "${event.enrolled}/${event.capacity} enrolled • ${event.remainingSpots} spots left",
@@ -649,13 +725,15 @@ private fun EventLotteryInfoCard(
             EventInfoRow(
                 icon = Icons.Outlined.PeopleOutline,
                 label = samplingLabel,
-                accentColor = PluckPalette.Tertiary
+                accentColor = PluckPalette.Secondary
             )
-            EventInfoRow(
-                icon = Icons.Outlined.Groups,
-                label = "Waitlist capped at ${event.waitlistCapacity} entrants.",
-                accentColor = PluckPalette.Pink
-            )
+            if (event.waitlistCapacity != Int.MAX_VALUE) {
+                EventInfoRow(
+                    icon = Icons.Outlined.Groups,
+                    label = "Waitlist capped at ${event.waitlistCapacity} entrants.",
+                    accentColor = PluckPalette.Pink
+                )
+            }
         }
     }
 }
@@ -827,239 +905,195 @@ private fun RowScope.InviteTypeChip(
  */
 @Composable
 private fun EventDetailBottomActions(
+    isLoading: Boolean,
     event: Event,
     isUserOnWaitlist: Boolean,
     isUserConfirmed: Boolean,
     isEventOrganizer: Boolean,
     onJoinEvent: (Event) -> Unit,
     onLeaveWaitlist: (Event) -> Unit,
-    onViewWaitlist: (Event) -> Unit,
-    modifier: Modifier = Modifier
+    onViewWaitlist: (Event) -> Unit
 ) {
     val waitlistFull = event.isWaitlistFull
     val registrationClosed = !event.isRegistrationOpen
     val canJoinWaitlist = !isUserOnWaitlist && !isUserConfirmed && !waitlistFull && !registrationClosed
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = 460.dp),
-        shape = RoundedCornerShape(32.dp),
-        shadowElevation = 20.dp,
-        tonalElevation = 0.dp,
-        color = PluckPalette.Surface,
-        border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.05f))
-    )
-    {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        )
-        {
-            // Info text
-            when {
-                isUserConfirmed -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Accept.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, PluckPalette.Accept.copy(alpha = 0.4f))
-                    ) {
-                        Text(
-                            text = "You're confirmed for this event. Tap below if you need to release your spot.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Accept,
-                                fontWeight = FontWeight.Medium
-                            )
+    Row(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Hide join/leave buttons for past events
+        val modifier = Modifier.weight(0.8f)
+
+        if (!event.isPastEvent) {
+            if (isUserConfirmed) {
+                Button(
+                    onClick = { onLeaveWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Surface,
+                        contentColor = PluckPalette.Primary
+                    ),
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Primary
                         )
-                    }
-                }
-                isUserOnWaitlist -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Secondary.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Secondary.copy(alpha = 0.3f))
-                    ) {
+                    } else {
                         Text(
-                            text = "You're already on this waitlist.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Secondary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-                registrationClosed -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
-                    ) {
-                        Text(
-                            text = "Registration window has closed. Check back for future lotteries.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-                waitlistFull -> {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.2f))
-                    ) {
-                        Text(
-                            text = "Waitlist is full. Check back after the next draw.",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
+                            text = "Release My Spot",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
                             )
                         )
                     }
                 }
             }
-            Row {
-                // Hide join/leave buttons for past events
-                val modifier = Modifier.weight(0.8f)
-
-                if (!event.isPastEvent) {
-                    if (isUserConfirmed) {
-                        Button(
-                            onClick = { onLeaveWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Surface,
-                                contentColor = PluckPalette.Primary
-                            ),
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
-                            contentPadding = PaddingValues(vertical = 14.dp)
-                        ) {
-                            Text(
-                                text = "Release My Spot",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                    else if (isUserOnWaitlist) {
-                        Button(
-                            onClick = { onLeaveWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Surface,
-                                contentColor = PluckPalette.Primary
-                            ),
-                            border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
-                            contentPadding = PaddingValues(vertical = 14.dp)
-                        ) {
-                            Text(
-                                text = "Leave Waitlist",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                    else if (isEventOrganizer) {
-                        Button(
-                            onClick = { onViewWaitlist(event) },
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Secondary,
-                                contentColor = PluckPalette.Surface
-                            ),
-                            border = BorderStroke(0.dp, Color.Transparent),
-                            contentPadding = PaddingValues(vertical = 14.dp)
+            else if (isUserOnWaitlist) {
+                Button(
+                    onClick = { onLeaveWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Surface,
+                        contentColor = PluckPalette.Primary
+                    ),
+                    border = BorderStroke(1.dp, PluckPalette.Primary.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Primary
                         )
-                        {
-                            Icon(
-                                imageVector = Icons.Outlined.PeopleOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Text(
-                                text = "View Waitlist",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
-                    }
-                    else {
-                        Button(
-                            onClick = { onJoinEvent(event) },
-                            enabled = canJoinWaitlist,
-                            modifier = modifier,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PluckPalette.Primary,
-                                contentColor = PluckPalette.Surface,
-                                disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
-                                disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
-                            ),
-                            contentPadding = PaddingValues(vertical = 16.dp)
-                        ) {
-                            val label = when {
-                                waitlistFull -> "Waitlist Full"
-                                else -> "Join Waitlist"
-                            }
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
-                else {
-                    // Show read-only message for past events
-                    Surface(
-                        modifier = modifier,
-                        shape = RoundedCornerShape(24.dp),
-                        color = PluckPalette.Muted.copy(alpha = 0.1f),
-                        border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
-                    ) {
+                    } else {
                         Text(
-                            text = "This event has already occurred",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = PluckPalette.Muted,
-                                fontWeight = FontWeight.Medium
+                            text = "Leave Waitlist",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
                             )
                         )
                     }
                 }
-
-                Spacer(Modifier.size(8.dp))
-
-                // QR Code Button
-                ShowQRCodeButton(
-                    eventId = event.id,
-                    eventTitle = event.title,
-                    modifier = Modifier
-                        .weight(0.2f)
-                        .size(56.dp)
+            }
+            else if (isEventOrganizer) {
+                Button(
+                    onClick = { onViewWaitlist(event) },
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Secondary,
+                        contentColor = PluckPalette.Surface
+                    ),
+                    border = BorderStroke(0.dp, Color.Transparent),
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 )
+                {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Surface
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.PeopleOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = "View Waitlist",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+            else {
+                Button(
+                    onClick = { onJoinEvent(event) },
+                    enabled = canJoinWaitlist,
+                    modifier = modifier,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PluckPalette.Primary,
+                        contentColor = PluckPalette.Surface,
+                        disabledContainerColor = PluckPalette.Primary.copy(alpha = 0.35f),
+                        disabledContentColor = PluckPalette.Surface.copy(alpha = 0.8f)
+                    ),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    val label = when {
+                        waitlistFull -> "Waitlist Full"
+                        else -> "Join Waitlist"
+                    }
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluckPalette.Surface
+                        )
+                    } else {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
             }
         }
+        else {
+            // Show read-only message for past events
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(24.dp),
+                color = PluckPalette.Muted.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, PluckPalette.Muted.copy(alpha = 0.3f))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = PluckPalette.Secondary
+                    )
+                } else {
+                    Text(
+                        text = "This event has already occurred",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = PluckPalette.Muted,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.size(8.dp))
+
+        // QR Code Button
+        ShowQRCodeButton(
+            eventId = event.id,
+            eventTitle = event.title,
+            modifier = Modifier
+                .weight(0.2f)
+                .size(56.dp)
+        )
     }
 }
 

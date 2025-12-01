@@ -119,7 +119,7 @@ class WaitlistScreenTest {
         }
 
         // Click on chosen tab
-        composeRule.onNodeWithText("Chosen (1)").performClick()
+        composeRule.onNodeWithText("Plucked (1)").performClick()
 
         // Verify chosen entrant is displayed
         composeRule.onNodeWithText("Charlie Brown").assertExists()
@@ -136,9 +136,9 @@ class WaitlistScreenTest {
         }
 
         // Switch to chosen tab
-        composeRule.onNodeWithText("Chosen (0)").performClick()
+        composeRule.onNodeWithText("Plucked (0)").performClick()
 
-        composeRule.onNodeWithText("No entrants chosen yet").assertExists()
+        composeRule.onNodeWithText("No entrants plucked yet").assertExists()
     }
 
     @Test
@@ -153,7 +153,7 @@ class WaitlistScreenTest {
 
         // Verify tab labels show counts
         composeRule.onNodeWithText("Waiting (2)").assertIsDisplayed()
-        composeRule.onNodeWithText("Chosen (1)").assertIsDisplayed()
+        composeRule.onNodeWithText("Plucked (1)").assertIsDisplayed()
     }
 
     @Test
@@ -168,7 +168,7 @@ class WaitlistScreenTest {
             )
         }
 
-        composeRule.onNodeWithContentDescription("Go back").performClick()
+        composeRule.onNodeWithContentDescription("Back").performClick()
 
         assert(backCalled) { "onBack callback was not called" }
     }

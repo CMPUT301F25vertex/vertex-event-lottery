@@ -23,6 +23,7 @@ import com.google.firebase.firestore.ServerTimestamp
  * @property displayName User-facing name shown throughout the app.
  * @property phoneNumber Optional phone number for SMS notifications.
  * @property profileImageUrl Optional profile picture URL from Firebase Storage.
+ * @property profileImageOffsetY Optional vertical offset for profile image framing (-1.0 to 1.0).
  * @property role User role determining permissions (ENTRANT, ORGANIZER, ADMIN).
  * @property isActive Whether the account is active (soft delete support).
  * @property isOrganizerBanned Whether this user is banned from organizer role.
@@ -37,6 +38,7 @@ data class FirebaseUser(
     val displayName: String = "",
     val phoneNumber: String? = null,
     val profileImageUrl: String? = null,
+    val profileImageOffsetY: Double? = null,
     val role: UserRole = UserRole.ENTRANT,
     val isActive: Boolean = true,
     val isOrganizerBanned: Boolean = false,
@@ -44,7 +46,8 @@ data class FirebaseUser(
     @ServerTimestamp
     val createdAt: Timestamp? = null,
     @ServerTimestamp
-    val updatedAt: Timestamp? = null
+    val updatedAt: Timestamp? = null,
+    val fcmToken: String = ""
 ) {
     constructor() : this(
         id = "",

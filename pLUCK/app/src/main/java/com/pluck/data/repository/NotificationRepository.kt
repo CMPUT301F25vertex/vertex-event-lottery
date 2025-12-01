@@ -7,8 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.ktx.toObject
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.firestore.toObject
 import com.pluck.data.firebase.WaitlistStatus
 import com.pluck.ui.model.InviteContactType
 import com.pluck.ui.model.NotificationButtons
@@ -227,7 +226,10 @@ class NotificationRepository(
     suspend fun declineNotification(notification: NotificationItem): Result<Unit> = runCatching {
         val docRef = notificationsCollection.document(notification.id)
         notification.waitlistEntryId?.takeIf { it.isNotBlank() }?.let { entryId ->
-            waitlistRepository.declineInvitation(entryId).getOrThrow()
+            val event = notification.eventId.takeIf { it.isNotBlank() }?.let { eventId ->
+                eventRepository.getEvent(eventId).getOrNull()
+            }
+            waitlistRepository.declineInvitation(entryId, event).getOrThrow()
         }
 
         val updates = mapOf(
