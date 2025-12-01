@@ -78,6 +78,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.pluck.data.DeviceAuthPreferences
 import com.pluck.data.DeviceAuthResult
 import com.pluck.data.DeviceAuthenticator
+import com.pluck.data.NotificationPreferences
+import com.pluck.data.NotificationType
 import com.pluck.data.firebase.FirebaseEvent
 import com.pluck.data.firebase.FirebaseUser
 import com.pluck.data.firebase.FirebaseWaitlistEntry
@@ -192,6 +194,7 @@ fun PLuckNavHost(
     val authenticator = remember(context) { DeviceAuthenticator(context.applicationContext) }
     val authPreferences = remember(context) { DeviceAuthPreferences(context.applicationContext) }
     val themePrefs = remember(context) { ThemePreferences(context.applicationContext) }
+    val notificationPrefs = remember(context) { NotificationPreferences(context.applicationContext) }
     val adminAccessRepository = remember { AdminAccessRepository() }
     val organizerAccessRepository = remember { OrganizerAccessRepository() }
     val appealRepository = remember { AppealRepository() }
@@ -428,7 +431,12 @@ fun PLuckNavHost(
     }
 
     LaunchedEffect(hasOrganizerDashboard, currentUser) {
-        if (currentUser?.role != null && currentUser?.role == UserRole.ORGANIZER && !hasOrganizerDashboard && !dashboards.hasDashboardWithType(DashboardType.Organizer)) {
+        if (currentUser?.role != null &&
+            currentUser?.role == UserRole.ORGANIZER &&
+            currentUser?.isOrganizerBanned == false &&
+            !hasOrganizerDashboard &&
+            !dashboards.hasDashboardWithType(DashboardType.Organizer)
+        ) {
             dashboards.add(Dashboard(
                     type = DashboardType.Organizer,
                     onClick = { navigator.toOrganizer() }
@@ -1368,8 +1376,21 @@ fun PLuckNavHost(
             }
         }
         composable(PLuckDestination.Notifications.route) {
+            val filteredNotifications = notifications.filter { item ->
+                val rawCategory = item.rawCategory
+                val type = when (rawCategory) {
+                    "SELECTION" -> NotificationType.SELECTION
+                    "REJECTION", "NOT_SELECTED" -> NotificationType.REJECTION
+                    "CANCELLATION" -> NotificationType.CANCELLATION
+                    "DEADLINE" -> NotificationType.REMINDER
+                    "ORGANIZER_UPDATE" -> NotificationType.ORGANIZER_UPDATE
+                    else -> NotificationType.ORGANIZER_UPDATE
+                }
+                notificationPrefs.shouldSendNotification(type)
+            }
+
             NotificationsScreen(
-                notifications = notifications,
+                notifications = filteredNotifications,
                 isLoading = notificationsLoading,
                 processingNotificationIds = processingNotificationIds,
                 onEventDetails = { notification ->
@@ -1427,6 +1448,20 @@ fun PLuckNavHost(
         }
         composable(PLuckDestination.CreateEvent.route) {
             var formError by remember { mutableStateOf<String?>(null) }
+            val organizerProfile = currentUser
+            val hasOrganizerAccess = organizerProfile?.role == UserRole.ORGANIZER && !organizerProfile.isOrganizerBanned
+
+            if (!hasOrganizerAccess) {
+                PlaceholderScreen(
+                    title = "Organizer access required",
+                    description = "Only approved organizers can create events.",
+                    actionLabel = "Back to events",
+                    onAction = {
+                        navController.popBackStack()
+                    }
+                )
+                return@composable
+            }
 
             CreateEventScreen(
                 isLoading = eventsLoading,
@@ -1707,6 +1742,21 @@ fun PLuckNavHost(
             )
         }
         composable(PLuckDestination.OrganizerDashboard.route) {
+            val organizerProfile = currentUser
+            val hasOrganizerAccess = organizerProfile?.role == UserRole.ORGANIZER && !organizerProfile.isOrganizerBanned
+
+            if (!hasOrganizerAccess) {
+                PlaceholderScreen(
+                    title = "Organizer access required",
+                    description = "Your organizer permissions are no longer active.",
+                    actionLabel = "Back to events",
+                    onAction = {
+                        navigator.toEventList()
+                    }
+                )
+                return@composable
+            }
+
             val organizerEvents = remember(events, currentUser?.deviceId, currentUser?.displayName) {
                 val organizerId = currentUser?.deviceId
                 val organizerName = currentUser?.displayName
@@ -1798,9 +1848,6 @@ fun PLuckNavHost(
             )
         }
         composable(PLuckDestination.AdminDashboard.route) {
-            LaunchedEffect(Unit) {
-                adminViewModel.loadAllImages()
-            }
             if (isAdminDevice) {
                 AdminDashboardScreen(
                     stats = adminStats,

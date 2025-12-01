@@ -73,6 +73,9 @@ class AdminViewModel(
     init {
         observeOrganizersRealtime()
         observeAppealsRealtime()
+        observeEventsRealtime()
+        observeUsersRealtime()
+        observeNotificationsRealtime()
         loadAllData()
     }
 
@@ -153,6 +156,67 @@ class AdminViewModel(
                 }
                 .collect { appealsList ->
                     _appeals.value = appealsList
+                }
+        }
+    }
+
+    /** Observe all events in real time for the admin dashboard. */
+    private fun observeEventsRealtime() {
+        viewModelScope.launch {
+            eventRepository.observeEvents()
+                .catch { exception ->
+                    _error.value = exception.message ?: "Failed to observe events"
+                }
+                .collect { eventsList ->
+                    _events.value = eventsList
+                    updateStats()
+                }
+        }
+    }
+
+    /** Observe all users in real time for the admin dashboard. */
+    private fun observeUsersRealtime() {
+        viewModelScope.launch {
+            userRepository.observeUsers()
+                .catch { exception ->
+                    _error.value = exception.message ?: "Failed to observe users"
+                }
+                .collect { usersList ->
+                    _users.value = usersList
+                    updateStats()
+                }
+        }
+    }
+
+    /** Observe notification log entries in real time (latest 100). */
+    private fun observeNotificationsRealtime() {
+        viewModelScope.launch {
+            firestore.collection("notifications")
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(100)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        _error.value = error.message ?: "Failed to observe notifications"
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        val logs = snapshot.documents.mapNotNull { doc ->
+                            runCatching {
+                                NotificationLog(
+                                    id = doc.id,
+                                    title = doc.getString("title") ?: "",
+                                    subtitle = doc.getString("subtitle") ?: "",
+                                    userId = doc.getString("userId") ?: "",
+                                    eventId = doc.getString("eventId") ?: "",
+                                    category = doc.getString("category") ?: "",
+                                    status = doc.getString("status") ?: "SENT",
+                                    createdAt = doc.getLong("createdAtMillis") ?: 0L
+                                )
+                            }.getOrNull()
+                        }
+                        _notifications.value = logs
+                        updateStats()
+                    }
                 }
         }
     }

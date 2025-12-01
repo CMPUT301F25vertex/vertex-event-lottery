@@ -339,7 +339,8 @@ class NotificationRepository(
             waitlistEntryId = waitlistEntryId.takeUnless { it.isNullOrBlank() },
             inviteContact = inviteContact,
             inviteType = inviteTypeEnum,
-            createdAtMillis = createdAt?.toDate()?.time ?: 0L
+            createdAtMillis = createdAt?.toDate()?.time ?: 0L,
+            rawCategory = category
         )
     }
 }
