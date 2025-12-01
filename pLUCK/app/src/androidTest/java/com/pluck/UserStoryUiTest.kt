@@ -1,8 +1,9 @@
 package com.pluck
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,7 +26,7 @@ import java.time.LocalDate
 class UserStoryUiTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun registrationFlow_submitsProvidedDetails() {
@@ -138,5 +139,9 @@ class UserStoryUiTest {
             assertEquals("event-1", selectedEventId)
             assertEquals("notifications", selectedRoute)
         }
+
+        // Ensure the hosting ActivityScenario is fully closed to avoid
+        // lifecycle teardown flakes on some devices/emulators.
+        composeRule.activityRule.scenario.close()
     }
 }
