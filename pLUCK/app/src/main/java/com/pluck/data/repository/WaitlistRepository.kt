@@ -65,15 +65,54 @@ class WaitlistRepository(
         longitude: Double? = null
     ): Result<String> {
         return try {
-            val existingMembership = getUserWaitlistMembership(eventId, userId).getOrThrow()
-            existingMembership?.let { membership ->
-                if (membership.status.isActiveMembership()) {
-                    return Result.success(membership.entryId)
+
+            // Check ALL existing entries for this user in this event (not just active ones)
+            val existingEntries = waitlistCollection
+                .whereEqualTo("eventId", eventId)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            // Process existing entries
+            if (!existingEntries.isEmpty) {
+                val batch = firestore.batch()
+                var activeEntryId: String? = null
+
+                existingEntries.documents.forEach { doc ->
+                    val status = doc.getString("status")?.let {
+                        WaitlistStatus.valueOf(it)
+                    } ?: WaitlistStatus.WAITING
+
+                    when {
+                        // If they have an active membership, save it to return
+                        status.isActiveMembership() -> {
+                            activeEntryId = doc.id
+                        }
+                        // If they were CANCELLED or DECLINED, delete the old entry
+                        status == WaitlistStatus.CANCELLED || status == WaitlistStatus.DECLINED -> {
+                            batch.delete(doc.reference)
+                        }
+                    }
                 }
+
+                // If user already has active membership (WAITING, INVITED, ACCEPTED), return existing
+                if (activeEntryId != null) {
+                    return Result.success(activeEntryId!!)
+                }
+
+                // Commit the cleanup batch (deletes old CANCELLED/DECLINED entries)
+                batch.commit().await()
+
+                // Recalculate waitlist count after cleanup
+                val newCount = getWaitlistCount(eventId)
+                eventRepository.updateWaitlistCount(eventId, newCount)
+                    .onFailure { return Result.failure(it) }
             }
-            // Get current waitlist size for position
+
+            // Get waitlist size after cleanup
             val currentSize = getWaitlistCount(eventId)
 
+            // Create new waitlist entry
             val entry = FirebaseWaitlistEntry(
                 eventId = eventId,
                 userId = userId,
@@ -87,18 +126,19 @@ class WaitlistRepository(
 
             val docRef = waitlistCollection.document()
             val entryWithId = entry.copy(id = docRef.id)
-
             docRef.set(entryWithId).await()
 
-            // Update event waitlist count
+            // Update waitlist count
             eventRepository.updateWaitlistCount(eventId, currentSize + 1)
                 .onFailure { return Result.failure(it) }
 
             Result.success(docRef.id)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
 
     /**
      * Directly sign up for an event when seats are available
@@ -220,7 +260,10 @@ class WaitlistRepository(
             val entryDoc = waitlistCollection.document(waitlistEntryId).get().await()
             val eventId = entryDoc.getString("eventId") ?: ""
 
-            // Set entrant to DECLINE status
+            // Get event details for replacement draw
+            val event = eventRepository.getEvent(eventId).getOrNull()
+
+            // Set entrant to DECLINED status
             waitlistCollection.document(waitlistEntryId)
                 .update(
                     mapOf(
@@ -231,6 +274,15 @@ class WaitlistRepository(
                     )
                 )
                 .await()
+
+            // Automatically draw a replacement if event info is available
+            if (event != null) {
+                drawReplacementEntrant(eventId, event)
+                    .onFailure {
+                        // Log but don't fail the decline operation
+                        Log.w("WaitlistRepository", "Failed to draw replacement: ${it.message}")
+                    }
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

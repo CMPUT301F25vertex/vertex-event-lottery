@@ -226,7 +226,11 @@ class NotificationRepository(
     suspend fun declineNotification(notification: NotificationItem): Result<Unit> = runCatching {
         val docRef = notificationsCollection.document(notification.id)
         notification.waitlistEntryId?.takeIf { it.isNotBlank() }?.let { entryId ->
-            waitlistRepository.declineInvitation(entryId).getOrThrow()
+            // Fetch event information to enable automatic replacement drawing
+            val event = notification.eventId.takeIf { it.isNotBlank() }?.let { eventId ->
+                eventRepository.getEvent(eventId).getOrNull()
+            }
+            waitlistRepository.declineInvitation(entryId, event).getOrThrow()
         }
 
         val updates = mapOf(
