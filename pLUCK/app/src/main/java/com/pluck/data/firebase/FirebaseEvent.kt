@@ -40,6 +40,7 @@ import java.time.ZoneId
  * @property waitlistCapacity Maximum waitlist size.
  * @property qrCodeData QR code payload for event check-in.
  * @property imageUrl Optional poster image URL from Firebase Storage.
+ * @property posterOffsetY Optional vertical offset for poster framing (-1.0 to 1.0).
  * @property registrationStartTimestamp Optional registration opening time.
  * @property registrationEndTimestamp Optional registration closing time.
  * @property samplingCount Number of entrants to draw in lottery.
@@ -68,6 +69,7 @@ data class FirebaseEvent(
     val waitlistCapacity: Int = 0,
     val qrCodeData: String = "",
     val imageUrl: String? = null,
+    val posterOffsetY: Double? = null,
     val registrationStartTimestamp: Timestamp? = null,
     val registrationEndTimestamp: Timestamp? = null,
     val samplingCount: Int = 0,
@@ -122,6 +124,7 @@ data class FirebaseEvent(
             waitlistCapacity = waitlistCapacity,
             qrCodeData = qrCodeData.ifEmpty { id },
             posterUrl = imageUrl,
+            posterOffsetY = posterOffsetY?.toFloat() ?: 0f,
             registrationStart = registrationStartDateTime?.toLocalDate(),
             registrationStartTime = registrationStartDateTime?.toLocalTime(),
             registrationEnd = registrationEndDateTime?.toLocalDate(),
@@ -160,6 +163,7 @@ data class FirebaseEvent(
                 waitlistCapacity = event.waitlistCapacity,
                 qrCodeData = event.qrCodeData,
                 imageUrl = event.posterUrl,
+                posterOffsetY = event.posterOffsetY.toDouble(),
                 registrationStartTimestamp = event.registrationStart?.let {
                     toTimestamp(it, event.registrationStartTime)
                 },

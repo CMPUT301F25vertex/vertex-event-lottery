@@ -603,9 +603,7 @@ fun PLuckNavHost(
 
             when {
                 resolvedEvent != null -> {
-                    val isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING ||
-                            userWaitlistStatus == WaitlistStatus.SELECTED ||
-                            userWaitlistStatus == WaitlistStatus.INVITED
+                    val isUserWaiting = userWaitlistStatus == WaitlistStatus.WAITING
                     val isUserConfirmed = userWaitlistStatus == WaitlistStatus.ACCEPTED
                     val organizerId = currentUser?.deviceId.orEmpty()
                     val isEventOrganizer = currentUser?.let { profile ->
@@ -791,9 +789,7 @@ fun PLuckNavHost(
             when {
                 resolvedEvent != null -> {
                     val waitingCount = waitlistEntries.count {
-                        it.status == WaitlistStatus.WAITING ||
-                                it.status == WaitlistStatus.INVITED ||
-                                it.status == WaitlistStatus.SELECTED
+                        it.status == WaitlistStatus.WAITING
                     }
                     val availableSpots = (resolvedEvent.capacity - resolvedEvent.enrolled).coerceAtLeast(0)
 
@@ -982,11 +978,6 @@ fun PLuckNavHost(
                                         val eventsCollection = FirebaseFirestore.getInstance().collection("events")
 
                                         scope.launch {
-                                            if (text4.toIntOrDefault(0) != 0) {
-                                                Toast.makeText(context, "Starting the timer!", Toast.LENGTH_SHORT).show()
-                                            }
-
-                                            delay(text4.toIntOrDefault(0) * 1000L)
                                             val users = entrantsCollection.whereEqualTo("email", text2).get().await()
 
                                             val events = eventsCollection.whereEqualTo("title", text3 ).get().await().toObjects<FirebaseEvent>()
@@ -1044,7 +1035,7 @@ fun PLuckNavHost(
                                         containerColor = Color.Green
                                     )
                                 ) {
-                                    Text("Send ${text1.toIntOrDefault(0)} fake notifications to all users with email: $text2 to event with name: $text3 with delay of ${text4.toIntOrDefault(0)} seconds")
+                                    Text("Send ${text1.toIntOrDefault(0)} fake notifications to all users with email: $text2 to event with name: $text3")
                                 }
 
                                 TextButton(
@@ -1115,6 +1106,7 @@ fun PLuckNavHost(
                         userPhone = currentUser?.phoneNumber,
                         profileImageUrl = currentUser?.profileImageUrl,
                         deviceId = deviceId,
+                        profileImageOffsetY = currentUser?.profileImageOffsetY ?: 0f,
                         isLoading = loginInProgress,
                         isUpdatingProfile = profileUpdating,
                         isAdmin = isAdminDevice,
@@ -1284,6 +1276,26 @@ fun PLuckNavHost(
                                 }.onFailure { error ->
                                     profileUpdateError = error.message
                                         ?: "Failed to submit appeal."
+                                }
+                            }
+                        },
+                        onProfileImageOffsetChanged = { offsetY ->
+                            val id = deviceId
+                            if (!id.isNullOrBlank()) {
+                                scope.launch {
+                                    runCatching {
+                                        FirebaseFirestore.getInstance()
+                                            .collection("entrants")
+                                            .document(id)
+                                            .update(
+                                                mapOf(
+                                                    "profileImageOffsetY" to offsetY.toDouble(),
+                                                    "updatedAt" to FieldValue.serverTimestamp()
+                                                )
+                                            )
+                                    }.onFailure {
+                                        Log.w("ProfileScreen", "Failed to update profile image offset", it)
+                                    }
                                 }
                             }
                         },
@@ -1478,19 +1490,20 @@ fun PLuckNavHost(
                         return@CreateEventScreen
                     }
 
-                    val newEvent = Event(
-                        id = "",
-                        title = request.title.trim(),
-                        description = request.description.trim(),
-                        location = request.location.trim(),
-                        date = request.eventDate,
+                      val newEvent = Event(
+                          id = "",
+                          title = request.title.trim(),
+                          description = request.description.trim(),
+                          location = request.location.trim(),
+                          date = request.eventDate,
                         eventTime = request.eventTime,
                         capacity = capacityValue,
                         enrolled = 0,
                         organizerName = organizer.displayName,
-                        organizerId = organizer.deviceId,
-                        waitlistCapacity = waitlistCapacity,
-                        posterUrl = request.posterUrl,
+                          organizerId = organizer.deviceId,
+                          waitlistCapacity = waitlistCapacity,
+                          posterUrl = request.posterUrl,
+                          posterOffsetY = request.posterOffsetY,
                         registrationStart = request.registrationStartDate,
                         registrationStartTime = request.registrationStartTime,
                         registrationEnd = request.registrationEndDate,
@@ -1534,27 +1547,30 @@ fun PLuckNavHost(
 
             when {
                 resolvedEvent != null -> {
-                    EditEventPosterScreen(
-                        eventTitle = resolvedEvent.title,
-                        currentPosterUrl = resolvedEvent.posterUrl,
-                        isSaving = eventsLoading,
-                        errorMessage = eventError,
-                        onBack = { navController.popBackStack() },
-                        onClearError = { eventViewModel.clearError() },
-                        onSavePoster = { posterUrl ->
-                            val updates = mutableMapOf<String, Any>(
-                                "updatedAt" to FieldValue.serverTimestamp()
-                            )
-                            if (posterUrl.isNullOrBlank()) {
-                                updates["imageUrl"] = FieldValue.delete()
-                            } else {
-                                updates["imageUrl"] = posterUrl
-                            }
-                            eventViewModel.updateEvent(resolvedEvent.id, updates) {
-                                navController.popBackStack()
-                            }
-                        }
-                    )
+                      EditEventPosterScreen(
+                          eventTitle = resolvedEvent.title,
+                          currentPosterUrl = resolvedEvent.posterUrl,
+                          currentPosterOffsetY = resolvedEvent.posterOffsetY,
+                          isSaving = eventsLoading,
+                          errorMessage = eventError,
+                          onBack = { navController.popBackStack() },
+                          onClearError = { eventViewModel.clearError() },
+                          onSavePoster = { posterUrl, posterOffsetY ->
+                              val updates = mutableMapOf<String, Any>(
+                                  "updatedAt" to FieldValue.serverTimestamp()
+                              )
+                              if (posterUrl.isNullOrBlank()) {
+                                  updates["imageUrl"] = FieldValue.delete()
+                                  updates["posterOffsetY"] = 0.0
+                              } else {
+                                  updates["imageUrl"] = posterUrl
+                                  updates["posterOffsetY"] = posterOffsetY.toDouble()
+                              }
+                              eventViewModel.updateEvent(resolvedEvent.id, updates) {
+                                  navController.popBackStack()
+                              }
+                          }
+                      )
                 }
                 eventsLoading -> {
                     PlaceholderScreen(
@@ -1916,9 +1932,7 @@ fun PLuckNavHost(
                 }
 
                 val waitingCount = waitlistEntries.count {
-                    it.status == WaitlistStatus.WAITING ||
-                            it.status == WaitlistStatus.INVITED ||
-                            it.status == WaitlistStatus.SELECTED
+                    it.status == WaitlistStatus.WAITING
                 }
                 val availableSpots = (event.capacity - event.enrolled).coerceAtLeast(0)
                 val currentWave = if (event.samplingCount > 0) {

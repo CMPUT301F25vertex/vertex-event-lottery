@@ -42,6 +42,10 @@ fun ProfileCircle(
      */
     profileImageUrl: String?,
     /**
+     * Saved vertical offset for profile image framing (-1.0 to 1.0).
+     */
+    profileImageOffsetY: Float = 0f,
+    /**
      * Whether an image upload is in progress to display the loading indicator.
      */
     isUploading: Boolean,
@@ -77,21 +81,14 @@ fun ProfileCircle(
                     contentAlignment = Alignment.Center
                 ) {
                     if (!profileImageUrl.isNullOrBlank()) {
-//                        val imageLoader = ImageLoader.Builder(LocalContext.current)
-//                            .components {
-//                                if (SDK_INT >= 28) {
-//                                    add(AnimatedImageDecoder.Factory())
-//                                } else {
-//                                    add(GifDecoder.Factory())
-//                                }
-//                            }
-//                            .build()
-                        AsyncImage(
-                            model = profileImageUrl,
-                            contentDescription = "Profile photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                            AdjustableProfileImage(
+                                imageUrl = profileImageUrl,
+                                contentDescription = "Profile photo",
+                                initialOffsetY = profileImageOffsetY,
+                                onOffsetChanged = { /* offset handled upstream */ },
+                                adjustable = !isUploading,
+                                modifier = Modifier.fillMaxSize()
+                            )
                     } else {
                         Text(
                             text = userName.trim()

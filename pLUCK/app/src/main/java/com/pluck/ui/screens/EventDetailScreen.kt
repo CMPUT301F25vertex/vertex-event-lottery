@@ -78,7 +78,7 @@ import com.pluck.ui.model.InviteContactType
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
-import coil3.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
 import com.pluck.ui.components.AutoHidingBarScroller
 import com.pluck.ui.components.BackButton
 import com.pluck.ui.components.RoundIconButton
@@ -321,9 +321,11 @@ private fun EventDetailHeroCard(
                     .clip(RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp))
             ) {
                 if (hasPoster) {
-                    AsyncImage(
-                        model = event.posterUrl,
+                    AdjustableImage(
+                        imageUrl = event.posterUrl ?: "",
                         contentDescription = "${event.title} poster",
+                        initialOffsetY = event.posterOffsetY,
+                        adjustable = false,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )

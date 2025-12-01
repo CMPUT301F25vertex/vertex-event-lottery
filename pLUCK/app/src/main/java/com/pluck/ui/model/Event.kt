@@ -32,6 +32,7 @@ import java.util.Locale
  * @property waitlistCapacity Maximum entrants allowed on the waitlist.
  * @property qrCodeData Encoded payload rendered inside QR check-in surfaces.
  * @property posterUrl Optional remote asset associated with the event.
+ * @property posterOffsetY Vertical offset for poster framing (-1.0 to 1.0).
  * @property registrationStart Optional opening date for registration.
  * @property registrationStartTime Optional opening time for registration.
  * @property registrationEnd Optional closing date for registration.
@@ -59,6 +60,7 @@ data class Event(
     val waitlistCapacity: Int = capacity * 2,
     val qrCodeData: String = id,
     val posterUrl: String? = null,
+    val posterOffsetY: Float = 0f,
     val registrationStart: LocalDate? = null,
     val registrationStartTime: LocalTime? = null,
     val registrationEnd: LocalDate? = null,

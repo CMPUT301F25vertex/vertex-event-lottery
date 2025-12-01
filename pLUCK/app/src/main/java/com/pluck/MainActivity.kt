@@ -47,6 +47,15 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val requestLocationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+            val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+            if (!fineGranted && !coarseGranted) {
+                Log.w("Location", "Location permission denied by user")
+            }
+        }
+
     /**
      * Sets up theme preferences and initializes the navigation host.
      * Loads saved user preferences and applies them to the UI.
@@ -55,6 +64,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         requestNotificationPermissionIfNeeded()
+        requestLocationPermissionsIfNeeded()
 
         // Load saved theme preferences
         val prefs = ThemePreferences(this)
@@ -103,6 +113,28 @@ class MainActivity : ComponentActivity() {
 
         if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun requestLocationPermissionsIfNeeded() {
+        val fineStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+        val coarseStatus = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        if (fineStatus != PackageManager.PERMISSION_GRANTED &&
+            coarseStatus != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 }

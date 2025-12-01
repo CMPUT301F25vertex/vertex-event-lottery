@@ -71,7 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
 import com.pluck.ui.components.PluckLayeredBackground
 import com.pluck.ui.components.PluckPalette
 import com.pluck.ui.theme.autoTextColor
@@ -112,6 +112,7 @@ data class CreateEventRequest(
     val eventTime: LocalTime,
     val capacity: String,
     val posterUrl: String?,
+    val posterOffsetY: Float = 0f,
     val registrationStartDate: LocalDate,
     val registrationStartTime: LocalTime,
     val registrationEndDate: LocalDate,
@@ -154,8 +155,9 @@ fun CreateEventScreen(
     // Geolocation toggle - when enabled, location is MANDATORY for joining
     var requiresGeolocation by remember { mutableStateOf(true) }
 
-    var posterUrl by remember { mutableStateOf<String?>(null) }
-    var posterUrlInput by remember { mutableStateOf("") }
+      var posterUrl by remember { mutableStateOf<String?>(null) }
+      var posterOffsetY by remember { mutableStateOf(0f) }
+      var posterUrlInput by remember { mutableStateOf("") }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
     var interestsMenuExpanded by remember { mutableStateOf(false) }
@@ -278,22 +280,27 @@ fun CreateEventScreen(
             posterUrl = posterUrl,
             isUploading = posterUploadInProgress,
             canUploadPoster = true,  // Cloudinary is always available
+            posterOffsetY = posterOffsetY,
             manualPosterUrl = posterUrlInput,
             onManualPosterUrlChange = { value ->
                 posterUrlInput = value
                 posterUrl = value.trim().takeIf { it.isNotBlank() }
             },
-            onSelectPoster = {
-                posterPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
-            onRemovePoster = {
-                posterUrl = null
-                posterUrlInput = ""
-            }
-        )
-    })
+              onSelectPoster = {
+                  posterPicker.launch(
+                      PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                  )
+              },
+              onRemovePoster = {
+                  posterUrl = null
+                  posterUrlInput = ""
+                  posterOffsetY = 0f
+              },
+              onPosterOffsetYChange = { offset ->
+                  posterOffsetY = offset
+              }
+          )
+      })
 
     if (posterUploadError != null) {
         listElements.add(ComposableItem {
@@ -700,6 +707,7 @@ fun CreateEventScreen(
                             eventTime = eventTime!!,
                             capacity = capacity,
                             posterUrl = posterUrl,
+                            posterOffsetY = posterOffsetY,
                             registrationStartDate = registrationStartDate!!,
                             registrationStartTime = registrationStartTime!!,
                             registrationEndDate = registrationEndDate!!,
@@ -797,10 +805,12 @@ private fun PosterUploadSection(
     posterUrl: String?,
     isUploading: Boolean,
     canUploadPoster: Boolean,
+    posterOffsetY: Float = 0f,
     manualPosterUrl: String,
     onManualPosterUrlChange: (String) -> Unit,
     onSelectPoster: () -> Unit,
-    onRemovePoster: () -> Unit
+    onRemovePoster: () -> Unit,
+    onPosterOffsetYChange: (Float) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -840,14 +850,18 @@ private fun PosterUploadSection(
                         )
                     }
                 }
-                else -> {
-                    AsyncImage(
-                        model = posterUrl,
-                        contentDescription = "Event poster preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                  else -> {
+                      AdjustableImage(
+                          imageUrl = posterUrl,
+                          contentDescription = "Event poster preview",
+                          initialOffsetY = posterOffsetY,
+                          onOffsetChanged = onPosterOffsetYChange,
+                          onOffsetCommitted = onPosterOffsetYChange,
+                          modifier = Modifier.fillMaxSize(),
+                          adjustable = true,
+                          contentScale = ContentScale.Crop
+                      )
+                  }
             }
         }
 

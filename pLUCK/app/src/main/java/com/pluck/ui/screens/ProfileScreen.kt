@@ -92,6 +92,7 @@ import java.util.concurrent.Executors
  * @param userPhone Optional phone number tied to the profile.
  * @param profileImageUrl Optional Cloudinary URL for the entrant's profile photo.
  * @param deviceId Unique device identifier used as the Cloudinary public ID.
+ * @param profileImageOffsetY Saved vertical offset for profile photo framing (-1.0 to 1.0).
  * @param isLoading Whether the overall profile data is loading.
  * @param isUpdatingProfile Whether profile details are currently being saved.
  * @param isAdmin Whether the current device has admin privileges.
@@ -117,6 +118,7 @@ fun ProfileScreen(
     userPhone: String?,
     profileImageUrl: String?,
     deviceId: String?,
+    profileImageOffsetY: Float = 0f,
     isLoading: Boolean,
     isUpdatingProfile: Boolean = false,
     isAdmin: Boolean = false,
@@ -138,6 +140,7 @@ fun ProfileScreen(
     onBecomeOrganizer: () -> Unit = {},
     onDowngradeFromOrganizer: () -> Unit = {},
     onSubmitAppeal: (String) -> Unit = {},
+    onProfileImageOffsetChanged: (Float) -> Unit = {},
     modifier: Modifier = Modifier,
     debugComposable: ComposableItem? = null
 ) {
@@ -279,6 +282,7 @@ fun ProfileScreen(
         ProfileCircle(
             userName = userName,
             profileImageUrl = profileImageUrl,
+            profileImageOffsetY = profileImageOffsetY,
             isUploading = profileImageUploading,
             onChangePhoto = {
                 pickProfilePhotoDialog = true

@@ -259,6 +259,7 @@ class DeviceAuthenticator(private val context: Context) {
                     email = null,
                     phoneNumber = null,
                     profileImageUrl = null,
+                    profileImageOffsetY = 0f,
                     firebaseUid = "",
                     createdAt = null,
                     updatedAt = null
@@ -317,6 +318,7 @@ class DeviceAuthenticator(private val context: Context) {
         val email = getString("email").orEmpty().ifBlank { null }
         val phoneNumber = getString("phoneNumber").orEmpty().ifBlank { null }
         val profileImageUrl = getString("profileImageUrl").orEmpty().ifBlank { null }
+        val profileImageOffsetY = getDouble("profileImageOffsetY")?.toFloat() ?: 0f
         val roleString = getString("role")
         val role = UserRole.values().firstOrNull { it.name.equals(roleString, ignoreCase = true) }
             ?: UserRole.ENTRANT
@@ -330,6 +332,7 @@ class DeviceAuthenticator(private val context: Context) {
             email = email,
             phoneNumber = phoneNumber,
             profileImageUrl = profileImageUrl,
+            profileImageOffsetY = profileImageOffsetY,
             firebaseUid = firebaseUid,
             role = role,
             isOrganizerBanned = isOrganizerBanned,

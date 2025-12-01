@@ -56,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
 import com.pluck.data.repository.CloudinaryUploadRepository
 import com.pluck.data.repository.CloudinaryUploadResult
 import com.pluck.ui.components.BackButton
@@ -76,6 +76,7 @@ import java.util.UUID
  *
  * @param eventTitle The title of the event being edited
  * @param currentPosterUrl The current poster URL (if any)
+ * @param currentPosterOffsetY The saved vertical offset for the poster (-1.0 to 1.0)
  * @param isSaving Whether the save operation is in progress
  * @param errorMessage Any error message from the parent component
  * @param onBack Callback to navigate back
@@ -87,15 +88,17 @@ import java.util.UUID
 fun EditEventPosterScreen(
     eventTitle: String,
     currentPosterUrl: String?,
+    currentPosterOffsetY: Float = 0f,
     isSaving: Boolean,
     errorMessage: String?,
     onBack: () -> Unit,
     onClearError: () -> Unit,
-    onSavePoster: (String?) -> Unit,
+    onSavePoster: (String?, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // State for poster URL management
     var posterUrl by remember { mutableStateOf(currentPosterUrl) }
+    var posterOffsetY by remember { mutableStateOf(currentPosterOffsetY) }
     var posterUploadInProgress by remember { mutableStateOf(false) }
     var posterUploadError by remember { mutableStateOf<String?>(null) }
 
@@ -192,6 +195,7 @@ fun EditEventPosterScreen(
     listElements.add(ComposableItem {
         PosterPreview(
             posterUrl = posterUrl,
+            posterOffsetY = posterOffsetY,
             isUploading = posterUploadInProgress,
             canUploadPoster = true,  // Cloudinary is always available
             onSelectPoster = {
@@ -199,6 +203,10 @@ fun EditEventPosterScreen(
             },
             onRemovePoster = {
                 posterUrl = null
+                posterOffsetY = 0f
+            },
+            onPosterOffsetYChange = { offset ->
+                posterOffsetY = offset
             }
         )
     })
@@ -242,7 +250,7 @@ fun EditEventPosterScreen(
                     ) {
                         onBack()
                     } else {
-                        onSavePoster(sanitizedPoster)
+                        onSavePoster(sanitizedPoster, posterOffsetY)
                     }
                 },
                 modifier = Modifier.weight(1f),
@@ -319,6 +327,7 @@ private fun PosterEditorHeader(
  * Shows upload progress when an upload is in progress.
  *
  * @param posterUrl The current poster URL (or null if none)
+ * @param posterOffsetY The saved vertical offset for the poster (-1.0 to 1.0)
  * @param isUploading Whether a poster upload is currently in progress
  * @param canUploadPoster Whether poster uploads are available (always true for Cloudinary)
  * @param onSelectPoster Callback to launch the image picker
@@ -327,10 +336,12 @@ private fun PosterEditorHeader(
 @Composable
 private fun PosterPreview(
     posterUrl: String?,
+    posterOffsetY: Float = 0f,
     isUploading: Boolean,
     canUploadPoster: Boolean,
     onSelectPoster: () -> Unit,
-    onRemovePoster: () -> Unit
+    onRemovePoster: () -> Unit,
+    onPosterOffsetYChange: (Float) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -361,10 +372,14 @@ private fun PosterPreview(
                     }
                 }
                 else -> {
-                    AsyncImage(
-                        model = posterUrl,
+                    AdjustableImage(
+                        imageUrl = posterUrl,
                         contentDescription = "Event poster preview",
-                        modifier = Modifier.fillMaxSize()
+                        initialOffsetY = posterOffsetY,
+                        onOffsetChanged = onPosterOffsetYChange,
+                        onOffsetCommitted = onPosterOffsetYChange,
+                        modifier = Modifier.fillMaxSize(),
+                        adjustable = true
                     )
                 }
             }

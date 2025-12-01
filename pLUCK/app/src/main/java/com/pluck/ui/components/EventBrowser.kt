@@ -64,7 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
+import com.pluck.ui.components.AdjustableImage
 import com.pluck.ui.model.Event
 import com.pluck.ui.model.EventInterests
 import com.pluck.ui.theme.autoTextColor
@@ -279,14 +279,15 @@ private fun EventCard(
 
             // Content area
             if (hasPoster) {
-                AsyncImage(
-                    model = event.posterUrl,
+                AdjustableImage(
+                    imageUrl = event.posterUrl ?: "",
                     contentDescription = "${event.title} poster",
+                    initialOffsetY = event.posterOffsetY,
+                    adjustable = false,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 200.dp),
-                    alignment = Alignment.Center
+                        .heightIn(max = 200.dp)
                 )
 
                 Row(
